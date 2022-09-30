@@ -125,7 +125,7 @@ def main():
         
     # Scale both to FCalcs and write differences
     if args.highres is not None:
-        alldata     = alldata.loc[diff["dHKL"] > args.highres]
+        alldata     = alldata.loc[alldata["dHKL"] > args.highres]
         spacing     = args.highres / map_res
     
     c, b, on_s            = mtr.scale_iso( np.array(alldata["F_off"]) , np.array(alldata["F_on"]) , np.array(alldata["dHKL"]) )
