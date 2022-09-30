@@ -242,7 +242,7 @@ def subset_to_FandPhi(mtzpath, data_col, phi_col, column_names_dict={}, flags_co
         )
     if not isinstance(mtz[phi_col].dtype, rs.PhaseDtype):
         raise ValueError(
-            f"{sig_col} must specify a phase column in {mtzpath}"
+            f"{phi_col} must specify a phase column in {mtzpath}"
         )
     
     if flags_col is not None:
