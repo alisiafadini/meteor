@@ -506,7 +506,7 @@ def TV_filter(map, l, grid_size, cell, space_group):
     
     """
 
-    TV_arr     = denoise_tv_chambolle(np.array(map.grid), eps=0.00000005, weight=l, max_num_iter=100)
+    TV_arr     = denoise_tv_chambolle(np.array(map.grid), eps=0.00000005, weight=l, max_num_iter=50)
     entropy    = negentropy(TV_arr.flatten())
     TV_map     = make_map(TV_arr-np.mean(TV_arr), grid_size, cell, space_group)
 
