@@ -116,7 +116,7 @@ def main():
         color = 'black'
         ax1.set_xlabel(r'$\lambda$')
         ax1.set_ylabel(r'$\sum (\Delta \mathrm{Fobs}_\mathrm{free} - \Delta \mathrm{Fcalc}_\mathrm{free})^2$', color=color)
-        ax1.plot(np.linspace(1e-8, 0.1, len(errors)), errors, color=color, linewidth=5)
+        ax1.plot(np.linspace(1e-8, 0.1, len(errors)), errors/np.max(errors), color=color, linewidth=5)
         ax1.tick_params(axis='y', labelcolor=color)
 
         ax2 = ax1.twinx()
