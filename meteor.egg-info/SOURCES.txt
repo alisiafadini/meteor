@@ -1,0 +1,8 @@
+README.md
+setup.py
+meteor/__init__.py
+meteor/meteor.py
+meteor.egg-info/PKG-INFO
+meteor.egg-info/SOURCES.txt
+meteor.egg-info/dependency_links.txt
+meteor.egg-info/top_level.txt

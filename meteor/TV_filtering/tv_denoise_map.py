@@ -104,8 +104,8 @@ def main():
         
         # Find and save denoised maps that (1) minimizes the map error or (2) maximizes the map negentropy
         TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies = mtr.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group)
-        TVFs_best_err = mtr.map2mtzfile(TVmap_best_err,  '{n}_TV_{l}_besterror.mtz'.format(n=name,   l=np.round(lambda_best_err, decimals=3)), high_res)
-        TVFs_best_err = mtr.map2mtzfile(TVmap_best_entr, '{n}_TV_{l}_bestentropy.mtz'.format(n=name, l=np.round(lambda_best_entr, decimals=3)), high_res)
+        mtr.map2mtzfile(TVmap_best_err,  '{n}_TV_{l}_besterror.mtz'.format(n=name,   l=np.round(lambda_best_err, decimals=3)), high_res)
+        mtr.map2mtzfile(TVmap_best_entr, '{n}_TV_{l}_bestentropy.mtz'.format(n=name, l=np.round(lambda_best_entr, decimals=3)), high_res)
     
     print('Writing out TV denoised map with weights={lerr} and {lentr}'.format(lerr=np.round(lambda_best_err, decimals=3), lentr=np.round(lambda_best_entr, decimals=3)))
     
