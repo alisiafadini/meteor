@@ -10,6 +10,47 @@ from   skimage.restoration  import denoise_tv_chambolle
 
 import os #remove if possible
 
+def oneTV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, flags, l, highres):
+   
+    """
+    
+    """
+
+    # Fon - Foff and TV denoise
+    fit_mtz             = mtz[np.invert(flags)] 
+    fit_mtz["fit-set"]  = fit_mtz[Fon] - fit_mtz[Foff] 
+    print("Original phicalcs ", np.max(mtz[phicalc]), np.min(mtz[phicalc]), np.mean(mtz[phicalc]))
+    
+    # A line here that calls function to fix the phases 
+
+    fit_map             = map_from_Fs(fit_mtz, "fit-set", "ogPhis_pos", map_res)
+    fit_TV_map, entropy = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
+    mtz_TV              = from_gemmi(map2mtz(fit_TV_map, highres))
+    mtz_TV              = mtz_TV[mtz_TV.index.isin(mtz.index)]
+    F_plus              =   np.array(mtz_TV['FWT'].astype("float"))
+    phi_plus            =   np.radians(np.array(mtz_TV['PHWT'].astype("float")))
+
+    # Call to function that does projection
+    new_amps, new_phases, proj_error = TV_project(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs)
+
+    return new_amps, new_phases, proj_error, entropy
+
+def TV_project(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs):
+    
+    for idx in negs:
+        phi_plus[idx]  = phi_plus[idx] - np.pi
+        F_plus[idx]    = -F_plus[idx]
+    
+    z           =   F_plus*np.exp(phi_plus*1j) + Fo*np.exp(phi_calc*1j)
+    p_deltaF    =   (Fo_prime / np.absolute(z)) * z - Fo*np.exp(phi_calc*1j)
+    
+    new_amps   = np.absolute(p_deltaF).astype(np.float32)
+    new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
+    
+    proj_error = np.absolute(np.absolute(z) - Fo_prime)
+    
+    return new_amps, new_phases, proj_error
+
 def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, percent=0.03, flags=None, highres=None):
 
     """
@@ -54,11 +95,10 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
         fit_TV_map, entropy = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
             
         if highres is not None:
-            Fs_fit_TV       = map2mtz(fit_TV_map, highres)
+            Fs_fit_TV       = from_gemmi(map2mtz(fit_TV_map, highres))
         else:
-            Fs_fit_TV       = map2mtz(fit_TV_map, np.min(mtz_pos.compute_dHKL()["dHKL"]))
+            Fs_fit_TV       = from_gemmi(map2mtz(fit_TV_map, np.min(mtz_pos.compute_dHKL()["dHKL"])))
         
-        Fs_fit_TV           = from_gemmi(Fs_fit_TV)
         Fs_fit_TV           = Fs_fit_TV[Fs_fit_TV.index.isin(mtz.index)]
         test_TV             = Fs_fit_TV['FWT'][choose_test]
         error               = np.sum(np.array(test_set) - np.array(test_TV)) ** 2
