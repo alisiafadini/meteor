@@ -10,7 +10,7 @@ from   skimage.restoration  import denoise_tv_chambolle
 
 import os #remove if possible
 
-def oneTV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, flags, l, highres):
+def TV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, flags, l, highres):
    
     """
     
@@ -31,11 +31,11 @@ def oneTV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, f
     phi_plus            =   np.radians(np.array(mtz_TV['PHWT'].astype("float")))
 
     # Call to function that does projection
-    new_amps, new_phases, proj_error = TV_project(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs)
+    new_amps, new_phases, proj_error = TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs)
 
     return new_amps, new_phases, proj_error, entropy
 
-def TV_project(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs):
+def TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs):
     
     for idx in negs:
         phi_plus[idx]  = phi_plus[idx] - np.pi

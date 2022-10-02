@@ -89,15 +89,19 @@ def main():
         high_res = np.min(mtr.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
     
     # Read in mtz file
-    og_mtz = mtr.load_mtz(args.mtz[0]) 
+    og_mtz = mtr.load_mtz(args.mtz[0])
 
     # Use own R-free flags set if specified
     if args.flags is not None:
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3], args.flags]]  
-        
+        flags  = og_mtz[args.flags] == 0  
+
     else:
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3]]]  
-      
+        flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
+
+    for i in np.arange(50) + 1 :
+        new_amps, new_phases, proj_error = TV_iteration()
 
     print('DONE')
 
