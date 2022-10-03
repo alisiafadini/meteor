@@ -10,45 +10,42 @@ from   skimage.restoration  import denoise_tv_chambolle
 
 import os #remove if possible
 
-def TV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, flags, l, highres):
-   
+def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space_group, flags, l, highres):
+
     """
     
     """
 
     # Fon - Foff and TV denoise
-    fit_mtz             = mtz[np.invert(flags)] 
-    fit_mtz["fit-set"]  = fit_mtz[Fon] - fit_mtz[Foff] 
-    print("Original phicalcs ", np.max(mtz[phicalc]), np.min(mtz[phicalc]), np.mean(mtz[phicalc]))
+    mtz           = positive_Fs(mtz, phi_diffs, diffs, "phases-pos", "diffs-pos")
+    fit_mtz       = mtz[np.invert(flags)] 
     
-    plt.hist(mtz[phicalc])
-    plt.show()
-
-    # A line here that calls function to fix the phases 
-
-    fit_map             = map_from_Fs(fit_mtz, "fit-set", "ogPhis_pos", map_res)
+    fit_map             = map_from_Fs(fit_mtz, "diffs-pos", "phases-pos", map_res)
     fit_TV_map, entropy = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
     mtz_TV              = from_gemmi(map2mtz(fit_TV_map, highres))
     mtz_TV              = mtz_TV[mtz_TV.index.isin(mtz.index)]
-    F_plus              =   np.array(mtz_TV['FWT'].astype("float"))
-    phi_plus            =   np.radians(np.array(mtz_TV['PHWT'].astype("float")))
+    mtz_TV.write_mtz('/Users/alisia/Desktop/TVed.mtz')
+    F_plus              = np.array(mtz_TV['FWT'].astype("float"))
+    phi_plus            = np.radians(np.array(mtz_TV['PHWT'].astype("float")))
 
     # Call to function that does projection
-    new_amps, new_phases, proj_error = TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs)
+    new_amps, new_phases, proj_error = TV_projection(np.array(mtz[Foff]).astype("float"), np.array(mtz[Fon]).astype("float"), np.radians(np.array(mtz[phicalc]).astype("float")), F_plus, phi_plus)
+    mean_proj_error = np.mean(proj_error[np.array(flags).astype(bool)])
+    phase_change    = np.mean(np.absolute(new_phases-mtz["phases-pos"]))
 
-    return new_amps, new_phases, proj_error, entropy
+    return new_amps, new_phases, mean_proj_error, entropy, phase_change
 
-def TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus, negs):
-    
-    for idx in negs:
-        phi_plus[idx]  = phi_plus[idx] - np.pi
-        F_plus[idx]    = -F_plus[idx]
+def TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus):
     
     z           =   F_plus*np.exp(phi_plus*1j) + Fo*np.exp(phi_calc*1j)
     p_deltaF    =   (Fo_prime / np.absolute(z)) * z - Fo*np.exp(phi_calc*1j)
     
     new_amps   = np.absolute(p_deltaF).astype(np.float32)
     new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
+
+    for idx, i in enumerate(new_phases):
+        if -180 <= i < 0:
+            new_phases[idx] = new_phases[idx] + 360
     
     proj_error = np.absolute(np.absolute(z) - Fo_prime)
     
@@ -345,11 +342,15 @@ def positive_Fs(df, phases, Fs, phases_new, Fs_new):
     new_Fs   = df[Fs].copy(deep=True)
     
     negs = np.where(df[Fs]<0)
-    
+
     for i in negs:
         new_phis.iloc[i]  = df[phases].iloc[i]+180
         new_Fs.iloc[i]    = np.abs(new_Fs.iloc[i])
-
+    
+    for idx, i in enumerate(new_phis):
+        if -180 <= i < 0:
+            new_phis.iloc[idx] = new_phis.iloc[idx] + 360
+    
     df_new = df.copy(deep=True)
     df_new[Fs_new]  = new_Fs
     df_new[Fs_new]  = df_new[Fs_new].astype("SFAmplitude")

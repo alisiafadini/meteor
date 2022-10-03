@@ -1,5 +1,7 @@
 import argparse
+from cProfile import label
 from re import I
+from   tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -100,10 +102,76 @@ def main():
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3]]]  
         flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
-    for i in np.arange(4) + 1 :
-        new_amps, new_phases, proj_error = TV_iteration(og_mtz, arg.mtz[2], args.mtz[1], args.mtz[3], name, map_res, cell, space_group, flags, 0.005, highres)
+    # scale second dataset ('on') to the first ('off')
+    calcs                 = mtr.get_Fcalcs(args.refpdb[0], high_res, path)['FC']
+    calcs                 = calcs[calcs.index.isin(og_mtz.index)]
+    __, __, scaled_on     = mtr.scale_iso(calcs, og_mtz[args.mtz[2]], og_mtz.compute_dHKL()["dHKL"])
+    __, __, scaled_off    = mtr.scale_iso(calcs, og_mtz[args.mtz[1]], og_mtz.compute_dHKL()["dHKL"])
+    og_mtz["scaled_on"]   = scaled_on
+    og_mtz["scaled_on"]   = og_mtz["scaled_on"].astype("SFAmplitude")
+    og_mtz["scaled_off"]  = scaled_off
+    og_mtz["scaled_off"]  = og_mtz["scaled_off"].astype("SFAmplitude") 
+    og_mtz["diffs"]       = og_mtz["scaled_on"] - og_mtz["scaled_off"] 
 
-        # Track projection error and phase change for each iteration
+    proj_errors     = []
+    entropies       = []
+    phase_changes   = []
+
+    N = 300
+    l = 0.005
+    with tqdm(total=N) as pbar:
+        for i in np.arange(N) + 1 :
+            if i == 1:
+                new_amps, new_phases, proj_error, entropy, phase_change = mtr.TV_iteration(og_mtz, "diffs", args.mtz[3] ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res)
+                og_mtz["new_amps"]   = new_amps
+                og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
+                og_mtz["new_phases"] = new_phases
+                og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
+                og_mtz.write_mtz("test_it{}.mtz".format(i))
+            else :
+                new_amps, new_phases, proj_error, entropy, phase_change = mtr.TV_iteration(og_mtz, "new_amps", "new_phases" ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res)
+                og_mtz["new_amps"]   = new_amps
+                og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
+                og_mtz["new_phases"] = new_phases
+                og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
+                og_mtz.write_mtz("test_it{it}_{l}.mtz".format(it=i, l=l))
+            
+            # Track projection error and phase change for each iteration
+            proj_errors.append(proj_error)
+            entropies.append(entropy)
+            phase_changes.append(phase_change)
+            pbar.update()
+
+
+    fig, ax1 = plt.subplots(figsize=(10,4))
+
+    color = 'black'
+    ax1.set_xlabel(r'Iteration')
+    ax1.set_ylabel(r'TV Map Error (TV$_\mathrm{err}$)', color=color)
+    ax1.plot(np.arange(N), proj_errors/np.max(np.array(proj_errors)), color=color, linewidth=5)
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    ax2 = ax1.twinx() 
+
+    color = 'darkgray'
+    ax2.set_ylabel('Negentropy', color=color)  
+    ax2.plot(np.arange(N), entropies, color=color, linewidth=5)
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    fig.tight_layout() 
+    fig.savefig('/Users/alisia/Desktop/iterativeTV-errors.pdf')
+    #plt.show()
+
+    fig, ax1 = plt.subplots(figsize=(10,4))
+
+    color = 'tomato'
+    ax1.set_xlabel(r'Iteration')
+    ax1.set_ylabel('Average Phase Difference \n (Iteration - Initial)')
+    ax1.plot(np.arange(N), phase_changes, color=color, linewidth=5)
+    ax1.tick_params(axis='y')
+
+    fig.set_tight_layout(True)
+    fig.savefig('/Users/alisia/Desktop/iterativeTV-phase.pdf')
 
     print('DONE')
 
