@@ -100,8 +100,10 @@ def main():
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3]]]  
         flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
-    for i in np.arange(50) + 1 :
-        new_amps, new_phases, proj_error = TV_iteration()
+    for i in np.arange(4) + 1 :
+        new_amps, new_phases, proj_error = TV_iteration(og_mtz, arg.mtz[2], args.mtz[1], args.mtz[3], name, map_res, cell, space_group, flags, 0.005, highres)
+
+        # Track projection error and phase change for each iteration
 
     print('DONE')
 

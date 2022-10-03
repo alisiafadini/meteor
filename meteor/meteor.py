@@ -21,6 +21,9 @@ def TV_iteration(mtz, Fon, Foff, phicalc, name, map_res, cell, space_group, flag
     fit_mtz["fit-set"]  = fit_mtz[Fon] - fit_mtz[Foff] 
     print("Original phicalcs ", np.max(mtz[phicalc]), np.min(mtz[phicalc]), np.mean(mtz[phicalc]))
     
+    plt.hist(mtz[phicalc])
+    plt.show()
+
     # A line here that calls function to fix the phases 
 
     fit_map             = map_from_Fs(fit_mtz, "fit-set", "ogPhis_pos", map_res)
