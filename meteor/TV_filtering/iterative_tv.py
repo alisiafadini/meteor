@@ -1,6 +1,6 @@
 import argparse
-from cProfile import label
-from re import I
+from   cProfile import label
+from   re import I
 from   tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -105,9 +105,6 @@ def main():
     # scale second dataset ('on') and the first ('off') to FCalcs
     calcs                 = mtr.get_Fcalcs(args.refpdb[0], high_res, path)['FC']
     calcs                 = calcs[calcs.index.isin(og_mtz.index)]
-    #__, __, scaled_on     = mtr.scale_iso(calcs, og_mtz[args.mtz[2]], og_mtz.compute_dHKL()["dHKL"])
-    #__, __, scaled_off    = mtr.scale_iso(calcs, og_mtz[args.mtz[1]], og_mtz.compute_dHKL()["dHKL"])
-
     __, scaled_on         = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[2]]), np.array(list(og_mtz.index)))
     __, scaled_off        = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[1]]), np.array(list(og_mtz.index)))
 
