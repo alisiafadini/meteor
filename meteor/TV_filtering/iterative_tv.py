@@ -102,11 +102,15 @@ def main():
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3]]]  
         flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
-    # scale second dataset ('on') to the first ('off')
+    # scale second dataset ('on') and the first ('off') to FCalcs
     calcs                 = mtr.get_Fcalcs(args.refpdb[0], high_res, path)['FC']
     calcs                 = calcs[calcs.index.isin(og_mtz.index)]
-    __, __, scaled_on     = mtr.scale_iso(calcs, og_mtz[args.mtz[2]], og_mtz.compute_dHKL()["dHKL"])
-    __, __, scaled_off    = mtr.scale_iso(calcs, og_mtz[args.mtz[1]], og_mtz.compute_dHKL()["dHKL"])
+    #__, __, scaled_on     = mtr.scale_iso(calcs, og_mtz[args.mtz[2]], og_mtz.compute_dHKL()["dHKL"])
+    #__, __, scaled_off    = mtr.scale_iso(calcs, og_mtz[args.mtz[1]], og_mtz.compute_dHKL()["dHKL"])
+
+    __, scaled_on         = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[2]]), np.array(list(og_mtz.index)))
+    __, scaled_off        = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[1]]), np.array(list(og_mtz.index)))
+
     og_mtz["scaled_on"]   = scaled_on
     og_mtz["scaled_on"]   = og_mtz["scaled_on"].astype("SFAmplitude")
     og_mtz["scaled_off"]  = scaled_off
@@ -142,36 +146,37 @@ def main():
             phase_changes.append(phase_change)
             pbar.update()
 
+    # Optionally plot result for errors and negentropy
+    if args.plot is True:
 
-    fig, ax1 = plt.subplots(figsize=(10,4))
+        fig, ax1 = plt.subplots(figsize=(10,4))
 
-    color = 'black'
-    ax1.set_xlabel(r'Iteration')
-    ax1.set_ylabel(r'TV Map Error (TV$_\mathrm{err}$)', color=color)
-    ax1.plot(np.arange(N), proj_errors/np.max(np.array(proj_errors)), color=color, linewidth=5)
-    ax1.tick_params(axis='y', labelcolor=color)
+        color = 'black'
+        ax1.set_xlabel(r'Iteration')
+        ax1.set_ylabel(r'TV Map Error (TV$_\mathrm{err}$)', color=color)
+        ax1.plot(np.arange(N), proj_errors/np.max(np.array(proj_errors)), color=color, linewidth=5)
+        ax1.tick_params(axis='y', labelcolor=color)
 
-    ax2 = ax1.twinx() 
+        ax2 = ax1.twinx() 
 
-    color = 'darkgray'
-    ax2.set_ylabel('Negentropy', color=color)  
-    ax2.plot(np.arange(N), entropies, color=color, linewidth=5)
-    ax2.tick_params(axis='y', labelcolor=color)
+        color = 'darkgray'
+        ax2.set_ylabel('Negentropy', color=color)  
+        ax2.plot(np.arange(N), entropies, color=color, linewidth=5)
+        ax2.tick_params(axis='y', labelcolor=color)
 
-    fig.tight_layout() 
-    fig.savefig('/Users/alisia/Desktop/iterativeTV-errors.pdf')
-    #plt.show()
+        fig.tight_layout() 
+        plt.show()
 
-    fig, ax1 = plt.subplots(figsize=(10,4))
+        fig, ax1 = plt.subplots(figsize=(10,4))
 
-    color = 'tomato'
-    ax1.set_xlabel(r'Iteration')
-    ax1.set_ylabel('Average Phase Difference \n (Iteration - Initial)')
-    ax1.plot(np.arange(N), phase_changes, color=color, linewidth=5)
-    ax1.tick_params(axis='y')
+        color = 'tomato'
+        ax1.set_xlabel(r'Iteration')
+        ax1.set_ylabel('Average Phase Difference \n (Iteration - Initial)')
+        ax1.plot(np.arange(N), phase_changes, color=color, linewidth=5)
+        ax1.tick_params(axis='y')
 
-    fig.set_tight_layout(True)
-    fig.savefig('/Users/alisia/Desktop/iterativeTV-phase.pdf')
+        fig.set_tight_layout(True)
+        plt.show()
 
     print('DONE')
 
