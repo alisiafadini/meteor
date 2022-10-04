@@ -13,7 +13,25 @@ import os #remove if possible
 def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space_group, flags, l, highres):
 
     """
+    Go through one iteration of TV denoising Fon-Foff map + projection onto measured Fon magnitude 
+    to obtain new phases estimates for the difference structure factors vector.
+
+    Parameters :
+
+    1. MTZ, diffs, phi_diffs, Fon, Foff, phicalc : (rsDataset) with specified structure factor and phase labels (str)
+    2. map_res                                   : (float) spacing for map generation
+    4. cell, space group                         : (array) and (str) 
+    5. flags                                     : (boolean array) where True marks reflections to keep for test set
+    6. l                                         : (float) weighting parameter for TV denoising
+    7. highres                                   : (float) high resolution cutoff for map generation
     
+    Returns :
+    
+    1. new amps, new phases                      : (1D-array) for new difference amplitude and phase estimates after the iteration 
+    2. mean_proj_errror                          : (float) the mean magnitude of the projection of the TV difference vector onto Fon
+    3. entropy                                   : (float) negentropy of TV denoised map
+    4. phase_change                              : (float) mean change in phases between input (phi_diffs) and output (new_phases) arrays
+
     """
 
     # Fon - Foff and TV denoise
@@ -24,7 +42,6 @@ def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space
     fit_TV_map, entropy = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
     mtz_TV              = from_gemmi(map2mtz(fit_TV_map, highres))
     mtz_TV              = mtz_TV[mtz_TV.index.isin(mtz.index)]
-    mtz_TV.write_mtz('/Users/alisia/Desktop/TVed.mtz')
     F_plus              = np.array(mtz_TV['FWT'].astype("float"))
     phi_plus            = np.radians(np.array(mtz_TV['PHWT'].astype("float")))
 
@@ -35,10 +52,27 @@ def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space
 
     return new_amps, new_phases, mean_proj_error, entropy, phase_change
 
-def TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus):
+def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus):
+
+    """
+    Project a TV denoised difference structure factor vector onto measured Fon magnitude 
+    to obtain new phases estimates for the difference structure factors.
+
+    Parameters :
+
+    1. Foff, Fon                      : (1D arrays) of measured amplitudes used for the 'Fon - Foff' difference
+    2. phi_calc                       : (1D array)  of phases calculated from refined 'off' model
+    3. F_plus, phi_plus               : (1D arrays) from TV denoised 'Fon - Foff' electron density map
     
-    z           =   F_plus*np.exp(phi_plus*1j) + Fo*np.exp(phi_calc*1j)
-    p_deltaF    =   (Fo_prime / np.absolute(z)) * z - Fo*np.exp(phi_calc*1j)
+    Returns :
+    
+    1. new amps, new phases           : (1D array) for new difference amplitude and phase estimates after the iteration 
+    2. proj_error                     : (1D array) magnitude of the projection of the TV difference vector onto Fon
+
+    """
+    
+    z           =   F_plus*np.exp(phi_plus*1j) + Foff*np.exp(phi_calc*1j)
+    p_deltaF    =   (Fon / np.absolute(z)) * z - Foff*np.exp(phi_calc*1j)
     
     new_amps   = np.absolute(p_deltaF).astype(np.float32)
     new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
@@ -47,13 +81,17 @@ def TV_projection(Fo, Fo_prime, phi_calc, F_plus, phi_plus):
         if -180 <= i < 0:
             new_phases[idx] = new_phases[idx] + 360
     
-    proj_error = np.absolute(np.absolute(z) - Fo_prime)
+    proj_error = np.absolute(np.absolute(z) - Fon)
     
     return new_amps, new_phases, proj_error
 
 def scale_aniso(x_dataset, y_dataset, Miller_indx):
 
-    "Author: Virginia"
+    """"
+    Author: Virginia Apostolopoulou
+    Anisotropically scales y_dataset to x_dataset given an ndarray of Miller indices.
+    """
+
     p0 = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
     matrix_ani = opt.least_squares(aniso_scale_func, p0, args=(x_dataset, y_dataset, Miller_indx))
 
@@ -77,7 +115,7 @@ def scale_aniso(x_dataset, y_dataset, Miller_indx):
 
 def aniso_scale_func(p, x1, x2, H_arr):
 
-    "Author: Virginia"
+    "Author: Virginia Apostolopoulou"
     
     h = H_arr[:,0]
     k = H_arr[:,1]
