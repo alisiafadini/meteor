@@ -387,7 +387,6 @@ def get_pdbinfo(pdb):
     pdb         = PandasPdb().read_pdb(pdb)
     text        = '\n\n%s\n' % pdb.pdb_text[:]
     info        = ['{}'.format(line) for line in text.split("\n") if line.startswith('CRYST1')]
-    print(info)
     unit_cell   = [float(i) for i in info[0].split()[1:7]]
     space_group = ''.join(info[0].split()[7:11])
 
@@ -400,7 +399,7 @@ def get_Fcalcs(pdb, dmin, path):
     From a PDB file path (str), calculate structure factors and return as rs.Dataset
     """
 
-    os.system('gemmi sfcalc {pdb} --to-mtz={path}{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin, path=path, root=pdb.split('.')[0]))
+    os.system('gemmi sfcalc {pdb} --to-mtz={path}{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin-0.05, path=path, root=pdb.split('.')[0]))
     calcs = load_mtz('{path}{root}_FCalcs.mtz'.format(path=path, root=pdb.split('.')[0]))
     
     return calcs

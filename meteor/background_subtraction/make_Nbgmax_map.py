@@ -128,8 +128,8 @@ def main():
         alldata     = alldata.loc[alldata["dHKL"] > args.highres]
         spacing     = args.highres / map_res
     
-    mtx_on,  t_on,  scaled_on     = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata[args.onmtz[1]]), np.array(list(alldata.index)))
-    mtx_off, t_off, scaled_off    = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata[args.offmtz[1]]), np.array(list(alldata.index)))
+    mtx_on,  t_on,  scaled_on     = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata["F_on"]), np.array(list(alldata.index)))
+    mtx_off, t_off, scaled_off    = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata["F_off"]), np.array(list(alldata.index)))
 
     alldata["F_on_s"]     = scaled_on
     alldata["F_off_s"]    = scaled_off
@@ -156,11 +156,11 @@ def main():
         ws              = mtr.compute_weights(diffs, sig_diffs, alpha=args.alpha)
         diffs_w         = ws * diffs
         alldata["WDF-Nbg"] = diffs_w
-    
+        alldata["WDF-Nbg"] = alldata["WDF-Nbg"].astype("SFAmplitude")
         alldata.infer_mtz_dtypes(inplace=True)
         Nbg_map  = mtr.map_from_Fs(alldata, "WDF-Nbg", "PHIC", map_res)
         
-        CC_diff, CC_loc, CC_glob = mtr.get_corrdiff(Nbg_map, calc_map, Nbg, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
+        CC_diff, CC_loc, CC_glob = mtr.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
         CC_diffs.append(CC_diff)
         CC_locs.append(CC_loc)
         CC_globs.append(CC_glob)

@@ -105,8 +105,8 @@ def main():
     # scale second dataset ('on') and the first ('off') to FCalcs
     calcs                 = mtr.get_Fcalcs(args.refpdb[0], high_res, path)['FC']
     calcs                 = calcs[calcs.index.isin(og_mtz.index)]
-    __, scaled_on         = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[2]]), np.array(list(og_mtz.index)))
-    __, scaled_off        = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[1]]), np.array(list(og_mtz.index)))
+    __, __, scaled_on     = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[2]]), np.array(list(og_mtz.index)))
+    __, __, scaled_off    = mtr.scale_aniso(np.array(calcs), np.array(og_mtz[args.mtz[1]]), np.array(list(og_mtz.index)))
 
     og_mtz["scaled_on"]   = scaled_on
     og_mtz["scaled_on"]   = og_mtz["scaled_on"].astype("SFAmplitude")
@@ -119,7 +119,7 @@ def main():
     phase_changes   = []
 
     N = 300
-    l = 0.005
+    l = 0.05
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
             if i == 1:
