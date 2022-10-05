@@ -128,14 +128,14 @@ def main():
                 og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
                 og_mtz["new_phases"] = new_phases
                 og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
-                og_mtz.write_mtz("test_it{}.mtz".format(i))
+                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
             else :
                 new_amps, new_phases, proj_error, entropy, phase_change = mtr.TV_iteration(og_mtz, "new_amps", "new_phases" ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res)
                 og_mtz["new_amps"]   = new_amps
                 og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
                 og_mtz["new_phases"] = new_phases
                 og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
-                og_mtz.write_mtz("test_it{it}_{l}.mtz".format(it=i, l=l))
+                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
             
             # Track projection error and phase change for each iteration
             proj_errors.append(proj_error)
