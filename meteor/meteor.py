@@ -111,7 +111,7 @@ def scale_aniso(x_dataset, y_dataset, Miller_indx):
 
     data_ani_scaled = (matrix_ani.x[0]*np.exp(t))*y_dataset
     
-    return matrix_ani, data_ani_scaled
+    return matrix_ani, t,  data_ani_scaled
 
 def aniso_scale_func(p, x1, x2, H_arr):
 
@@ -183,7 +183,7 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
         else:
             Fs_fit_TV       = from_gemmi(map2mtz(fit_TV_map, np.min(mtz_pos.compute_dHKL()["dHKL"])))
         
-        Fs_fit_TV           = Fs_fit_TV[Fs_fit_TV.index.isin(mtz.index)]
+        Fs_fit_TV           = Fs_fit_TV[Fs_fit_TV.index.isin(mtz_pos.index)]
         test_TV             = Fs_fit_TV['FWT'][choose_test]
         error               = np.sum(np.array(test_set) - np.array(test_TV)) ** 2
         errors.append(error)
@@ -387,8 +387,9 @@ def get_pdbinfo(pdb):
     pdb         = PandasPdb().read_pdb(pdb)
     text        = '\n\n%s\n' % pdb.pdb_text[:]
     info        = ['{}'.format(line) for line in text.split("\n") if line.startswith('CRYST1')]
+    print(info)
     unit_cell   = [float(i) for i in info[0].split()[1:7]]
-    space_group = ''.join(info[0].split()[7:])
+    space_group = ''.join(info[0].split()[7:11])
 
     return unit_cell, space_group
 
@@ -503,7 +504,7 @@ def map2mtzfile(map, mtz_name, high_res):
     Write an MTZ file from a GEMMI map object.
     """
     sf = gm.transform_map_to_f_phi(map.grid, half_l=False)
-    data = sf.prepare_asu_data(dmin=high_res-0.003, with_sys_abs=True)
+    data = sf.prepare_asu_data(dmin=high_res-0.05, with_sys_abs=True)
     mtz = gm.Mtz(with_base=True)
     mtz.spacegroup = sf.spacegroup
     mtz.set_cell_for_all(sf.unit_cell)
@@ -519,7 +520,7 @@ def map2mtz(map, high_res):
     Return an rs.Dataset from a GEMMI map object.
     """
     sf = gm.transform_map_to_f_phi(map.grid, half_l=False)
-    data = sf.prepare_asu_data(dmin=high_res-0.003, with_sys_abs=True)
+    data = sf.prepare_asu_data(dmin=high_res-0.05, with_sys_abs=True)
     mtz = gm.Mtz(with_base=True)
     mtz.spacegroup = sf.spacegroup
     mtz.set_cell_for_all(sf.unit_cell)
@@ -636,7 +637,7 @@ def TV_filter(map, l, grid_size, cell, space_group):
 
     TV_arr     = denoise_tv_chambolle(np.array(map.grid), eps=0.00000005, weight=l, max_num_iter=50)
     entropy    = negentropy(TV_arr.flatten())
-    TV_map     = make_map(TV_arr-np.mean(TV_arr), grid_size, cell, space_group)
+    TV_map     = make_map(TV_arr, grid_size, cell, space_group)
 
     return TV_map, entropy
     
