@@ -128,9 +128,14 @@ def main():
         alldata     = alldata.loc[alldata["dHKL"] > args.highres]
         spacing     = args.highres / map_res
     
-    c, b, on_s            = mtr.scale_iso( np.array(alldata["F_off"]) , np.array(alldata["F_on"]) , np.array(alldata["dHKL"]) )
-    alldata["F_on_s"]     = on_s
-    alldata["SIGF_on_s"]  = (c  * np.exp(-b * ( ( 1/(2 * alldata["dHKL"])) ** 2))) * alldata["SIGF_on"]
+    mtx_on,  t_on,  scaled_on     = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata[args.onmtz[1]]), np.array(list(alldata.index)))
+    mtx_off, t_off, scaled_off    = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata[args.offmtz[1]]), np.array(list(alldata.index)))
+
+    alldata["F_on_s"]     = scaled_on
+    alldata["F_off_s"]    = scaled_off
+    alldata["SIGF_on_s"]  = (mtx_on.x[0]  * np.exp(t_on))  * alldata["SIGF_on"]
+    alldata["SIGF_off_s"] = (mtx_off.x[0] * np.exp(t_off)) * alldata["SIGF_off"]
+
     alldata.infer_mtz_dtypes(inplace=True)
     spacing               = np.min(alldata["dHKL"]) / map_res
     
@@ -144,10 +149,10 @@ def main():
     
     calc_map = mtr.map_from_Fs(alldata,   "FC"   , "PHIC", map_res) #map to use as reference state
 
-    for idx, Nbg in tqdm(enumerate(Nbgs)) :
+    for Nbg in tqdm(Nbgs) :
         
-        diffs           = alldata["F_on_s"] - Nbg * alldata["F_off"]
-        sig_diffs       = np.sqrt(alldata["SIGF_on_s"]**2 + (Nbg * alldata["SIGF_off"])**2)
+        diffs           = alldata["F_on_s"] - Nbg * alldata["F_off_s"]
+        sig_diffs       = np.sqrt(alldata["SIGF_on_s"]**2 + (Nbg * alldata["SIGF_off_s"])**2)
         ws              = mtr.compute_weights(diffs, sig_diffs, alpha=args.alpha)
         diffs_w         = ws * diffs
         alldata["WDF-Nbg"] = diffs_w
