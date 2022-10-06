@@ -1,12 +1,11 @@
-#coding: utf8
+from setuptools import setup, find_packages
 
+DESCRIPTION      =   "Scripts for crystallographic electron density maps containing low occupancy species"
+LONG_DESCRIPTION = """
+METEOR contains commandline scripts and functions for finding low occupancy species in crystallographic maps.
+This module will be part of reciprocalspaceship and its "booster" package, rs-booster.
 """
 
-Setup for METEOR
-
-"""
-
-from glob import glob
 
 try:
 	from setuptools import setup
@@ -15,7 +14,19 @@ except ImportError:
 	from disutils.core import setup
 
     
-setup(name='meteor',
-      author='Alisia Fadini',
-      packages=['meteor'],
-      package_dir={'meteor': 'meteor'})
+setup(
+    name='meteor',
+    description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
+    author='Alisia Fadini',
+    author_email="alisia.fadini15@imperial.ac.uk",
+    install_requires=["reciprocalspaceship", "matplotlib", "seaborn"],
+    packages=find_packages(),
+    entry_points={
+      "console_scripts": [
+        "mtr.bckgr_subtract=meteor.background_subtraction.make_Nbgmax_map:main",
+        "mtr.tv_denoise=meteor.TV_filtering.tv_denoise_map:main",
+        "mtr.iterative_TV=meteor.TV_filtering.iterative_tv:main"
+        ]
+  }
+)
