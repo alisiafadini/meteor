@@ -24,9 +24,9 @@ setup(
     packages=find_packages(),
     entry_points={
       "console_scripts": [
-        "mtr.bckgr_subtract=meteor.background_subtraction.make_Nbgmax_map:main",
-        "mtr.tv_denoise=meteor.TV_filtering.tv_denoise_map:main",
-        "mtr.iterative_TV=meteor.TV_filtering.iterative_tv:main"
+        "meteor.bckgr_subtract=meteor.background_subtraction.make_Nbgmax_map:main",
+        "meteor.tv_denoise=meteor.TV_filtering.tv_denoise_map:main",
+        "meteor.iterative_TV=meteor.TV_filtering.iterative_tv:main"
         ]
   }
 )
