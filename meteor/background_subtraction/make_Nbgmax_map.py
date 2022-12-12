@@ -127,20 +127,11 @@ def main():
     if args.highres is not None:
         alldata     = alldata.loc[alldata["dHKL"] > args.highres]
         spacing     = args.highres / map_res
-    
-    mtx_on,  t_on,  scaled_on     = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata["F_on"]), np.array(list(alldata.index)))
-    mtx_off, t_off, scaled_off    = mtr.scale_aniso(np.array(alldata["FC"]), np.array(alldata["F_off"]), np.array(list(alldata.index)))
-
-    alldata["F_on_s"]     = scaled_on
-    alldata["F_off_s"]    = scaled_off
-    alldata["SIGF_on_s"]  = (mtx_on.x[0]  * np.exp(t_on))  * alldata["SIGF_on"]
-    alldata["SIGF_off_s"] = (mtx_off.x[0] * np.exp(t_off)) * alldata["SIGF_off"]
-
-    alldata.infer_mtz_dtypes(inplace=True)
-    spacing               = np.min(alldata["dHKL"]) / map_res
+        h_res       = args.highres
     
     # Screen different background subtraction values for maximum correlation difference
-    
+    h_res     = np.min(alldata["dHKL"])  
+    spacing   = h_res / map_res
     Nbgs      = np.linspace(0,1, 100)
 
     CC_diffs  = []
@@ -151,20 +142,14 @@ def main():
 
     for Nbg in tqdm(Nbgs) :
         
-        diffs           = alldata["F_on_s"] - Nbg * alldata["F_off_s"]
-        sig_diffs       = np.sqrt(alldata["SIGF_on_s"]**2 + (Nbg * alldata["SIGF_off_s"])**2)
-        ws              = mtr.compute_weights(diffs, sig_diffs, alpha=args.alpha)
-        diffs_w         = ws * diffs
-        alldata["WDF-Nbg"] = diffs_w
-        alldata["WDF-Nbg"] = alldata["WDF-Nbg"].astype("SFAmplitude")
-        alldata.infer_mtz_dtypes(inplace=True)
-        Nbg_map  = mtr.map_from_Fs(alldata, "WDF-Nbg", "PHIC", map_res)
+        alldata, _  = mtr.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
+        Nbg_map  = mtr.map_from_Fs(alldata, "WDF", "PHIC", map_res)
         
         CC_diff, CC_loc, CC_glob = mtr.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
         CC_diffs.append(CC_diff)
         CC_locs.append(CC_loc)
         CC_globs.append(CC_glob)
-        alldata.drop(columns=["WDF-Nbg"])
+        alldata.drop(columns=["WDF"])
     
     if args.plot is True:
 
@@ -188,8 +173,8 @@ def main():
     
     #Save map with optimal Nbg
     
-    alldata["DF-Nbgmax"] = alldata["F_on_s"] - Nbgs[np.argmax(CC_diffs)] * alldata["F_off"]
-    alldata.infer_mtz_dtypes(inplace=True)
+    alldata["DF-Nbgmax"] = alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"]
+    alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
     alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=path, n=name))
     print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
     

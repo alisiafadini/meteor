@@ -5,12 +5,77 @@ import gemmi                as gm
 import pandas               as pd
 from   tqdm                 import tqdm
 from   biopandas.pdb        import PandasPdb
-from   scipy.stats          import differential_entropy
+from   scipy.stats          import differential_entropy, binned_statistic
 from   skimage.restoration  import denoise_tv_chambolle
 
 import os #remove if possible
 
-def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space_group, flags, l, highres):
+def adjust_phi_interval(phi):
+
+    """ Given a set of phases, return the equivalent in -180 <= phi <= 180 interval"""
+
+    for idx, p in enumerate(phi) :
+            if 180 < p <= 361:
+                phi[idx] = p - 360
+
+        
+    assert np.min(phi) >= -181
+    assert np.max(phi) <= 181
+
+    return phi
+
+def find_w_diffs(mtz, Fon, Foff, SIGon, SIGoff, pdb, high_res, path, a, Nbg=1.00):
+
+    """ 
+    
+    Calculate weighted difference structure factors from a reference structure and input mtz.
+    
+    Parameters :
+
+    1. MTZ, Fon, Foff, SIGFon, SIGFoff           : (rsDataset) with specified structure factor and error labels (str)
+    2. pdb                                       : reference pdb file name (str) 
+    3. highres                                   : high resolution cutoff for map generation (float)
+    4. path                                      : path of directory where to store any files (string) 
+    5. a                                         : alpha weighting parameter q-weighting (float)
+    6. Nbg                                       : background subtraction value if making a background subtracted map (float – default=1.00)
+
+    
+    Returns :
+    
+    1. mtz                                      : (rs-Dataset) of original mtz + added column for weighted differences 
+    2. ws                                       : weights applied to each structure factor difference (1D array) 
+    
+    """
+
+    calcs                       = get_Fcalcs(pdb, high_res, path)['FC']
+    calcs                       = calcs[calcs.index.isin(mtz.index)]
+    mtx_on, t_on, scaled_on     = scale_aniso(np.array(calcs), np.array(mtz[Fon]), np.array(list(mtz.index)))
+    mtx_off, t_off, scaled_off  = scale_aniso(np.array(calcs), np.array(mtz[Foff]), np.array(list(mtz.index)))
+
+    mtz["scaled_on"]   = scaled_on
+    mtz["scaled_off"]  = scaled_off
+    mtz["SIGF_on_s"]   = (mtx_on.x[0]  * np.exp(t_on))  * mtz[SIGon]
+    mtz["SIGF_off_s"]  = (mtx_off.x[0] * np.exp(t_off)) * mtz[SIGoff] 
+    
+    sig_diffs          = np.sqrt(mtz["SIGF_on_s"]**2 + (mtz["SIGF_off_s"])**2)
+    ws                 = compute_weights(mtz["scaled_on"] - Nbg * mtz["scaled_off"], sig_diffs, alpha=a)
+    mtz["WDF"]       = ws * (mtz["scaled_on"] - mtz["scaled_off"])
+    mtz["WDF"]       = mtz["WDF"].astype("SFAmplitude")
+    mtz.infer_mtz_dtypes(inplace=True)
+
+    return mtz, ws
+
+
+def resolution_shells(data, dhkl, n):
+
+    """ Average data in n resolution shells """
+
+    mean_data   = binned_statistic(dhkl, data, statistic='mean', bins=n, range=(np.min(dhkl), np.max(dhkl)))
+    bin_centers = (mean_data.bin_edges[:-1] + mean_data.bin_edges[1:]) / 2 
+
+    return bin_centers, mean_data.statistic
+
+def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space_group, flags, l, highres, ws):
 
     """
     Go through one iteration of TV denoising Fon-Foff map + projection onto measured Fon magnitude 
@@ -20,15 +85,15 @@ def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space
 
     1. MTZ, diffs, phi_diffs, Fon, Foff, phicalc : (rsDataset) with specified structure factor and phase labels (str)
     2. map_res                                   : (float) spacing for map generation
-    4. cell, space group                         : (array) and (str) 
-    5. flags                                     : (boolean array) where True marks reflections to keep for test set
-    6. l                                         : (float) weighting parameter for TV denoising
-    7. highres                                   : (float) high resolution cutoff for map generation
+    3. cell, space group                         : (array) and (str) 
+    4. flags                                     : (boolean array) where True marks reflections to keep for test set
+    5. l                                         : (float) weighting parameter for TV denoising
+    6. highres                                   : (float) high resolution cutoff for map generation
     
     Returns :
     
     1. new amps, new phases                      : (1D-array) for new difference amplitude and phase estimates after the iteration 
-    2. mean_proj_errror                          : (float) the mean magnitude of the projection of the TV difference vector onto Fon
+    2. test_proj_errror                          : (float) the magnitude of the projection of the TV difference vector onto Fon for the test set
     3. entropy                                   : (float) negentropy of TV denoised map
     4. phase_change                              : (float) mean change in phases between input (phi_diffs) and output (new_phases) arrays
 
@@ -46,13 +111,15 @@ def TV_iteration(mtz, diffs, phi_diffs, Fon, Foff, phicalc, map_res, cell, space
     phi_plus            = np.radians(np.array(mtz_TV['PHWT'].astype("float")))
 
     # Call to function that does projection
-    new_amps, new_phases, proj_error = TV_projection(np.array(mtz[Foff]).astype("float"), np.array(mtz[Fon]).astype("float"), np.radians(np.array(mtz[phicalc]).astype("float")), F_plus, phi_plus)
-    mean_proj_error = np.mean(proj_error[np.array(flags).astype(bool)])
-    phase_change    = np.mean(np.absolute(new_phases-mtz["phases-pos"]))
+    new_amps, new_phases, proj_error, z = TV_projection(np.array(mtz[Foff]).astype("float"), np.array(mtz[Fon]).astype("float"), np.radians(np.array(mtz[phicalc]).astype("float")), F_plus, phi_plus, ws)
+    test_proj_error = proj_error[np.array(flags).astype(bool)]
+    phase_changes   = np.abs(np.array(mtz["phases-pos"]-new_phases))
+    phase_changes   = adjust_phi_interval(phase_changes)
+    phase_change    = np.mean(phase_changes)
 
-    return new_amps, new_phases, mean_proj_error, entropy, phase_change
+    return new_amps, new_phases, test_proj_error, entropy, phase_change, z
 
-def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus):
+def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus, ws):
 
     """
     Project a TV denoised difference structure factor vector onto measured Fon magnitude 
@@ -74,16 +141,12 @@ def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus):
     z           =   F_plus*np.exp(phi_plus*1j) + Foff*np.exp(phi_calc*1j)
     p_deltaF    =   (Fon / np.absolute(z)) * z - Foff*np.exp(phi_calc*1j)
     
-    new_amps   = np.absolute(p_deltaF).astype(np.float32)
+    new_amps   = np.absolute(p_deltaF).astype(np.float32) * ws
     new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
 
-    for idx, i in enumerate(new_phases):
-        if -180 <= i < 0:
-            new_phases[idx] = new_phases[idx] + 360
-    
     proj_error = np.absolute(np.absolute(z) - Fon)
     
-    return new_amps, new_phases, proj_error
+    return new_amps, new_phases, proj_error, z
 
 def scale_aniso(x_dataset, y_dataset, Miller_indx):
 
@@ -135,7 +198,7 @@ def aniso_scale_func(p, x1, x2, H_arr):
     r = x1 - p[0] * expnt * x2  
     return r
 
-def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, percent=0.03, flags=None, highres=None):
+def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, percent=0.07, flags=None, highres=None):
 
     """
     Find two TV denoised maps (one that maximizes negentropy and one that minimizes free set error) from an initial mtz and associated information.
@@ -155,6 +218,7 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
 
     1. The two optimal TV denoised maps (GEMMI objects) and corresponding regularization parameter used (float)
     2. Errors and negentropy values from the regularization screening (numpy arrays)
+    3. Mean changes in amplitude and phase between TV-denoised and observed datasets
 
     """
 
@@ -171,9 +235,13 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
     #Loop through values of lambda
     
     print('Scanning TV weights')
-    lambdas     = np.linspace(1e-8, 0.1, 200)
-    errors      = []
-    entropies   = []
+    lambdas       = np.linspace(1e-8, 0.1, 200)
+    errors        = []
+    entropies     = []
+    amp_changes   = []
+    phase_changes = []
+    #phase_corrs   = []
+
     for l in tqdm(lambdas):
         fit_map             = map_from_Fs(mtz_pos, "fit-set", "ogPhis_pos", map_res)
         fit_TV_map, entropy = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
@@ -185,9 +253,17 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
         
         Fs_fit_TV           = Fs_fit_TV[Fs_fit_TV.index.isin(mtz_pos.index)]
         test_TV             = Fs_fit_TV['FWT'][choose_test]
+        amp_change          = np.array(mtz_pos["ogFs_pos"]) - np.array(Fs_fit_TV["FWT"])
+        phase_change        = np.abs(np.array(mtz_pos["ogPhis_pos"]) - np.array(Fs_fit_TV["PHWT"]))
+        #phase_corr          = np.abs(np.array(Fs_fit_TV["PHWT"]) - positive_Fs(mtz, "light-phis", Flabel, "lightPhis_pos", "ogFs_pos")["lightPhis_pos"])
+
+        phase_change        = adjust_phi_interval(phase_change)
         error               = np.sum(np.array(test_set) - np.array(test_TV)) ** 2
         errors.append(error)
         entropies.append(entropy)
+        amp_changes.append(amp_change)
+        #phase_corrs.append(phase_corr)
+        phase_changes.append(phase_change)
     
     #Normalize errors
     errors    = np.array(errors)/len(errors)
@@ -199,7 +275,7 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
     TVmap_best_err,  _    = TV_filter(fit_map, lambda_best_err,  fit_map.grid.shape, cell, space_group)
     TVmap_best_entr, _    = TV_filter(fit_map, lambda_best_entr, fit_map.grid.shape, cell, space_group)
     
-    return TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies
+    return TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_changes, phase_changes #, phase_corrs
 
 
 def get_corrdiff( on_map, off_map, center, radius, pdb, cell, spacing) :
@@ -427,19 +503,19 @@ def positive_Fs(df, phases, Fs, phases_new, Fs_new):
     
     negs = np.where(df[Fs]<0)
 
+    df[phases] = adjust_phi_interval(df[phases])
+
     for i in negs:
-        new_phis.iloc[i]  = df[phases].iloc[i]+180
-        new_Fs.iloc[i]    = np.abs(new_Fs.iloc[i])
+        new_phis.iloc[i] = df[phases].iloc[i]+180
+        new_Fs.iloc[i]   = np.abs(new_Fs.iloc[i])
     
-    for idx, i in enumerate(new_phis):
-        if -180 <= i < 0:
-            new_phis.iloc[idx] = new_phis.iloc[idx] + 360
-    
-    df_new = df.copy(deep=True)
-    df_new[Fs_new]  = new_Fs
-    df_new[Fs_new]  = df_new[Fs_new].astype("SFAmplitude")
-    df_new[phases_new]  = new_phis
-    df_new[phases_new]  = df_new[phases_new].astype("Phase")
+    new_phis             = adjust_phi_interval(new_phis)
+
+    df_new               = df.copy(deep=True)
+    df_new[Fs_new]       = new_Fs
+    df_new[Fs_new]       = df_new[Fs_new].astype("SFAmplitude")
+    df_new[phases_new]   = new_phis
+    df_new[phases_new]   = df_new[phases_new].astype("Phase")
     
     return df_new
 
