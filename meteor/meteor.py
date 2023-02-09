@@ -14,10 +14,8 @@ def adjust_phi_interval(phi):
 
     """ Given a set of phases, return the equivalent in -180 <= phi <= 180 interval"""
 
-    for idx, p in enumerate(phi) :
-            if 180 < p <= 361:
-                phi[idx] = p - 360
-
+    phi = phi%360
+    phi[phi > 180] -=360
         
     assert np.min(phi) >= -181
     assert np.max(phi) <= 181
