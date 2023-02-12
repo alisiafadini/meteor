@@ -172,16 +172,16 @@ def main():
         ax[1].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
         ax[0].legend(fontsize=17)
         ax[1].legend(fontsize=17)
-        fig.savefig("{p}{n}_plotCCdiff.png".format(p=path, n=name))
-        print("Saved {p}{n}_plotCCdiff.png".format(p=path, n=name))
+        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=path, n=name))
+        print("Saved {p}/{n}_plotCCdiff.png".format(p=path, n=name))
     
     
     #Save map with optimal Nbg
     
     alldata["DF-Nbgmax"] = alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"]
     alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
-    alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=path, n=name))
-    print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
+    alldata.write_mtz("{p}/{n}_Nbgmax.mtz".format(p=path, n=name))
+    print("Wrote {p}/{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
     
 
 if __name__ == "__main__":

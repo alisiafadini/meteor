@@ -86,9 +86,9 @@ def get_corrdiff(on_map, off_map, center, radius, pdb, cell, spacing) :
     on_a              = np.array(on_map.grid)
     on_nosolvent      = np.nan_to_num(mask.solvent_mask(pdb, cell, on_a,  spacing))
     off_nosolvent     = np.nan_to_num(mask.solvent_mask(pdb, cell, off_a, spacing))
-    mask              = mask.get_mapmask(on_map.grid, center, radius)
+    reg_mask          = mask.get_mapmask(on_map.grid, center, radius)
    
-    loc_reg    = np.array(mask, copy=True).flatten().astype(bool)
+    loc_reg    = np.array(reg_mask, copy=True).flatten().astype(bool)
     CC_loc     = np.corrcoef(on_a.flatten()[loc_reg], off_a.flatten()[loc_reg])[0,1]
     CC_glob    = np.corrcoef(on_nosolvent[np.logical_not(loc_reg)], off_nosolvent[np.logical_not(loc_reg)])[0,1]
     

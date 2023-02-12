@@ -110,7 +110,7 @@ def main():
     
     # Read in mtz file
     og_mtz = io.load_mtz(args.mtz[0])
-    og_mtz = og_mtz.loc[og_mtz.compute_dHKL()["dHKL"] > args.highres]
+    og_mtz = og_mtz.loc[og_mtz.compute_dHKL()["dHKL"] > high_res]
 
     # Use own R-free flags set if specified
     if args.flags is not None:

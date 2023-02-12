@@ -1,7 +1,6 @@
 import os
 import gemmi as gm
 import reciprocalspaceship as rs
-#from biopandas.pdb import PandasPdb
 
 
 
@@ -188,6 +187,7 @@ def get_pdbinfo(pdb):
     with open(pdb, 'r') as f:
         for line in f:
             if line.startswith('CRYST1'):
+
                 split_line = line.strip().split()
                 unit_cell   = [float(i) for i in split_line[1:7]]
                 space_group = ''.join(split_line[7:11])
@@ -204,7 +204,7 @@ def get_Fcalcs(pdb, dmin, path):
     From a PDB file path (str), calculate structure factors and return as rs.Dataset
     """
 
-    os.system('gemmi sfcalc {pdb} --to-mtz={path}{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin-0.05, path=path, root=pdb.split('.')[0]))
-    calcs = load_mtz('{path}{root}_FCalcs.mtz'.format(path=path, root=pdb.split('.')[0]))
+    os.system('gemmi sfcalc {pdb} --to-mtz={path}{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin-0.05, path=path, root=pdb.split('.')[0].split('/')[-1]))
+    calcs = load_mtz('{path}{root}_FCalcs.mtz'.format(path=path, root=pdb.split('.')[0].split('/')[-1]))
     
     return calcs
