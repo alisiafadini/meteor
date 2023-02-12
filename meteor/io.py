@@ -1,7 +1,7 @@
 import os
 import gemmi as gm
 import reciprocalspaceship as rs
-from biopandas.pdb import PandasPdb
+#from biopandas.pdb import PandasPdb
 
 
 
@@ -182,13 +182,20 @@ def get_pdbinfo(pdb):
 
     # TODO clean up this function and remove dependency on biopython (!)
 
-    pdb         = PandasPdb().read_pdb(pdb)
-    text        = '\n\n%s\n' % pdb.pdb_text[:]
-    info        = ['{}'.format(line) for line in text.split("\n") if line.startswith('CRYST1')]
-    unit_cell   = [float(i) for i in info[0].split()[1:7]]
-    space_group = ''.join(info[0].split()[7:11])
+    #pdb         = PandasPdb().read_pdb(pdb)
+    #text        = '\n\n%s\n' % pdb.pdb_text[:]
 
-    return unit_cell, space_group
+    with open(pdb, 'r') as f:
+        for line in f:
+            if line.startswith('CRYST1'):
+                split_line = line.strip().split()
+                unit_cell   = [float(i) for i in split_line[1:7]]
+                space_group = ''.join(split_line[7:11])
+
+                return unit_cell, space_group
+
+    # if here, we did not find the CRYST1 record
+    raise IOError('could not find CRYST1 record in:', pdb)
 
     
 def get_Fcalcs(pdb, dmin, path):
