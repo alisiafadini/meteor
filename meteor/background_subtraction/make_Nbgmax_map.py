@@ -114,7 +114,7 @@ def main():
     args = parse_arguments()
     
     path              = os.path.split(args.onmtz[0])[0]
-    name              = os.path.split(args.onmtz[0])[1].split('.')[0]
+    name              = os.path.split(args.onmtz[0])[1].split('.')[0].split('/')[-1]
     
     onmtz             = io.subset_to_FSigF(*args.onmtz, {args.onmtz[1]: "F", args.onmtz[2]: "SIGF"})
     offmtz            = io.subset_to_FSigF(*args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
