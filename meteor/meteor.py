@@ -183,8 +183,8 @@ def get_Fcalcs(pdb, dmin, path):
     From a PDB file path (str), calculate structure factors and return as rs.Dataset
     """
 
-    os.system('gemmi sfcalc {pdb} --to-mtz={path}{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin-0.05, path=path, root=pdb.split('.')[0]))
-    calcs = load_mtz('{path}{root}_FCalcs.mtz'.format(path=path, root=pdb.split('.')[0]))
+    os.system('gemmi sfcalc {pdb} --to-mtz={path}/{root}_FCalcs.mtz --dmin={d}'.format(pdb=pdb, d=dmin-0.05, path=path, root=pdb.split('.')[0].split('/')[-1]))
+    calcs = load_mtz('{path}/{root}_FCalcs.mtz'.format(path=path, root=pdb.split('.')[0].split('/')[-1]))
     
     return calcs
    
@@ -548,7 +548,6 @@ def find_w_diffs(mtz, Fon, Foff, SIGon, SIGoff, pdb, high_res, path, a, Nbg=1.00
     2. ws                                       : weights applied to each structure factor difference (1D array) 
     
     """
-
     calcs                       = get_Fcalcs(pdb, high_res, path)['FC']
     calcs                       = calcs[calcs.index.isin(mtz.index)]
     mtx_on, t_on, scaled_on     = scale_aniso(np.array(calcs), np.array(mtz[Fon]), np.array(list(mtz.index)))
@@ -561,7 +560,7 @@ def find_w_diffs(mtz, Fon, Foff, SIGon, SIGoff, pdb, high_res, path, a, Nbg=1.00
     
     sig_diffs          = np.sqrt(mtz["SIGF_on_s"]**2 + (mtz["SIGF_off_s"])**2)
     ws                 = compute_weights(mtz["scaled_on"] - Nbg * mtz["scaled_off"], sig_diffs, alpha=a)
-    mtz["WDF"]       = ws * (mtz["scaled_on"] - mtz["scaled_off"])
+    mtz["WDF"]       = ws * (mtz["scaled_on"] - Nbg * mtz["scaled_off"])
     mtz["WDF"]       = mtz["WDF"].astype("SFAmplitude")
     mtz.infer_mtz_dtypes(inplace=True)
 
@@ -808,11 +807,9 @@ def get_corrdiff( on_map, off_map, center, radius, pdb, cell, spacing) :
     on_nosolvent      = np.nan_to_num(solvent_mask(pdb, cell, on_a,  spacing))
     off_nosolvent     = np.nan_to_num(solvent_mask(pdb, cell, off_a, spacing))
     mask              = get_mapmask(on_map.grid, center, radius)
-   
     loc_reg    = np.array(mask, copy=True).flatten().astype(bool)
     CC_loc     = np.corrcoef(on_a.flatten()[loc_reg], off_a.flatten()[loc_reg])[0,1]
     CC_glob    = np.corrcoef(on_nosolvent[np.logical_not(loc_reg)], off_nosolvent[np.logical_not(loc_reg)])[0,1]
-    
     diff     = np.array(CC_glob) -  np.array(CC_loc)
-    
+
     return diff, CC_loc, CC_glob
