@@ -99,7 +99,8 @@ def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus, ws):
     z           =   F_plus*np.exp(phi_plus*1j) + Foff*np.exp(phi_calc*1j)
     p_deltaF    =   (Fon / np.absolute(z)) * z - Foff*np.exp(phi_calc*1j)
     
-    new_amps   = np.absolute(p_deltaF).astype(np.float32) * ws
+    #new_amps   = np.absolute(p_deltaF).astype(np.float32) * ws
+    new_amps   = np.absolute(p_deltaF).astype(np.float32)
     new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
 
     proj_error = np.absolute(np.absolute(z) - Fon)

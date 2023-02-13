@@ -85,7 +85,7 @@ def find_w_diffs(mtz, Fon, Foff, SIGon, SIGoff, pdb, high_res, path, a, Nbg=1.00
     
     sig_diffs          = np.sqrt(mtz["SIGF_on_s"]**2 + (mtz["SIGF_off_s"])**2)
     ws                 = compute_weights(mtz["scaled_on"] - Nbg * mtz["scaled_off"], sig_diffs, alpha=a)
-    mtz["WDF"]       = ws * (mtz["scaled_on"] - mtz["scaled_off"])
+    mtz["WDF"]       = ws * (mtz["scaled_on"] - Nbg * mtz["scaled_off"])
     mtz["WDF"]       = mtz["WDF"].astype("SFAmplitude")
     mtz.infer_mtz_dtypes(inplace=True)
 

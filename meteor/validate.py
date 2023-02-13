@@ -53,8 +53,8 @@ def make_test_set(df, percent, Fs, out_name, path, flags=False):
     df["test-set"]  = test_set
     df["test-set"]  = df["test-set"].astype("SFAmplitude")
     
-    df.write_mtz("{path}split-{name}.mtz".format(path=path, name=out_name))
-    np.save("{path}test_flags-{name}.npy".format(path=path, name=out_name), choose_test)
+    df.write_mtz("{path}/split-{name}.mtz".format(path=path, name=out_name))
+    np.save("{path}/test_flags-{name}.npy".format(path=path, name=out_name), choose_test)
     
     return test_set, fit_set, choose_test
 
