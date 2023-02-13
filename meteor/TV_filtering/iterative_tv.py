@@ -1,15 +1,17 @@
 import argparse
-from   cProfile import label
 from   re import I
 from   tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-import reciprocalspaceship as rs
-import meteor.meteor  as mtr
 import seaborn as sns
 sns.set_context("notebook", font_scale=1.4)
+
+from meteor import io
+from meteor import dsutils
+from meteor import maps
+from meteor import tv
 
 """
 
@@ -94,7 +96,7 @@ def main():
     
     path              = os.path.split(args.mtz[0])[0]
     name              = os.path.split(args.mtz[0])[1].split('.')[0]
-    cell, space_group = mtr.get_pdbinfo(args.refpdb[0])
+    cell, space_group = io.get_pdbinfo(args.refpdb[0])
     
     print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%%'.format(n=name, p=path))
     print('CELL         : {}'.format(cell))
@@ -104,10 +106,10 @@ def main():
     if args.highres is not None:
         high_res = args.highres
     else:
-        high_res = np.min(mtr.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
+        high_res = np.min(io.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
     
     # Read in mtz file
-    og_mtz = mtr.load_mtz(args.mtz[0])
+    og_mtz = io.load_mtz(args.mtz[0])
     og_mtz = og_mtz.loc[og_mtz.compute_dHKL()["dHKL"] > high_res]
 
     # Use own R-free flags set if specified
@@ -121,7 +123,7 @@ def main():
 
     # scale second dataset ('on') and the first ('off') to FCalcs, and calculate deltaFs (weighted or not)
 
-    og_mtz, ws = mtr.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
+    og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
 
     #in case of calculated structure factors:
     #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"] 
@@ -140,11 +142,11 @@ def main():
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
             if i == 1:
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = mtr.TV_iteration(og_mtz, "WDF", args.mtz[3] ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
-                cum_phase_change     = np.abs(np.array(mtr.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
+                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(og_mtz, "WDF", args.mtz[3] ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
+                cum_phase_change     = np.abs(np.array(dsutils.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
                 #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"])) 
 
-                cum_phase_change     = mtr.adjust_phi_interval(cum_phase_change)
+                cum_phase_change     = dsutils.adjust_phi_interval(cum_phase_change)
                 #ph_err_corr          = mtr.adjust_phi_interval(ph_err_corr)
 
                 og_mtz["new_amps"]   = new_amps
@@ -154,11 +156,11 @@ def main():
                 og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
 
             else :
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = mtr.TV_iteration(og_mtz, "new_amps", "new_phases" ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
-                cum_phase_change     = np.abs(np.array(mtr.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
+                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(og_mtz, "new_amps", "new_phases" ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
+                cum_phase_change     = np.abs(np.array(dsutils.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
                 #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"]))
                 
-                cum_phase_change     = mtr.adjust_phi_interval(cum_phase_change)
+                cum_phase_change     = dsutils.adjust_phi_interval(cum_phase_change)
 
                 og_mtz["new_amps"]   = new_amps
                 og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
@@ -223,7 +225,7 @@ def main():
         ax.set_ylabel(r'TV Projection Magnitude (TV$_\mathrm{proj}$)')
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"][flags], proj_mags[N-1], color='black', alpha=0.5)
         
-        res_mean, data_mean = mtr.resolution_shells(proj_mags[N-1], 1/og_mtz.compute_dHKL()["dHKL"][flags], 15)
+        res_mean, data_mean = dsutils.resolution_shells(proj_mags[N-1], 1/og_mtz.compute_dHKL()["dHKL"][flags], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='orangered')
         fig.tight_layout()
         fig.savefig('{p}{n}tv-err-dhkl.png'.format(p=path, n=name))
@@ -235,7 +237,7 @@ def main():
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(cum_phase_changes[N-1]), color='orangered', alpha=0.05)
         #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_err_corrs[N-1]), color='blue', alpha=0.5)
         
-        res_mean, data_mean = mtr.resolution_shells(np.abs(cum_phase_changes[N-1]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
+        res_mean, data_mean = dsutils.resolution_shells(np.abs(cum_phase_changes[N-1]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black')
         fig.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-dhkl.png'.format(p=path, n=name))

@@ -4,10 +4,15 @@ import matplotlib.pyplot as plt
 import os
 
 import reciprocalspaceship as rs
-import meteor.meteor as mtr
 import seaborn as sns
 from tqdm import tqdm
 sns.set_context("notebook", font_scale=1.4)
+
+from meteor import io
+from meteor import dsutils
+from meteor import maps
+from meteor import validate
+
 
 """
 Make a background subtracted map with an optimal Nbg value (Nbg_max).
@@ -111,10 +116,10 @@ def main():
     path              = os.path.split(args.onmtz[0])[0]
     name              = os.path.split(args.onmtz[0])[1].split('.')[0].split('/')[-1]
     
-    onmtz             = mtr.subset_to_FSigF(*args.onmtz, {args.onmtz[1]: "F", args.onmtz[2]: "SIGF"})
-    offmtz            = mtr.subset_to_FSigF(*args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
-    cell, space_group = mtr.get_pdbinfo(args.refpdb[0])
-    calc              = mtr.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
+    onmtz             = io.subset_to_FSigF(*args.onmtz, {args.onmtz[1]: "F", args.onmtz[2]: "SIGF"})
+    offmtz            = io.subset_to_FSigF(*args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
+    cell, space_group = io.get_pdbinfo(args.refpdb[0])
+    calc              = io.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
 
     # Join all data
     alldata         = onmtz.merge(offmtz, on=["H", "K", "L"], suffixes=("_on", "_off")).dropna()
@@ -138,14 +143,14 @@ def main():
     CC_locs   = []
     CC_globs  = []
     
-    calc_map = mtr.map_from_Fs(alldata,   "FC"   , "PHIC", map_res) #map to use as reference state
+    calc_map = dsutils.map_from_Fs(alldata,   "FC"   , "PHIC", map_res) #map to use as reference state
 
     for Nbg in tqdm(Nbgs) :
         
-        alldata, _  = mtr.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
-        Nbg_map  = mtr.map_from_Fs(alldata, "WDF", "PHIC", map_res)
+        alldata, _  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
+        Nbg_map  = dsutils.map_from_Fs(alldata, "WDF", "PHIC", map_res)
         
-        CC_diff, CC_loc, CC_glob = mtr.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
+        CC_diff, CC_loc, CC_glob = validate.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
         CC_diffs.append(CC_diff)
         CC_locs.append(CC_loc)
         CC_globs.append(CC_glob)
