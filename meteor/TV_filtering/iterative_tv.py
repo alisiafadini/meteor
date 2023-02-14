@@ -136,7 +136,7 @@ def main():
     #in case of calculated structure factors:
     #ph_err_corrs      = []
 
-    N = 30
+    N = 100
     l = args.lambda_tv
 
     with tqdm(total=N) as pbar:
