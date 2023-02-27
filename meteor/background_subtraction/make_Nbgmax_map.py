@@ -159,21 +159,23 @@ def main():
     if args.plot is True:
 
         #Plot and find Nbg that maximizes this difference
-        fig, ax = plt.subplots(2,1, figsize=(8,7), tight_layout=True)
+        fig, ax = plt.subplots(2,1, figsize=(8,5.5), tight_layout=True)
 
-        ax[0].plot(Nbgs, CC_locs, 'y', label='Local', linewidth=2)
-        ax[0].plot(Nbgs, CC_globs, 'k', label='Global', linewidth=2)
+        ax[0].plot(Nbgs, CC_locs, color='mediumaquamarine', label=r'R$_\mathrm{loc}$', linewidth=3)
+        ax[0].plot(Nbgs, CC_globs, color='lightskyblue', label=r'R$_\mathrm{glob}$', linewidth=3)
 
-        ax[1].plot(Nbgs, CC_diffs, 'y', linestyle= 'dashed', label='Global - Local', linewidth=2)
-        ax[1].vlines(Nbgs[np.argmax(CC_diffs)], 0.22, 0, 'r', linestyle= 'dashed', linewidth=1.5, label='Max={}'.format(np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
+        ax[1].plot(Nbgs, CC_diffs, color='silver', linestyle= 'dashed', label=r'R$_\mathrm{glob}$ - R$_\mathrm{loc}$', linewidth=3)
+        ax[1].vlines(Nbgs[np.argmax(CC_diffs)], 0.22, 0, 'r', linestyle= 'dashed', linewidth=2.5, label='Max={}'.format(np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
 
         ax[0].set_title('{}'.format(name), fontsize=17)
         ax[0].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        ax[0].set_ylabel('CC')
         ax[1].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        ax[1].set_ylabel('CC Difference')
         ax[0].legend(fontsize=17)
         ax[1].legend(fontsize=17)
-        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=path, n=name))
-        print("Saved {p}/{n}_plotCCdiff.png".format(p=path, n=name))
+        fig.savefig("{p}/{n}_plotCCdiff.pdf".format(p=path, n=name))
+        print("Saved {p}/{n}_plotCCdiff.pdf".format(p=path, n=name))
     
     
     #Save map with optimal Nbg

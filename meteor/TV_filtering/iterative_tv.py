@@ -122,13 +122,12 @@ def main():
         flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
     # scale second dataset ('on') and the first ('off') to FCalcs, and calculate deltaFs (weighted or not)
-
     og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
 
     #in case of calculated structure factors:
     #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"] 
 
-    proj_mags          = []
+    proj_mags         = []
     entropies         = []
     phase_changes     = []
     cum_phase_changes = []
@@ -166,6 +165,11 @@ def main():
                 og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
                 og_mtz["new_phases"] = new_phases
                 og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
+
+                og_mtz["new-light-phi"] = z
+                og_mtz["new-light-phi"] = og_mtz["new-light-phi"].astype("Phase")
+
+
                 og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
             
             # Track projection magnitude and phase change for each iteration
@@ -177,6 +181,7 @@ def main():
             pbar.update()
 
             #np.save("{name}_TVit{i}_{l}-Z-mags.npy".format(name=name, i=i, l=l), z)
+    np.save("{name}_TVit{i}_{l}-entropies.npy".format(name=name, i=i, l=l), entropies)
 
     # Optionally plot result for errors and negentropy
     if args.plot is True:
@@ -187,14 +192,14 @@ def main():
         ax1.set_title('$\lambda$ = {}'.format(l))
         ax1.set_xlabel(r'Iteration')
         ax1.set_ylabel(r'TV Projection Magnitude (TV$_\mathrm{proj}$)', color=color)
-        ax1.plot(np.arange(N), np.mean(np.array(proj_mags), axis=1)/np.max(np.mean(np.array(proj_mags), axis=1)), color=color, linewidth=5)
+        ax1.plot(np.arange(N-1), np.array(np.mean(np.array(proj_mags), axis=1)/np.max(np.mean(np.array(proj_mags), axis=1)))[1:], color=color, linewidth=5)
         ax1.tick_params(axis='y', labelcolor=color)
 
         ax2 = ax1.twinx() 
 
         color = 'darkgray'
         ax2.set_ylabel('Negentropy', color=color)  
-        ax2.plot(np.arange(N), entropies, color=color, linewidth=5)
+        ax2.plot(np.arange(N-1), entropies[1:], color=color, linewidth=5)
         ax2.tick_params(axis='y', labelcolor=color)
         fig.tight_layout()
         fig.savefig('{p}{n}non-cum-error-TV.png'.format(p=path, n=name)) 
@@ -204,7 +209,7 @@ def main():
         color = 'tomato'
         ax1.set_title('$\lambda$ = {}'.format(l))
         ax1.set_xlabel(r'Iteration')
-        ax1.set_ylabel(' Iteration < $\phi_\mathrm{TV}$ - $\phi_\mathrm{obs}$ > ($^\circ$)')
+        ax1.set_ylabel(' Iteration < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax1.plot(np.arange(N), phase_changes, color=color, linewidth=5)
         ax1.tick_params(axis='y')
         fig.set_tight_layout(True)
@@ -213,7 +218,7 @@ def main():
         fig, ax = plt.subplots(figsize=(10,5))
         ax.set_title('$\lambda$ = {}'.format(l))
         ax.set_xlabel(r'Iteration')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{TV}$ - $\phi_\mathrm{obs}$ > ($^\circ$)')
+        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax.plot(np.arange(N), np.mean(cum_phase_changes, axis=1), color='orangered', linewidth=5)
         #ax.plot(np.arange(N), np.mean(ph_err_corrs, axis=1), color='orangered', linewidth=5, linestyle='--')
         fig.tight_layout()
@@ -233,7 +238,7 @@ def main():
         fig, ax = plt.subplots(figsize=(6,5))
         ax.set_title('$\lambda$ = {}'.format(l))
         ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{obs}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
+        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(cum_phase_changes[N-1]), color='orangered', alpha=0.05)
         #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_err_corrs[N-1]), color='blue', alpha=0.5)
         
@@ -245,7 +250,7 @@ def main():
         fig, ax = plt.subplots(figsize=(6,5))
         ax.set_title('$\lambda$ = {}'.format(l))
         ax.set_xlabel(r'|Fobs|')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{obs}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
+        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax.scatter(og_mtz["WDF"], np.abs(cum_phase_changes[N-1]), color='mediumpurple', alpha=0.5)
         fig.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-Fobs.png'.format(p=path, n=name))

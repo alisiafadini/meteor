@@ -14,7 +14,8 @@ def negentropy(X):
     # http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
     
     std = np.std(X)
-    neg_e = np.log(std*np.sqrt(2*np.pi*np.exp(1))) - differential_entropy(X)
+    #neg_e = np.log(std*np.sqrt(2*np.pi*np.exp(1))) - differential_entropy(X)
+    neg_e = 0.5 * np.log(2.0 * np.pi * std ** 2) + 0.5 - differential_entropy(X)
     #assert neg_e >= 0.0
     
     return neg_e
@@ -52,7 +53,7 @@ def make_test_set(df, percent, Fs, out_name, path, flags=False):
     df["fit-set"]   = df["fit-set"].astype("SFAmplitude")
     df["test-set"]  = test_set
     df["test-set"]  = df["test-set"].astype("SFAmplitude")
-    
+    df.infer_mtz_dtypes(inplace=True)
     df.write_mtz("{path}/split-{name}.mtz".format(path=path, name=out_name))
     np.save("{path}/test_flags-{name}.npy".format(path=path, name=out_name), choose_test)
     
@@ -92,7 +93,7 @@ def get_corrdiff(on_map, off_map, center, radius, pdb, cell, spacing) :
     CC_loc     = np.corrcoef(on_a.flatten()[loc_reg], off_a.flatten()[loc_reg])[0,1]
     CC_glob    = np.corrcoef(on_nosolvent[np.logical_not(loc_reg)], off_nosolvent[np.logical_not(loc_reg)])[0,1]
     
-    diff     = np.array(CC_glob) -  np.array(CC_loc)
+    diff       = np.array(CC_glob) -  np.array(CC_loc)
     
     return diff, CC_loc, CC_glob
 

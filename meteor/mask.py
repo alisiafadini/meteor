@@ -2,11 +2,12 @@
 import numpy as np
 import gemmi as gm
 
-def get_mapmask(grid, position, r) :
+def get_mapmask(grid_in, position, r) :
     
     """
     Returns mask (numpy array) of a map (GEMMI grid element) : mask radius 'r' (float) with center at 'position' (numpy array)
     """
+    grid = grid_in.clone()
     grid
     grid.fill(0)
     grid.set_points_around(gm.Position(position[0], position[1], position[2]), radius=r, value=1)

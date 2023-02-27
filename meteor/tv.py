@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from skimage.restoration import denoise_tv_chambolle
+#from scipy.stats import kurtosis
 
 from . import maps
 from . import validate
@@ -105,7 +106,7 @@ def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus, ws):
 
     proj_error = np.absolute(np.absolute(z) - Fon)
     
-    return new_amps, new_phases, proj_error, z
+    return new_amps, new_phases, proj_error, np.angle(z, deg=True)
 
 
 def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, percent=0.07, flags=None, highres=None):
@@ -150,7 +151,6 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
     entropies     = []
     amp_changes   = []
     phase_changes = []
-    #phase_corrs   = []
 
     for l in tqdm(lambdas):
         fit_map             = dsutils.map_from_Fs(mtz_pos, "fit-set", "ogPhis_pos", map_res)
@@ -165,14 +165,12 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
         test_TV             = Fs_fit_TV['FWT'][choose_test]
         amp_change          = np.array(mtz_pos["ogFs_pos"]) - np.array(Fs_fit_TV["FWT"])
         phase_change        = np.abs(np.array(mtz_pos["ogPhis_pos"]) - np.array(Fs_fit_TV["PHWT"]))
-        #phase_corr          = np.abs(np.array(Fs_fit_TV["PHWT"]) - positive_Fs(mtz, "light-phis", Flabel, "lightPhis_pos", "ogFs_pos")["lightPhis_pos"])
 
         phase_change        = dsutils.adjust_phi_interval(phase_change)
         error               = np.sum(np.array(test_set) - np.array(test_TV)) ** 2
         errors.append(error)
         entropies.append(entropy)
         amp_changes.append(amp_change)
-        #phase_corrs.append(phase_corr)
         phase_changes.append(phase_change)
     
     #Normalize errors
