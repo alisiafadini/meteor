@@ -37,7 +37,7 @@ def scale_aniso(x_dataset, y_dataset, Miller_indx):
 
     """"
     Author: Virginia Apostolopoulou
-    Anisotropically scales y_dataset to x_dataset given an ndarray of Miller indices
+    Anisotropically scales y_dataset to x_dataset given an ndarray of Miller indices.
 
     """
 
