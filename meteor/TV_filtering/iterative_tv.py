@@ -124,11 +124,15 @@ def main():
     else:
         og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], 
                                 args.mtz[3], args.mtz[4], args.mtz[5]]]  
-        flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
+        flags  = np.random.binomial(1, 0.03, 
+                                    og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
-    # scale second dataset ('on') and the first ('off') to FCalcs, and calculate deltaFs (weighted or not)
-    og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], 
-                                   args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
+    # scale second dataset ('on') and the first ('off') \
+    # to FCalcs, and calculate deltaFs (weighted or not)
+    og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], 
+                                   args.mtz[1], args.mtz[5], 
+                                   args.mtz[4], args.refpdb[0], 
+                                   high_res, path, args.alpha)
 
     #in case of calculated structure factors:
     #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"] 
@@ -149,9 +153,19 @@ def main():
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
             if i == 1:
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(og_mtz, "WDF", args.mtz[3] ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
-                cum_phase_change     = np.abs(np.array(dsutils.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
-                #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"])) 
+                new_amps, new_phases, proj_mag, entropy, phase_change, 
+                z = tv.TV_iteration(og_mtz, "WDF", args.mtz[3] ,
+                                    "scaled_on", "scaled_off", args.mtz[3], 
+                                    map_res, cell, space_group, 
+                                    flags, l, high_res, ws)
+                
+                cum_phase_change     = np.abs(np.array(
+                    dsutils.positive_Fs(og_mtz, args.mtz[3], 
+                                        "WDF", "phases-pos", "diffs-pos")
+                                        ["phases-pos"] - new_phases))
+                #ph_err_corr          = np.abs(new_phases - \
+                # np.array(mtr.positive_Fs(og_mtz, "light-phis",
+                # \ "diffs", "phases-pos", "diffs-pos")["phases-pos"])) 
 
                 cum_phase_change     = dsutils.adjust_phi_interval(cum_phase_change)
                 #ph_err_corr          = mtr.adjust_phi_interval(ph_err_corr)
@@ -163,9 +177,35 @@ def main():
                 og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
 
             else :
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(og_mtz, "new_amps", "new_phases" ,"scaled_on", "scaled_off", args.mtz[3], map_res, cell, space_group, flags, l, high_res, ws)
-                cum_phase_change     = np.abs(np.array(dsutils.positive_Fs(og_mtz, args.mtz[3], "WDF", "phases-pos", "diffs-pos")["phases-pos"] - new_phases))
-                #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"]))
+                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(
+                    og_mtz,
+                    "new_amps",
+                    "new_phases",
+                    "scaled_on",
+                    "scaled_off",
+                    args.mtz[3],
+                    map_res,
+                    cell,
+                    space_group,
+                    flags,
+                    l,
+                    high_res,
+                    ws
+                )
+                    
+                cum_phase_change = (
+                    np.abs(
+                        np.array(
+                            dsutils.positive_Fs(
+                                og_mtz, 
+                                args.mtz[3], 
+                                "WDF", 
+                                "phases-pos", 
+                                "diffs-pos"
+                            )["phases-pos"] - new_phases
+        )
+    )
+)                #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"]))
                 
                 cum_phase_change     = dsutils.adjust_phi_interval(cum_phase_change)
 
@@ -204,7 +244,10 @@ def main():
         ax1.set_title('$\lambda$ = {}'.format(l))
         ax1.set_xlabel(r'Iteration')
         ax1.set_ylabel(r'TV Projection Magnitude (TV$_\mathrm{proj}$)', color=color)
-        ax1.plot(np.arange(N-1), np.array(np.mean(np.array(proj_mags), axis=1)/np.max(np.mean(np.array(proj_mags), axis=1)))[1:], color=color, linewidth=5)
+        ax1.plot(np.arange(N-1), np.array(np.mean(np.array(proj_mags), axis=1)/
+                                          np.max(np.mean(np.array(proj_mags), 
+                                                         axis=1)))[1:], color=color, 
+                                                         linewidth=5)
         ax1.tick_params(axis='y', labelcolor=color)
 
         ax2 = ax1.twinx() 
