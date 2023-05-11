@@ -1,17 +1,17 @@
 import argparse
-from   re import I
 from   tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-
-import seaborn as sns
-sns.set_context("notebook", font_scale=1.8)
-
 from meteor import io
 from meteor import dsutils
 from meteor import maps
 from meteor import tv
+
+import seaborn as sns
+sns.set_context("notebook", font_scale=1.8)
+
+
 
 """
 
@@ -33,7 +33,8 @@ def parse_arguments():
         nargs=6,
         metavar=("mtz", "F_off", "F_on", "phi_col", "SIGF_off", "SIGF_on"),
         required=True,
-        help=("MTZ to be used for initial map. Specified as (filename, F_off, F_on, Phi)"),
+        help=("MTZ to be used for initial map. \
+              Specified as (filename, F_off, F_on, Phi)"),
     )
     
     parser.add_argument(
@@ -82,7 +83,8 @@ def parse_arguments():
         help="lambda value for TV denoising weighting (default 0.015)",
     )
     
-    parser.add_argument("--plot", help="--plot for optional plotting and saving, --no-plot to skip", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--plot", help="--plot for optional plotting and saving, \
+                        --no-plot to skip", action=argparse.BooleanOptionalAction)
     
     return parser.parse_args()
 
@@ -98,7 +100,8 @@ def main():
     name              = os.path.split(args.mtz[0])[1].split('.')[0]
     cell, space_group = io.get_pdbinfo(args.refpdb[0])
     
-    print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%%'.format(n=name, p=path))
+    print('%%%%%%%%%% ANALYZING DATASET : \
+          {n} in {p} %%%%%%%%%%%'.format(n=name, p=path))
     print('CELL         : {}'.format(cell))
     print('SPACEGROUP   : {}'.format(space_group))
     
@@ -119,11 +122,13 @@ def main():
         flags  = og_mtz[args.flags] == 0  
 
     else:
-        og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], args.mtz[3], args.mtz[4], args.mtz[5]]]  
+        og_mtz = og_mtz.loc[:, [args.mtz[1], args.mtz[2], 
+                                args.mtz[3], args.mtz[4], args.mtz[5]]]  
         flags  = np.random.binomial(1, 0.03, og_mtz[args.mtz[1]].shape[0]).astype(bool)      
 
     # scale second dataset ('on') and the first ('off') to FCalcs, and calculate deltaFs (weighted or not)
-    og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
+    og_mtz, ws = maps.find_w_diffs(og_mtz, args.mtz[2], args.mtz[1], args.mtz[5], 
+                                   args.mtz[4], args.refpdb[0], high_res, path, args.alpha)
 
     #in case of calculated structure factors:
     #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"] 
