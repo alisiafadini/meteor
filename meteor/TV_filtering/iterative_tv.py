@@ -153,16 +153,34 @@ def main():
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
             if i == 1:
-                new_amps, new_phases, proj_mag, entropy, phase_change, 
-                z = tv.TV_iteration(og_mtz, "WDF", args.mtz[3] ,
-                                    "scaled_on", "scaled_off", args.mtz[3], 
-                                    map_res, cell, space_group, 
-                                    flags, l, high_res, ws)
-                
-                cum_phase_change     = np.abs(np.array(
-                    dsutils.positive_Fs(og_mtz, args.mtz[3], 
-                                        "WDF", "phases-pos", "diffs-pos")
-                                        ["phases-pos"] - new_phases))
+                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(
+                        og_mtz,
+                        "WDF",
+                        args.mtz[3],
+                        "scaled_on",
+                        "scaled_off",
+                        args.mtz[3],
+                        map_res,
+                        cell,
+                        space_group,
+                        flags,
+                        l,
+                        high_res,
+                        ws
+                    )
+
+                cum_phase_change = np.abs(
+                    np.array(
+                        dsutils.positive_Fs(
+                            og_mtz,
+                            args.mtz[3],
+                            "WDF",
+                            "phases-pos",
+                            "diffs-pos"
+                        )["phases-pos"] - new_phases
+                    )
+                )
+
                 #ph_err_corr          = np.abs(new_phases - \
                 # np.array(mtr.positive_Fs(og_mtz, "light-phis",
                 # \ "diffs", "phases-pos", "diffs-pos")["phases-pos"])) 
