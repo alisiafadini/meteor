@@ -147,6 +147,7 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
     
     print('Scanning TV weights')
     lambdas       = np.linspace(1e-8, 0.1, 200)
+    #lambdas       = np.linspace(0.001, 0.0045, 10)
     errors        = []
     entropies     = []
     amp_changes   = []
@@ -180,6 +181,8 @@ def find_TVmap(mtz, Flabel, philabel, name, path, map_res, cell, space_group, pe
     #Find lambda that minimizes error and that maximizes negentropy
     lambda_best_err       = lambdas[np.argmin(errors)]
     lambda_best_entr      = lambdas[np.argmax(entropies)]
+    print("BEST ENTROPY VALUE : ", np.max(entropies))
+    print("ENTROPY FOR BEST ERROR :", entropies[np.argmin(errors)])
     TVmap_best_err,  _    = TV_filter(fit_map, lambda_best_err,  fit_map.grid.shape, cell, space_group)
     TVmap_best_entr, _    = TV_filter(fit_map, lambda_best_entr, fit_map.grid.shape, cell, space_group)
     

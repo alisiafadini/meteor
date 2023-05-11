@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 import seaborn as sns
-sns.set_context("notebook", font_scale=1.4)
+sns.set_context("notebook", font_scale=1.8)
 
 from meteor import io
 from meteor import dsutils
@@ -89,7 +89,7 @@ def parse_arguments():
 def main():
 
     # Map writing parameters
-    map_res     = 4
+    map_res     = 6
 
     # Parse commandline arguments
     args = parse_arguments()
@@ -111,6 +111,7 @@ def main():
     # Read in mtz file
     og_mtz = io.load_mtz(args.mtz[0])
     og_mtz = og_mtz.loc[og_mtz.compute_dHKL()["dHKL"] > high_res]
+    og_mtz = og_mtz.loc[og_mtz.compute_dHKL()["dHKL"] < 25]
 
     # Use own R-free flags set if specified
     if args.flags is not None:
@@ -137,6 +138,8 @@ def main():
 
     N = 100
     l = args.lambda_tv
+
+    print("lambda is ", l)
 
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
@@ -169,7 +172,6 @@ def main():
                 og_mtz["new-light-phi"] = z
                 og_mtz["new-light-phi"] = og_mtz["new-light-phi"].astype("Phase")
 
-
                 og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
             
             # Track projection magnitude and phase change for each iteration
@@ -181,7 +183,12 @@ def main():
             pbar.update()
 
             #np.save("{name}_TVit{i}_{l}-Z-mags.npy".format(name=name, i=i, l=l), z)
+    print("FINAL ENTROPY VALUE ", entropies[-1])
     np.save("{name}_TVit{i}_{l}-entropies.npy".format(name=name, i=i, l=l), entropies)
+
+    print("SAVING FINAL MAP")
+    finmap = dsutils.map_from_Fs(og_mtz, "new_amps", "new_phases", 6)
+    finmap.write_ccp4_map("{name}_TVit{i}_{l}.ccp4".format(name=name, i=i, l=l))    
 
     # Optionally plot result for errors and negentropy
     if args.plot is True:
@@ -197,11 +204,12 @@ def main():
 
         ax2 = ax1.twinx() 
 
-        color = 'darkgray'
-        ax2.set_ylabel('Negentropy', color=color)  
+        color = 'silver'
+        ax2.set_ylabel('Negentropy', color='grey')  
         ax2.plot(np.arange(N-1), entropies[1:], color=color, linewidth=5)
-        ax2.tick_params(axis='y', labelcolor=color)
-        fig.tight_layout()
+        ax2.tick_params(axis='y', labelcolor="grey")
+        #ax2.set_xlim(0,0.11)
+        plt.tight_layout()
         fig.savefig('{p}{n}non-cum-error-TV.png'.format(p=path, n=name)) 
 
         fig, ax1 = plt.subplots(figsize=(10,4))
@@ -221,7 +229,7 @@ def main():
         ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax.plot(np.arange(N), np.mean(cum_phase_changes, axis=1), color='orangered', linewidth=5)
         #ax.plot(np.arange(N), np.mean(ph_err_corrs, axis=1), color='orangered', linewidth=5, linestyle='--')
-        fig.tight_layout()
+        plt.tight_layout()
         fig.savefig('{p}{n}cum-phi-change.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
@@ -232,7 +240,7 @@ def main():
         
         res_mean, data_mean = dsutils.resolution_shells(proj_mags[N-1], 1/og_mtz.compute_dHKL()["dHKL"][flags], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='orangered')
-        fig.tight_layout()
+        plt.tight_layout()
         fig.savefig('{p}{n}tv-err-dhkl.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
@@ -244,7 +252,7 @@ def main():
         
         res_mean, data_mean = dsutils.resolution_shells(np.abs(cum_phase_changes[N-1]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black')
-        fig.tight_layout()
+        plt.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-dhkl.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
@@ -252,9 +260,8 @@ def main():
         ax.set_xlabel(r'|Fobs|')
         ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
         ax.scatter(og_mtz["WDF"], np.abs(cum_phase_changes[N-1]), color='mediumpurple', alpha=0.5)
-        fig.tight_layout()
+        plt.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-Fobs.png'.format(p=path, n=name))
-        plt.show()
 
     print('DONE')
 

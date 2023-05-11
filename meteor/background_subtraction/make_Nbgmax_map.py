@@ -147,7 +147,7 @@ def main():
 
     for Nbg in tqdm(Nbgs) :
         
-        alldata, _  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
+        alldata, weights  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
         Nbg_map  = dsutils.map_from_Fs(alldata, "WDF", "PHIC", map_res)
         
         CC_diff, CC_loc, CC_glob = validate.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
@@ -174,17 +174,19 @@ def main():
         ax[1].set_ylabel('CC Difference')
         ax[0].legend(fontsize=17)
         ax[1].legend(fontsize=17)
-        fig.savefig("{p}/{n}_plotCCdiff.pdf".format(p=path, n=name))
-        print("Saved {p}/{n}_plotCCdiff.pdf".format(p=path, n=name))
+        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=path, n=name))
+        print("Saved {p}/{n}_plotCCdiff.png".format(p=path, n=name))
     
     
     #Save map with optimal Nbg
     
-    alldata["DF-Nbgmax"] = alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"]
+    alldata["DF-Nbgmax"] = weights * (alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"])
     alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
-    alldata.write_mtz("{p}/{n}_Nbgmax.mtz".format(p=path, n=name))
-    print("Wrote {p}/{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
-    
+    alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=path, n=name))
+    print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
+    print("SAVING FINAL MAP")
+    finmap = dsutils.map_from_Fs(alldata, "DF-Nbgmax", "PHIC", 6)
+    finmap.write_ccp4_map("{p}{n}_Nbgmax.ccp4".format(p=path, n=name))  
 
 if __name__ == "__main__":
     main()
