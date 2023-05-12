@@ -146,14 +146,14 @@ def main():
     #ph_err_corrs      = []
 
     N = 100
-    l = args.lambda_tv
+    L = args.lambda_tv  # noqa: E741
 
-    print("lambda is ", l)
+    print("lambda is ", L)
 
     with tqdm(total=N) as pbar:
         for i in np.arange(N) + 1 :
             if i == 1:
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(
+                new_amps, new_phases, proj_mag, entropy, phi_change, z =tv.TV_iteration(
                         og_mtz,
                         "WDF",
                         args.mtz[3],
@@ -164,7 +164,7 @@ def main():
                         cell,
                         space_group,
                         flags,
-                        l,
+                        L,
                         high_res,
                         ws
                     )
@@ -192,10 +192,10 @@ def main():
                 og_mtz["new_amps"]   = og_mtz["new_amps"].astype("SFAmplitude")
                 og_mtz["new_phases"] = new_phases
                 og_mtz["new_phases"] = og_mtz["new_phases"].astype("Phase")
-                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
+                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=L))
 
             else :
-                new_amps, new_phases, proj_mag, entropy, phase_change, z = tv.TV_iteration(
+                new_amps, new_phases, proj_mag, entropy, phi_change, z =tv.TV_iteration(
                     og_mtz,
                     "new_amps",
                     "new_phases",
@@ -206,7 +206,7 @@ def main():
                     cell,
                     space_group,
                     flags,
-                    l,
+                    L,
                     high_res,
                     ws
                 )
@@ -223,7 +223,7 @@ def main():
                             )["phases-pos"] - new_phases
         )
     )
-)                #ph_err_corr          = np.abs(new_phases - np.array(mtr.positive_Fs(og_mtz, "light-phis", "diffs", "phases-pos", "diffs-pos")["phases-pos"]))
+)                
                 
                 cum_phase_change     = dsutils.adjust_phi_interval(cum_phase_change)
 
@@ -235,23 +235,23 @@ def main():
                 og_mtz["new-light-phi"] = z
                 og_mtz["new-light-phi"] = og_mtz["new-light-phi"].astype("Phase")
 
-                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=l))
+                og_mtz.write_mtz("{name}_TVit{i}_{l}.mtz".format(name=name, i=i, l=L))
             
             # Track projection magnitude and phase change for each iteration
             proj_mags.append(proj_mag)
             entropies.append(entropy)
-            phase_changes.append(phase_change)
+            phase_changes.append(phi_change)
             cum_phase_changes.append(cum_phase_change)
             #ph_err_corrs.append(ph_err_corr)
             pbar.update()
 
             #np.save("{name}_TVit{i}_{l}-Z-mags.npy".format(name=name, i=i, l=l), z)
     print("FINAL ENTROPY VALUE ", entropies[-1])
-    np.save("{name}_TVit{i}_{l}-entropies.npy".format(name=name, i=i, l=l), entropies)
+    np.save("{name}_TVit{i}_{l}-entropies.npy".format(name=name, i=i, l=L), entropies)
 
     print("SAVING FINAL MAP")
     finmap = dsutils.map_from_Fs(og_mtz, "new_amps", "new_phases", 6)
-    finmap.write_ccp4_map("{name}_TVit{i}_{l}.ccp4".format(name=name, i=i, l=l))    
+    finmap.write_ccp4_map("{name}_TVit{i}_{l}.ccp4".format(name=name, i=i, l=L))    
 
     # Optionally plot result for errors and negentropy
     if args.plot is True:
@@ -259,7 +259,7 @@ def main():
         fig, ax1 = plt.subplots(figsize=(10,4))
 
         color = 'black'
-        ax1.set_title('$\lambda$ = {}'.format(l))
+        ax1.set_title('$\lambda$ = {}'.format(L))
         ax1.set_xlabel(r'Iteration')
         ax1.set_ylabel(r'TV Projection Magnitude (TV$_\mathrm{proj}$)', color=color)
         ax1.plot(np.arange(N-1), np.array(np.mean(np.array(proj_mags), axis=1)/
@@ -281,51 +281,70 @@ def main():
         fig, ax1 = plt.subplots(figsize=(10,4))
 
         color = 'tomato'
-        ax1.set_title('$\lambda$ = {}'.format(l))
+        ax1.set_title('$\lambda$ = {}'.format(L))
         ax1.set_xlabel(r'Iteration')
-        ax1.set_ylabel(' Iteration < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
+        ax1.set_ylabel(
+            ' Iteration < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)'
+            )
         ax1.plot(np.arange(N), phase_changes, color=color, linewidth=5)
         ax1.tick_params(axis='y')
         fig.set_tight_layout(True)
         fig.savefig('{p}{n}non-cum-phi-change.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(10,5))
-        ax.set_title('$\lambda$ = {}'.format(l))
+        ax.set_title('$\lambda$ = {}'.format(L))
         ax.set_xlabel(r'Iteration')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
-        ax.plot(np.arange(N), np.mean(cum_phase_changes, axis=1), color='orangered', linewidth=5)
-        #ax.plot(np.arange(N), np.mean(ph_err_corrs, axis=1), color='orangered', linewidth=5, linestyle='--')
+        ax.set_ylabel(
+            r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)'
+            )
+        ax.plot(
+            np.arange(N), np.mean(cum_phase_changes, axis=1), 
+            color='orangered', linewidth=5
+            )
         plt.tight_layout()
         fig.savefig('{p}{n}cum-phi-change.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
-        ax.set_title('$\lambda$ = {}'.format(l))
+        ax.set_title('$\lambda$ = {}'.format(L))
         ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
         ax.set_ylabel(r'TV Projection Magnitude (TV$_\mathrm{proj}$)')
-        ax.scatter(1/og_mtz.compute_dHKL()["dHKL"][flags], proj_mags[N-1], color='black', alpha=0.5)
+        ax.scatter(1/og_mtz.compute_dHKL()["dHKL"][flags], proj_mags[N-1], 
+                   color='black', 
+                   alpha=0.5)
         
-        res_mean, data_mean = dsutils.resolution_shells(proj_mags[N-1], 1/og_mtz.compute_dHKL()["dHKL"][flags], 15)
+        res_mean, data_mean = dsutils.resolution_shells(
+            proj_mags[N-1], 1/og_mtz.compute_dHKL()["dHKL"][flags], 15
+            )
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='orangered')
         plt.tight_layout()
         fig.savefig('{p}{n}tv-err-dhkl.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
-        ax.set_title('$\lambda$ = {}'.format(l))
+        ax.set_title('$\lambda$ = {}'.format(L))
         ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
-        ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(cum_phase_changes[N-1]), color='orangered', alpha=0.05)
-        #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_err_corrs[N-1]), color='blue', alpha=0.5)
+        ax.set_ylabel(
+            r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)'
+            )
+        ax.scatter(
+            1/og_mtz.compute_dHKL()["dHKL"], np.abs(cum_phase_changes[N-1]), 
+            color='orangered', alpha=0.05)
         
-        res_mean, data_mean = dsutils.resolution_shells(np.abs(cum_phase_changes[N-1]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
+        res_mean, data_mean = dsutils.resolution_shells(
+            np.abs(cum_phase_changes[N-1]), 1/og_mtz.compute_dHKL()["dHKL"], 
+            15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black')
         plt.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-dhkl.png'.format(p=path, n=name))
 
         fig, ax = plt.subplots(figsize=(6,5))
-        ax.set_title('$\lambda$ = {}'.format(l))
+        ax.set_title('$\lambda$ = {}'.format(L))
         ax.set_xlabel(r'|Fobs|')
-        ax.set_ylabel(r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)')
-        ax.scatter(og_mtz["WDF"], np.abs(cum_phase_changes[N-1]), color='mediumpurple', alpha=0.5)
+        ax.set_ylabel(
+            r'Cumulative < $\phi_\mathrm{c}$ - $\phi_\mathrm{TV}$ > ($^\circ$)'
+            )
+        ax.scatter(
+            og_mtz["WDF"], np.abs(cum_phase_changes[N-1]), color='mediumpurple',
+            alpha=0.5)
         plt.tight_layout()
         fig.savefig('{p}{n}cum-phase-change-Fobs.png'.format(p=path, n=name))
 
