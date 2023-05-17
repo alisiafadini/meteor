@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+
 
 DESCRIPTION      =   "Scripts for crystallographic electron density maps containing low occupancy species"
 LONG_DESCRIPTION = """
@@ -6,9 +6,8 @@ METEOR contains commandline scripts and functions for finding low occupancy spec
 This module will be part of reciprocalspaceship and its "booster" package, rs-booster.
 """
 
-
 try:
-	from setuptools import setup
+	from setuptools import setup, find_packages
 
 except ImportError:
 	from disutils.core import setup

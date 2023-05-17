@@ -2,12 +2,14 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from   tqdm import tqdm
 
-import reciprocalspaceship as rs
-import meteor.meteor  as mtr
 import seaborn as sns
 sns.set_context("notebook", font_scale=1.4)
+
+from meteor import io
+from meteor import dsutils
+from meteor import tv
+
 
 """
 
@@ -81,7 +83,7 @@ def main():
     
     path              = os.path.split(args.mtz[0])[0]
     name              = os.path.split(args.mtz[0])[1].split('.')[0]
-    cell, space_group = mtr.get_pdbinfo(args.refpdb[0])
+    cell, space_group = io.get_pdbinfo(args.refpdb[0])
     
     print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%%'.format(n=name, p=path))
     print('CELL         : {}'.format(cell))
@@ -91,26 +93,26 @@ def main():
     if args.highres is not None:
         high_res = args.highres
     else:
-        high_res = np.min(mtr.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
+        high_res = np.min(io.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
 
     # Use own R-free flags set if specified
     if args.flags is not None:
-        og_mtz        = mtr.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}, args.flags).dropna()
+        og_mtz        = io.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}, args.flags).dropna()
         #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"]
         #TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change, ph_corr = mtr.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
-        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = mtr.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
+        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = tv.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
 
 
     else:
         # Read in mtz file
-        og_mtz        = mtr.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}).dropna()
+        og_mtz        = io.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}).dropna()
         #og_mtz["light-phis"]  = mtr.load_mtz(args.mtz[0])["light-phis"]
         # Find and save denoised maps that (1) minimizes the map error or (2) maximizes the map negentropy
         #TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change, ph_corr = mtr.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group)
-        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = mtr.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
+        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = tv.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
 
-        mtr.map2mtzfile(TVmap_best_err,  '{n}_TV_{l}_besterror.mtz'.format(n=name,   l=np.round(lambda_best_err, decimals=3)), high_res)
-        mtr.map2mtzfile(TVmap_best_entr, '{n}_TV_{l}_bestentropy.mtz'.format(n=name, l=np.round(lambda_best_entr, decimals=3)), high_res)
+        io.map2mtzfile(TVmap_best_err,  '{n}_TV_{l}_besterror.mtz'.format(n=name,   l=np.round(lambda_best_err, decimals=3)), high_res)
+        io.map2mtzfile(TVmap_best_entr, '{n}_TV_{l}_bestentropy.mtz'.format(n=name, l=np.round(lambda_best_entr, decimals=3)), high_res)
     
     print('Writing out TV denoised map with weights={lerr} and {lentr}'.format(lerr=np.round(lambda_best_err, decimals=3), lentr=np.round(lambda_best_entr, decimals=3)))
     
@@ -157,9 +159,9 @@ def main():
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_change[np.argmax(entropies)]), label="Best Entropy Map, mean = {}".format(np.round(np.mean(ph_change[np.argmax(entropies)])), decimals=2), color='silver', alpha=0.5)
         #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_corr[np.argmax(entropies)]), label="Best Entropy Map, mean = {}".format(np.round(np.mean(ph_corr[np.argmax(entropies)])), decimals=2), color='blue', alpha=0.5)
         
-        res_mean, data_mean = mtr.resolution_shells(np.abs(ph_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
+        res_mean, data_mean = dsutils.resolution_shells(np.abs(ph_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black')
-        res_mean, data_mean = mtr.resolution_shells(np.abs(ph_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
+        res_mean, data_mean = dsutils.resolution_shells(np.abs(ph_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='gray')
         ax.set_ylabel(r'$\phi_\mathrm{obs}$ - $\phi_\mathrm{TV}$($^\circ$)')
         ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
@@ -171,9 +173,9 @@ def main():
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(amp_change[np.argmin(errors)]), label="Best Error Map, mean = {}".format(np.round(np.mean(amp_change[np.argmin(errors)])), decimals=2), color='black', alpha=0.5)
         ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(amp_change[np.argmax(entropies)]), label="Best Entropy Map, mean = {}".format(np.round(np.mean(amp_change[np.argmax(entropies)])), decimals=2), color='silver', alpha=0.5)
         
-        res_mean, data_mean = mtr.resolution_shells(np.abs(amp_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
+        res_mean, data_mean = dsutils.resolution_shells(np.abs(amp_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black')
-        res_mean, data_mean = mtr.resolution_shells(np.abs(amp_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
+        res_mean, data_mean = dsutils.resolution_shells(np.abs(amp_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
         ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='gray')
         ax.set_ylabel(r'|F$_\mathrm{obs}$| - |F$_\mathrm{TV}$| ($^\circ$)')
         ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
