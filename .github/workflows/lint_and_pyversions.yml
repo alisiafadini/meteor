@@ -36,4 +36,4 @@ jobs:
         #run: |
           #pytest
       # Update the run-name to include trigger event and branch information
-      name: ${{ github.event_name }}-${{ github.ref }}-${{ github.actor }} run
+      #name: ${{ github.event_name }}-${{ github.ref }}-${{ github.actor }} run
