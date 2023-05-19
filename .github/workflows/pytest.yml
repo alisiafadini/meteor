@@ -19,6 +19,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Set up environment
+        env:
+          PYTHONPATH: ${{ github.workspace }}
       #install dependencies needed for testing
       - name: Install dependencies
         run: |
