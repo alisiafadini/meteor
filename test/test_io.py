@@ -1,6 +1,4 @@
 
-import pathlib
-
 from meteor import io
 
 # todo this is probably the right way to do this

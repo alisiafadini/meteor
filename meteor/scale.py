@@ -1,9 +1,5 @@
-
 import numpy as np
 import scipy.optimize as opt
-
-import numpy as np
-from scipy import optimize as opt
 
 def scale_iso(data1, data2, dHKLs):
     """

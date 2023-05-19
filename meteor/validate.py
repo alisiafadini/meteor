@@ -1,6 +1,5 @@
 
 import numpy as np
-import reciprocalspaceship as rs
 from   scipy.stats import differential_entropy
 
 from . import mask
@@ -53,11 +52,11 @@ def make_test_set(df, flags):
     test_set = df[flags]  # e.g. 3%
     fit_set  = df[~flags] # 97%
 
-    # Check that the expected percentage of data is assigned to the test and fit sets
     test_percent = len(test_set) / len(df) * 100
     fit_percent = len(fit_set) / len(df) * 100
 
     #raise an error if test_percent > fit_percent
+    assert test_percent <= fit_percent, "Test set percentage exceeds fit set percentage"
 
     return test_set, fit_set
 
