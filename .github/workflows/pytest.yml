@@ -23,7 +23,6 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
       #install dependencies needed for testing
-      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest
