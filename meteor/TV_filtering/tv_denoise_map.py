@@ -7,19 +7,20 @@ import seaborn as sns
 sns.set_context("notebook", font_scale=1.8)
 
 from meteor import io
-from meteor import dsutils
+from meteor import validate
 from meteor import tv
+from meteor import classes
 
 
 """
-
 Apply a total variation (TV) filter to a map.
 The level of filtering (determined by the regularization parameter lambda)
-is chosen so as to minimize the error between denoised and measured amplitudes or maximize the map negentropy
+is chosen so as to minimize the error between denoised and measured amplitudes
+or maximize the map negentropy
 for a free set ('test' set) of reflections.
 
-Write two denoised map file (MTZ), one for each optimal parameter, and optionally the plot/save the plot from the lambda determination (PNG).
-
+Write two denoised map file (MTZ), one for each optimal parameter.
+Optionally the plot/save the plot from the lambda determination (PNG).
 """
 
 def parse_arguments():
@@ -68,118 +69,114 @@ def parse_arguments():
         help="If set, label for Rfree flags to use as test set"
     )
     
-    parser.add_argument("--plot", help="--plot for optional plotting and saving, --no-plot to skip", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--plot", help="--plot for optional plotting and saving, \
+                        --no-plot to skip", action=argparse.BooleanOptionalAction)
     
     return parser.parse_args()
 
 
 def main():
 
-    # Map writing parameters
-    map_res     = 4
-
     # Parse commandline arguments
     args = parse_arguments()
+
+    # Fill out the dataset information needed
+    data_info = classes.DataInfo()
+
+    data_info.Meta.Path         = os.path.split(args.mtz[0])[0]
+    data_info.Meta.Name         = os.path.split(args.mtz[0])[1].split('.')[0]
+    data_info.Maps.MapRes       = 4 #Map writing resolution
+    data_info.Xtal.Cell, data_info.Xtal.SpaceGroup  = io.get_pdbinfo(args.refpdb[0])
     
-    path              = os.path.split(args.mtz[0])[0]
-    name              = os.path.split(args.mtz[0])[1].split('.')[0]
-    cell, space_group = io.get_pdbinfo(args.refpdb[0])
-    
-    print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%%'.format(n=name, p=path))
-    print('CELL         : {}'.format(cell))
-    print('SPACEGROUP   : {}'.format(space_group))
+    print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%'.format(
+                                                    n=data_info.Meta.Name, 
+                                                    p=data_info.Meta.Path))
+    print('CELL         : {}'.format(data_info.Xtal.Cell))
+    print('SPACEGROUP   : {}'.format(data_info.Xtal.SpaceGroup))
     
     # Apply resolution cut if specified
     if args.highres is not None:
-        high_res = args.highres
+        data_info.Maps.HighRes = args.highres
     else:
-        high_res = np.min(io.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
+        data_info.Maps.HighRes = np.min(io.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
+    
+    data_info.Maps.MaskSpacing = data_info.Maps.HighRes / data_info.Maps.MapRes 
 
-    # Use own R-free flags set if specified
+    og_mtz  = io.subset_to_FandPhi(*args.mtz, 
+                                    {args.mtz[1]: "F", 
+                                    args.mtz[2]: "Phi"}).dropna()
+
+    #if Rfree flags were specified, use these
     if args.flags is not None:
-        og_mtz        = io.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}, args.flags).dropna()
-        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = tv.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags)
-
-
+        CV_flags = ~args.flags.astype(bool)     
+    #Keep N% of reflections for test set
     else:
-        # Read in mtz file
-        og_mtz        = io.subset_to_FandPhi(*args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}).dropna()
-        
-        # Find and save denoised maps that (1) minimizes the map error or (2) maximizes the map negentropy
-        TVmap_best_err, TVmap_best_entr, lambda_best_err, lambda_best_entr, errors, entropies, amp_change, ph_change = tv.find_TVmap(og_mtz, "F", "Phi", name, path, map_res, cell, space_group)
+        CV_flags = validate.generate_CV_flags((og_mtz.shape[0]))
 
-        io.map2mtzfile(TVmap_best_err,  '{n}_TV_{l}_besterror.mtz'.format(n=name,   l=np.round(lambda_best_err, decimals=3)), high_res)
-        io.map2mtzfile(TVmap_best_entr, '{n}_TV_{l}_bestentropy.mtz'.format(n=name, l=np.round(lambda_best_entr, decimals=3)), high_res)
+    #Generate TV maps for a range of lambdas from input mtz
+    TV_maps = tv.generate_TVmaps(og_mtz, "F", "Phi", data_info, CV_flags)
+
+    # Find+save denoised maps that (1) minimize CV error (2) maximize map negentropy
+    marked_TV_maps = tv.mark_best_TVmap(TV_maps)
+    cv_map = next((
+        map for map in marked_TV_maps if getattr(
+        map.Meta, "BestType", "") == "CV"), None)
+    nege_map = next((
+        map for map in marked_TV_maps if getattr(
+        map.Meta, "BestType", "") == "NEGE"), None)
+
+    io.map_to_mtz(cv_map.Data.MapData, data_info.Maps.HighRes,
+                                        '{n}_TV_{l}_besterror.mtz'.format(
+                                        n=data_info.Meta.Name,
+                                        l=np.round(cv_map.Meta.Lambda, decimals=3)
+                                        ),
+                                            )
+    io.map_to_mtz(nege_map.Data.MapData, data_info.Maps.HighRes,
+                                        '{n}_TV_{l}_bestentropy.mtz'.format(
+                                        n=data_info.Meta.Name,
+                                        l=np.round(nege_map.Meta.Lambda, decimals=3)
+                                        ),
+                                            )
+        
+    print('Writing out TV denoised map with weights={lerr} and {lentr}'.format(
+                                lerr =np.round(cv_map.Meta.Lambda,   decimals=3), 
+                                lentr=np.round(nege_map.Meta.Lambda, decimals=3)))
     
-    print('Writing out TV denoised map with weights={lerr} and {lentr}'.format(lerr=np.round(lambda_best_err, decimals=3), lentr=np.round(lambda_best_entr, decimals=3)))
-    
+
     # Optionally plot result for errors and negentropy
     if args.plot is True:
-        fig, ax1 = plt.subplots(figsize=(10,5))
 
-        color = 'black'
+        errors      = [tv_map.Stats.CVError for tv_map in marked_TV_maps]
+        entropies   = [tv_map.Stats.Entropy for tv_map in marked_TV_maps]
+    
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+
+        # Plot error
         ax1.set_xlabel(r'$\lambda$')
-        ax1.set_ylabel(r'$\sum (\Delta \mathrm{Fobs}_\mathrm{free} - \Delta \mathrm{Fcalc}_\mathrm{free})^2$', color=color)
-        ax1.plot(np.linspace(1e-8, 0.1, len(errors)), errors/np.max(errors), color=color, linewidth=5)
-        ax1.tick_params(axis='y', labelcolor=color)
+        ax1.set_ylabel(
+        r'$\sum(\Delta\mathrm{Fobs}_\mathrm{free}-\Delta\mathrm{Fcalc}_\mathrm{free})^2$')
+        ax1.plot(
+            np.linspace(1e-8, 0.1, len(errors)), 
+            errors / np.max(errors), 
+            color='black', linewidth=5)
+        ax1.tick_params(axis='y', labelcolor='black')
 
-        ax2 = ax1.twinx()
-
-        color = 'silver'
+        # Plot negentropy
+        ax2.set_xlabel(r'$\lambda$')
         ax2.set_ylabel('Negentropy', color='grey')
-        ax2.plot(np.linspace(1e-8, 0.1, len(entropies)), entropies, color=color, linewidth=5)
+        ax2.plot(np.linspace(1e-8, 0.1, len(entropies)), 
+                 entropies, 
+                 color='silver', linewidth=5)
         ax2.tick_params(axis='y', labelcolor='grey')
 
         fig.tight_layout()
-        fig.savefig('{p}{n}lambda-optimize.png'.format(p=path, n=name))
+        fig.savefig('{path}{name}lambda-optimize.png'.format(
+            path=data_info.Meta.Path, name=data_info.Meta.Name)
+            )
+        plt.close(fig)
         
-        print('Saving weight scan plot')
-
-        fig, ax = plt.subplots(figsize=(9,5))
-        ax.set_xlabel(r'$\lambda$')
-        ax.set_ylabel(r' < | |F$_\mathrm{obs}$| - |F$_\mathrm{TV}$| | > ')
-        ax.plot(np.linspace(1e-8, 0.1, len(entropies)), np.mean(np.abs(amp_change), axis=1), color='indigo', linewidth=5)
-        fig.tight_layout()
-        fig.savefig('{p}{n}F-change.png'.format(p=path, n=name))
-
-        fig, ax = plt.subplots(figsize=(9,5))
-        ax.set_xlabel(r'$\lambda$')
-        ax.set_ylabel(r'< | $\phi_\mathrm{obs}$ - $\phi_\mathrm{TV}$ | > ($^\circ$)')
-        ax.plot(np.linspace(1e-8, 0.1, len(entropies)), np.mean(np.abs(ph_change), axis=1), color='orangered', linewidth=5)
-        ax.axhline(y=19.52, linewidth=2, linestyle='--', color='orangered')
-        fig.tight_layout()
-        fig.savefig('{p}{n}phi-change.png'.format(p=path, n=name))
-
-        fig, ax = plt.subplots(figsize=(9,5))
-        #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_change[np.argmin(errors)]), label="Best Error Map, mean = {}".format(np.round(np.mean(ph_change[np.argmin(errors)])), decimals=2), color='black', alpha=0.5)
-        #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(ph_change[np.argmax(entropies)]), label="Best Entropy Map, mean = {}".format(np.round(np.mean(ph_change[np.argmax(entropies)])), decimals=2), color='grey', alpha=0.5)
-        
-        res_mean, data_mean = dsutils.resolution_shells(np.abs(ph_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
-        ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black', label="Best Error")
-        res_mean, data_mean = dsutils.resolution_shells(np.abs(ph_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 20)
-        ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='darkgray', label="Best Entropy")
-        ax.set_ylabel(r'| $\phi_\mathrm{obs}$ - $\phi_\mathrm{TV}$ | ($^\circ$)')
-        ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
-        fig.tight_layout()
-        fig.legend(handlelength=0.6, loc='center right')
-        fig.savefig('{p}{n}phi-change-dhkl.png'.format(p=path, n=name))
-
-        fig, ax = plt.subplots(figsize=(9,5))
-        #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(amp_change[np.argmin(errors)]), label="Best Error Map, mean = {}".format(np.round(np.mean(amp_change[np.argmin(errors)])), decimals=2), color='black', alpha=0.5)
-        #ax.scatter(1/og_mtz.compute_dHKL()["dHKL"], np.abs(amp_change[np.argmax(entropies)]), label="Best Entropy Map, mean = {}".format(np.round(np.mean(amp_change[np.argmax(entropies)])), decimals=2), color='darkgray', alpha=0.5)
-        
-        res_mean, data_mean = dsutils.resolution_shells(np.abs(amp_change[np.argmin(errors)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
-        ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='black', label="Best Error")
-        res_mean, data_mean = dsutils.resolution_shells(np.abs(amp_change[np.argmax(entropies)]), 1/og_mtz.compute_dHKL()["dHKL"], 15)
-        ax.plot(res_mean, data_mean, linewidth=3, linestyle='--', color='darkgray', label="Best Entropy")
-        ax.set_ylabel(r'| |F$_\mathrm{obs}$| - |F$_\mathrm{TV}$| |')
-        ax.set_xlabel(r'1/dHKL (${\AA}^{-1}$)')
-        fig.tight_layout()
-        fig.legend(handlelength=0.6, loc='center right')
-        fig.savefig('{p}{n}amp-change-dhkl.png'.format(p=path, n=name))
-
-        #plt.show()
         print('DONE.')
+
 
 
 if __name__ == "__main__":

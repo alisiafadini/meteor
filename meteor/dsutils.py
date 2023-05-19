@@ -7,7 +7,17 @@ from scipy.stats import binned_statistic
 
 def res_cutoff(df, h_res, l_res) :
     """
-    Apply specified low and high resolution cutoffs to rs.Dataset.
+    
+    Apply specified low and high resolution cutoffs to the rs.Dataset.
+
+    Args:
+        df (rs.DataFrame): The input rs.Dataset to filter.
+        h_res (float): The high resolution cutoff value.
+        l_res (float): The low resolution cutoff value.
+
+    Returns:
+        rs.DataFrame: The filtered rs.Dataset based on the resolution cutoffs.
+
     """
     df = df.loc[(df['dHKL'] >= h_res) & (df['dHKL'] <= l_res)]
     return df
@@ -15,110 +25,177 @@ def res_cutoff(df, h_res, l_res) :
 
 def resolution_shells(data, dhkl, n):
 
-    """ Average data in n resolution shells """
+    """
+    Average data in n resolution shells.
 
-    mean_data   = binned_statistic(dhkl, data, statistic='mean', bins=n, range=(np.min(dhkl), np.max(dhkl)))
-    bin_centers = (mean_data.bin_edges[:-1] + mean_data.bin_edges[1:]) / 2 
+    Args:
+        data (array-like): The mtz data to be averaged.
+        dhkl (array-like): The values of dHKL (resolution) associated 
+                            with each data point.
+        n (int): The number of resolution shells to create.
 
-    return bin_centers, mean_data.statistic
+    Returns:
+        tuple: A tuple containing two arrays.
+            - bin_centers (ndarray): The centers of the resolution shells.
+            - mean_data (BinnedStatisticResult): The binned statistic result 
+              containing the averaged data.
+
+    Raises:
+        ValueError: If the lengths of data and dhkl do not match.
+                    If n is greater than the number of unique values in dhkl.
+                    If no data points fall within the resolution shells.
+
+    Note:
+        The binned_statistic function used in this function is the scipy.stats module.
+    """
+
+    if len(data) != len(dhkl):
+        raise ValueError("Lengths of 'data' and 'dhkl' must be equal.")
+
+    if n > len(np.unique(dhkl)):
+        raise ValueError("'n' is greater than the number of unique values in 'dhkl'.")
+
+    mean_data = binned_statistic(dhkl, data, statistic='mean', bins=n, 
+                                 range=(np.min(dhkl), np.max(dhkl)))
+    bin_centers = (mean_data.bin_edges[:-1] + mean_data.bin_edges[1:]) / 2
+
+    if np.isnan(mean_data.statistic).all():
+        raise ValueError("No data points fall within the resolution shells.")
+
+    return bin_centers, mean_data
 
 
 def adjust_phi_interval(phi):
+    """
+    Adjust the phase values to the equivalent in the -180 <= phi <= 180 interval.
 
-    """ Given a set of phases, return the equivalent in -180 <= phi <= 180 interval"""
+    Args:
+        phi (array-like): The set of phase values.
 
-    phi = phi%360
-    phi[phi > 180] -=360
-       
-    assert np.min(phi) >= -181
-    assert np.max(phi) <= 181
+    Returns:
+        ndarray: The adjusted phase values in the -180 <= phi <= 180 interval.
+
+    Raises:
+        AssertionError: If the minimum value of phi is less than -181.
+        AssertionError: If the maximum value of phi is greater than 181.
+
+    """
+    phi = phi % 360
+    phi[phi > 180] -= 360
+
+    assert np.min(phi) >= -181, "Minimum value of phi is less than -181."
+    assert np.max(phi) <= 181, "Maximum value of phi is greater than 181."
 
     return phi
 
 
-def positive_Fs(df, phases, Fs, phases_new, Fs_new):
+
+
+def positive_Fs(df, phases, Fs):
+    """
+    Convert between an MTZ format where difference structure factor amplitudes 
+    are saved as both positive and negative,
+    to a format where they are only positive.
+
+    Args:
+        df (rs.Dataset) : The input rs.Dataset from the MTZ of interest.
+        phases (str)    : Label for the phases column in the original MTZ.
+        Fs (str)        : Label for the amplitudes column in the original MTZ.
+
+    Returns:
+        rs.Dataset: The updated rs.Dataset with new labels.
+
+    Raises:
+        ValueError: If any of the input columns (phases, Fs) are not present in df.
+        TypeError:  If the input columns (phases, Fs) have incorrect data types.
 
     """
-    Convert between an MTZ format where difference structure factor amplitudes are saved as both positive and negative, to format where they are only positive.
+    if any(col not in df.columns for col in [phases, Fs]):
+        raise ValueError("One or more input columns not present in df.")
 
-    Parameters :
+    if not all(df[col].dtype == dtype for 
+               col, dtype in [(Fs, "SFAmplitude"), (phases, "Phase")]):
+        raise TypeError("Incorrect data type for one or more input columns."
+                        "Expected 'SFAmplitude' for amplitudes and 'Phase' for phases.")
 
-    df                 : (rs.Dataset) from MTZ of interest
-    phases, Fs         : (str) labels for phases and amplitudes in original MTZ
-    phases_new, Fs_new : (str) labels for phases and amplitudes in new MTZ
+    df_new = df.copy()
 
+    # Adjust phases and Fs for negative Fs values
+    negs = df[Fs] < 0
+    df_new.loc[negs, phases] = adjust_phi_interval(df[phases]) + 180
+    df_new.loc[negs, Fs] = np.abs(df[Fs])
 
-    Returns :
+    # Adjust the new phases column and change data types
+    df_new[phases+"_pos"] = adjust_phi_interval(df_new[phases])
+    df_new[Fs+"_pos"] = df_new[Fs].astype("SFAmplitude")
+    df_new[phases+"_pos"] = df_new[phases+"_pos"].astype("Phase")
 
-    rs.Dataset with new labels
-    
-    """
-    
-    new_phis = df[phases].copy(deep=True)
-    new_Fs   = df[Fs].copy(deep=True)
-    
-    negs = np.where(df[Fs]<0)
-
-    df[phases] = adjust_phi_interval(df[phases])
-
-    for i in negs:
-        new_phis.iloc[i] = df[phases].iloc[i]+180
-        new_Fs.iloc[i]   = np.abs(new_Fs.iloc[i])
-    
-    new_phis             = adjust_phi_interval(new_phis)
-
-    df_new               = df.copy(deep=True)
-    df_new[Fs_new]       = new_Fs
-    df_new[Fs_new]       = df_new[Fs_new].astype("SFAmplitude")
-    df_new[phases_new]   = new_phis
-    df_new[phases_new]   = df_new[phases_new].astype("Phase")
-    
     return df_new
+
 
 
 def map_from_Fs(dataset, Fs, phis, map_res):
     
     """
-    Return a GEMMI CCP4 map object from an rs.Dataset object
-    
-    Parameters :
-    
-    dataset  : rs.Dataset of interest
-    Fs, phis : (str) and (str) labels for amplitudes and phases to be used
-    map_res  : (float) to determine map spacing resolution
-    
+    Return a GEMMI CCP4 map object from an rs.Dataset object.
+
+    Args:
+        dataset (rs.Dataset): The rs.Dataset of interest.
+        Fs (str): Label for the amplitudes column to be used.
+        phis (str): Label for the phases column to be used.
+        map_res (float): Map spacing resolution to determine the map resolution.
+
+    Returns:
+        gm.Ccp4Map: The GEMMI CCP4 map object.  
     """
     
     mtz = dataset.to_gemmi()
     ccp4 = gm.Ccp4Map()
-    ccp4.grid = mtz.transform_f_phi_to_map('{}'.format(Fs), '{}'.format(phis), sample_rate=map_res)
+    ccp4.grid = mtz.transform_f_phi_to_map('{}'.format(Fs), '{}'.format(phis), 
+                                           sample_rate=map_res)
     ccp4.update_ccp4_header(2, True)
     
     return ccp4
+
+def from_dataframe(df, pdb_params, indices, types):
+
+    ds = rs.DataSet(spacegroup=pdb_params.Xtal.SpaceGroup, 
+                    cell=pdb_params.Xtal.Cell) 
+
+    # Build up DataSet
+    for idx, (label, data) in enumerate(df.iteritems()):
+        ds[label] = data
+        ds[label] = ds[label].astype(types[idx])
+    
+    ds.index = indices 
+    return ds
 
 
 def from_gemmi(gemmi_mtz):
     
     """
-    Construct DataSet from gemmi.Mtz object
+    Note: original function from from reciprocalspaceship 
     
+    Construct DataSet from gemmi.Mtz object
+
     If the gemmi.Mtz object contains an M/ISYM column and contains duplicated
     Miller indices, an unmerged DataSet will be constructed. The Miller indices
     will be mapped to their observed values, and a partiality flag will be
-    extracted and stored as a boolean column with the label, ``PARTIAL``.
+    extracted and stored as a boolean column with the label, "PARTIAL".
     Otherwise, a merged DataSet will be constructed.
-    If columns are found with the ``MTZInt`` dtype and are labeled ``PARTIAL``
-    or ``CENTRIC``, these will be interpreted as boolean flags used to
+    If columns are found with the "MTZInt" dtype and are labeled "PARTIAL"
+    or "CENTRIC", these will be interpreted as boolean flags used to
     label partial or centric reflections, respectively.
-    
-    Parameters
-    ----------
-    gemmi_mtz : gemmi.Mtz
-        gemmi Mtz object
-    
-    Returns
-    -------
-    rs.DataSet
+
+    Parameters:
+        gemmi_mtz (gemmi.Mtz): gemmi Mtz object
+
+    Returns:
+        rs.DataSet: The constructed DataSet.
+
+    Raises:
+        ValueError: If the gemmi.Mtz object contains multiple M/ISYM columns,
+                    or if the M/ISYM column is not unique for unmerged data.
     """
     
     dataset = rs.DataSet(spacegroup=gemmi_mtz.spacegroup, cell=gemmi_mtz.cell)

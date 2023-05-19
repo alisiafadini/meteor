@@ -1,5 +1,6 @@
 
 import numpy as np
+import reciprocalspaceship as rs
 from   scipy.stats import differential_entropy
 
 from . import mask
@@ -7,93 +8,97 @@ from . import mask
 def negentropy(X):
     """
     Return negentropy (float) of X (numpy array)
-    """
-    
-    # negetropy is the difference between the entropy of samples x
+
+    negetropy is the difference between the entropy of samples x
     # and a Gaussian with same variance
     # http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
-    
+
+    Raises:
+        ValueError: If X is empty or has a single element.
+    """
+
+    if len(X) == 0:
+        raise ValueError("Input array X is empty.")
+    elif len(X) == 1:
+        raise ValueError("Input array X has a single element.")
+
     std = np.std(X)
-    #neg_e = np.log(std*np.sqrt(2*np.pi*np.exp(1))) - differential_entropy(X)
     neg_e = 0.5 * np.log(2.0 * np.pi * std ** 2) + 0.5 - differential_entropy(X)
-    #assert neg_e >= 0.0
     
+    assert neg_e >= 0.0, "Negentropy is negative : %.12f." % (neg_e)
+
     return neg_e
 
+def generate_CV_flags(array_length, percent=0.03):
+    np.random.seed(42)
+    flags = np.random.binomial(1, percent, array_length).astype(bool)
+    return flags
 
-def make_test_set(df, percent, Fs, out_name, path, flags=False):
-
+def make_test_set(df, flags):
     """
-    Write MTZ file where data from an original MTZ has been divided in a "fit" set and a "test" set.
+    Divide data from an MTZ in a "fit" set and a "test" set.
     
     Additionally save test set indices as numpy object.
 
-    Required parameters :
+    Args:
+        df (rs.Dataset) : The dataset to split.
+        Fs (str)        : Label for structure factors to split.
+        flags (np.ndarray, Bool): An array of flags to specify 
+                                    which data to include in the fit set.
 
-    df                : (rs.Dataset) to split
-    percent           : (float) fraction of reflections to keep for test set – e.g. 0.03
-    Fs                : (str) labels for structure factors to split
-    out_name, path    : (str) and (str) output file name and path specifications
-    
-    Returns :
-    
-    test_set, fit_set : (rs.Dataset) and (rs.Dataset) for the two sets
-    choose_test       : (1D array) containing test data indices as boolean type
-
+    Returns:
+        rs.Dataset: The test set.
+        rs.Dataset: The fit set.
     """
-    if flags is not False:
-        choose_test = df[flags] == 0
-        
-    else:
-        choose_test = np.random.binomial(1, percent, df[Fs].shape[0]).astype(bool)
-    test_set = df[Fs][choose_test] #e.g. 3%
-    fit_set  = df[Fs][np.invert(choose_test)] #97%
-    
-    df["fit-set"]   = fit_set
-    df["fit-set"]   = df["fit-set"].astype("SFAmplitude")
-    df["test-set"]  = test_set
-    df["test-set"]  = df["test-set"].astype("SFAmplitude")
-    df.infer_mtz_dtypes(inplace=True)
-    df.write_mtz("{path}split-{name}.mtz".format(path=path, name=out_name))
-    np.save("{path}test_flags-{name}.npy".format(path=path, name=out_name), choose_test)
-    
-    return test_set, fit_set, choose_test
+    test_set = df[flags]  # e.g. 3%
+    fit_set  = df[~flags] # 97%
+
+    # Check that the expected percentage of data is assigned to the test and fit sets
+    test_percent = len(test_set) / len(df) * 100
+    fit_percent = len(fit_set) / len(df) * 100
+
+    #raise an error if test_percent > fit_percent
+
+    return test_set, fit_set
 
 
-def get_corrdiff(on_map, off_map, center, radius, pdb, cell, spacing) :
 
+def get_corrdiff(map1, map2, center, radius, pdb_params):
     """
-    Function to find the correlation coefficient difference between two maps in local and global regions.
+    Function to find the correlation coefficient difference 
+    between two maps in local and global regions.
     
-    FIRST applies solvent mask to 'on' and an 'off' map.
-    THEN applies a  mask around a specified region
+    FIRST applies solvent mask to the maps map.
+    THEN applies a mask around a specified region
     
-    Parameters :
-    
-    on_map, off_map : (GEMMI objects) to be compared
+    Parameters:
+    map1, map2      : (GEMMI objects) to be compared
     center          : (numpy array) XYZ coordinates in PDB for the region of interest
     radius          : (float) radius for local region of interest
-    pdb, cell       : (str) and (list) PDB file name and cell information
-    spacing         : (float) spacing to generate solvent mask
+    pdb_params (DataInfo): Object specifying dataset parameters
+                           e.g. SpaceGroup, Cell, MapRes
     
-    Returns :
-    
-    diff            : (float) difference between local and global correlation coefficients of 'on'-'off' values
-    CC_loc, CC_glob : (numpy array) local and global correlation coefficients of 'on'-'off' values
-
+    Returns:
+    diff            : (float) difference between local and global
+                        CC 'map2'-'map1' values
+    CC_loc, CC_glob : (numpy array) local and global CC of 'map2'-'map1' values
     """
+     
+    map2_nosolvent = mask.solvent_mask(np.array(map2.grid), pdb_params)
+    map1_nosolvent = mask.solvent_mask(np.array(map1.grid), pdb_params)
+    reg_mask = mask.get_mapmask(map2.grid, center, radius)
+    loc_reg  = np.array(reg_mask, copy=True).ravel().astype(bool)
 
-    off_a             = np.array(off_map.grid)
-    on_a              = np.array(on_map.grid)
-    on_nosolvent      = np.nan_to_num(mask.solvent_mask(pdb, cell, on_a,  spacing))
-    off_nosolvent     = np.nan_to_num(mask.solvent_mask(pdb, cell, off_a, spacing))
-    reg_mask          = mask.get_mapmask(on_map.grid, center, radius)
-   
-    loc_reg    = np.array(reg_mask, copy=True).flatten().astype(bool)
-    CC_loc     = np.corrcoef(on_a.flatten()[loc_reg], off_a.flatten()[loc_reg])[0,1]
-    CC_glob    = np.corrcoef(on_nosolvent[np.logical_not(loc_reg)], off_nosolvent[np.logical_not(loc_reg)])[0,1]
-    
-    diff       = np.array(CC_glob) -  np.array(CC_loc)
-    
+    CC_loc  = np.corrcoef(np.array(map2.grid).ravel()[loc_reg], 
+                          np.array(map1.grid).ravel()[loc_reg])[0, 1]
+    CC_glob = np.corrcoef(map2_nosolvent[~loc_reg].ravel(), 
+                          map1_nosolvent[~loc_reg].ravel())[0, 1]
+
+    diff = CC_glob - CC_loc
+
     return diff, CC_loc, CC_glob
+
+
+
+
 

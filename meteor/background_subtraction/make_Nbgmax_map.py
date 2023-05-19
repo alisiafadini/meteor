@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-import reciprocalspaceship as rs
 import seaborn as sns
 from tqdm import tqdm
 sns.set_context("notebook", font_scale=1.4)
@@ -12,7 +11,7 @@ from meteor import io
 from meteor import dsutils
 from meteor import maps
 from meteor import validate
-
+from meteor import classes
 
 """
 Make a background subtracted map with an optimal Nbg value (Nbg_max).
@@ -21,7 +20,8 @@ The naming convention chosen for inputs is 'on' and 'off', such
 that the generated difference map will be |F_on| - Nbg_max x |F_off|.
 Phases come from a reference structure ('off' state).
 
-Write a background subtracted map file (MTZ) and optionally plot/save the plot from the Nbg_max determination (PNG).
+Write a background subtracted map file (MTZ). 
+Optionally plot/save the plot from the Nbg_max determination (PNG).
 
 """
 
@@ -100,93 +100,158 @@ def parse_arguments():
         help="Local region radius for background subtraction",
     )
     
-    parser.add_argument("--plot", help="--plot for optional plotting and saving, --no-plot to skip", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--plot", help="--plot for optional plotting and saving, \
+                        --no-plot to skip", action=argparse.BooleanOptionalAction)
 
     
     return parser.parse_args()
 
 def main():
 
-    #Map writing parameters
-    map_res     = 4
-
     # Parse commandline arguments
     args = parse_arguments()
     
-    path              = os.path.split(args.onmtz[0])[0]
-    name              = os.path.split(args.onmtz[0])[1].split('.')[0].split('/')[-1]
+    # Fill out the dataset information needed
+    data_info                   = classes.DataInfo()
+    data_info.Meta.Path         = os.path.split(args.onmtz[0])[0]
+    data_info.Meta.Name         = os.path.split(args.onmtz[0])[1].split('.')[0]
+    data_info.Maps.MapRes       = 6 #Map writing resolution
+    data_info.Xtal.Cell, data_info.Xtal.SpaceGroup  = io.get_pdbinfo(args.refpdb[0])
+    data_info.Meta.Pdb          = args.refpdb[0]
+
+    print('%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%'.format(
+                                                    n=data_info.Meta.Name, 
+                                                    p=data_info.Meta.Path))
+    print('CELL         : {}'.format(data_info.Xtal.Cell))
+    print('SPACEGROUP   : {}'.format(data_info.Xtal.SpaceGroup))
     
-    onmtz             = io.subset_to_FSigF(*args.onmtz, {args.onmtz[1]: "F", args.onmtz[2]: "SIGF"})
-    offmtz            = io.subset_to_FSigF(*args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
-    cell, space_group = io.get_pdbinfo(args.refpdb[0])
-    calc              = io.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
+    onmtz           = io.subset_to_FSigF(*args.onmtz, 
+                                        {args.onmtz[1]: "F", args.onmtz[2]: "SIGF"})
+    offmtz          = io.subset_to_FSigF(*args.offmtz, 
+                                        {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
+
+    calc            = io.get_Fcalcs(data_info.Meta.Pdb, 
+                                    np.min(onmtz.compute_dHKL()["dHKL"]), 
+                                    )
 
     # Join all data
-    alldata         = onmtz.merge(offmtz, on=["H", "K", "L"], suffixes=("_on", "_off")).dropna()
+    alldata         = onmtz.merge(offmtz, 
+                                  on=["H", "K", "L"], 
+                                  suffixes=("_on", "_off")).dropna()
     common          = alldata.index.intersection(calc.index).sort_values()
-    alldata         = alldata.loc[common].compute_dHKL()
     alldata["PHIC"] = calc.loc[common, "PHIC"]
     alldata["FC"]   = calc.loc[common, "FC"]
+    alldata         = alldata.loc[common].compute_dHKL()
         
-    # Scale both to FCalcs and write differences
+    # Apply resolution cut if specified
     if args.highres is not None:
-        alldata     = alldata.loc[alldata["dHKL"] > args.highres]
-        spacing     = args.highres / map_res
-        h_res       = args.highres
+        data_info.Maps.HighRes = args.highres
+    else:
+        data_info.Maps.HighRes = np.min(alldata["dHKL"])
+    
+    alldata   = dsutils.res_cutoff(alldata, 
+                                   data_info.Maps.HighRes, 
+                                   np.max(alldata["dHKL"]))
+    data_info.Maps.MaskSpacing = data_info.Maps.HighRes / data_info.Maps.MapRes 
     
     # Screen different background subtraction values for maximum correlation difference
-    h_res     = np.min(alldata["dHKL"])  
-    spacing   = h_res / map_res
     Nbgs      = np.linspace(0,1, 100)
 
     CC_diffs  = []
     CC_locs   = []
     CC_globs  = []
     
-    calc_map = dsutils.map_from_Fs(alldata,   "FC"   , "PHIC", map_res) #map to use as reference state
+    #compute map to use as reference state
+    calc_map = dsutils.map_from_Fs(alldata, 
+                                   "FC" , 
+                                   "PHIC", 
+                                   data_info.Maps.MapRes) 
+    
+    #Define MtzLabels
+    data_labels = classes.MtzLabels()
+    label_attrs = ["Fon", "SigFon", "Foff", "SigFoff", "PhiC"]
+    for idx, attr in enumerate(label_attrs):
+            setattr(data_labels, attr, alldata.columns[idx])
+    
 
     for Nbg in tqdm(Nbgs) :
         
-        alldata, weights  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
-        Nbg_map  = dsutils.map_from_Fs(alldata, "WDF", "PHIC", map_res)
-        
-        CC_diff, CC_loc, CC_glob = validate.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
+        #call scaling to FCalcs
+        scaled_mtz = maps.scale_toFCalcs(alldata, 
+                                        data_labels, 
+                                        data_info.Meta.Pdb, 
+                                        data_info.Maps.HighRes)
+
+        #call weighting scheme
+        diffs, ws  = maps.find_w_diffs(scaled_mtz, args.alpha, Nbg)
+        Nbg_map    = dsutils.map_from_Fs(diffs, "WDF", "PHIC", data_info.Maps.MapRes)
+                
+        CC_diff, CC_loc, CC_glob = validate.get_corrdiff(Nbg_map, 
+                                                        calc_map, 
+                                                        np.array(args.center).astype(float),
+                                                        args.radius, 
+                                                        data_info)
         CC_diffs.append(CC_diff)
         CC_locs.append(CC_loc)
         CC_globs.append(CC_glob)
-        alldata.drop(columns=["WDF"])
+
+    #Save map with optimal Nbg
+    Nbg_max              = Nbgs[np.argmax(CC_diffs)]
+    alldata["DF-Nbgmax"] = ws * (alldata["scaled_on"] - 
+                                 Nbg_max * alldata["scaled_off"])
+    alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
+    alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=data_info.Meta.Path, 
+                                                 n=data_info.Meta.Name))
+    print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=data_info.Meta.Path, 
+                                                n=data_info.Meta.Name, 
+                                                N=np.round(Nbg_max, 
+                                                           decimals=3)))
+    print("SAVING FINAL MAP")
+    finmap = dsutils.map_from_Fs(alldata, "DF-Nbgmax", "PHIC", data_info.Maps.MapRes)
+    finmap.write_ccp4_map("{p}{n}_Nbgmax.ccp4".format(p=data_info.Meta.Path, 
+                                                      n=data_info.Meta.Name))
+    print("Wrote {p}{n}_Nbgmax.ccp4 with Nbg of {N}".format(p=data_info.Meta.Path, 
+                                                n=data_info.Meta.Name, 
+                                                N=np.round(Nbg_max, 
+                                                           decimals=3)))
+    
     
     if args.plot is True:
 
-        #Plot and find Nbg that maximizes this difference
+        #Plot and mark Nbg that maximizes this difference
         fig, ax = plt.subplots(2,1, figsize=(8,5.5), tight_layout=True)
 
-        ax[0].plot(Nbgs, CC_locs, color='mediumaquamarine', label=r'R$_\mathrm{loc}$', linewidth=3)
-        ax[0].plot(Nbgs, CC_globs, color='lightskyblue', label=r'R$_\mathrm{glob}$', linewidth=3)
+        ax[0].plot(Nbgs, CC_locs, 
+                   color='mediumaquamarine', 
+                   label=r'R$_\mathrm{loc}$', 
+                   linewidth=3)
+        ax[0].plot(Nbgs, CC_globs, 
+                   color='lightskyblue', 
+                   label=r'R$_\mathrm{glob}$', 
+                   linewidth=3)
 
-        ax[1].plot(Nbgs, CC_diffs, color='silver', linestyle= 'dashed', label=r'R$_\mathrm{glob}$ - R$_\mathrm{loc}$', linewidth=3)
-        ax[1].vlines(Nbgs[np.argmax(CC_diffs)], 0.22, 0, 'r', linestyle= 'dashed', linewidth=2.5, label='Max={}'.format(np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
+        ax[1].plot(Nbgs, CC_diffs, 
+                   color='silver', 
+                   linestyle= 'dashed', 
+                   label=r'R$_\mathrm{glob}$ - R$_\mathrm{loc}$', 
+                   linewidth=3)
+        ax[1].vlines(Nbgs[np.argmax(CC_diffs)], 0.22, 0, 'r', 
+                     linestyle= 'dashed', 
+                     linewidth=2.5, 
+                     label='Max={}'.format(np.round(Nbg_max, decimals=3)))
 
-        ax[0].set_title('{}'.format(name), fontsize=17)
+        ax[0].set_title('{}'.format(data_info.Meta.Name), fontsize=17)
         ax[0].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
         ax[0].set_ylabel('CC')
         ax[1].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
         ax[1].set_ylabel('CC Difference')
         ax[0].legend(fontsize=17)
         ax[1].legend(fontsize=17)
-        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=path, n=name))
-        print("Saved {p}/{n}_plotCCdiff.png".format(p=path, n=name))
+        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=data_info.Meta.Path, 
+                                                    n=data_info.Meta.Name))
+        print("Saved {p}/{n}_plotCCdiff.png".format(p=data_info.Meta.Path, 
+                                                    n=data_info.Meta.Name))
     
-    
-    #Save map with optimal Nbg
-    
-    alldata["DF-Nbgmax"] = weights * (alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"])
-    alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
-    alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=path, n=name))
-    print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
-    print("SAVING FINAL MAP")
-    finmap = dsutils.map_from_Fs(alldata, "DF-Nbgmax", "PHIC", 6)
-    finmap.write_ccp4_map("{p}{n}_Nbgmax.ccp4".format(p=path, n=name))  
 
 if __name__ == "__main__":
     main()
