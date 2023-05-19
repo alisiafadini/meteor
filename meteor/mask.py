@@ -26,7 +26,6 @@ def solvent_mask(map_array, pdb_params):
         pdb_params (DataInfo): Object specifying dataset parameters
                            e.g. SpaceGroup, Cell, MapRes
 
-
     Returns:
         numpy array: Flattened (1D) array of the mask.
     """

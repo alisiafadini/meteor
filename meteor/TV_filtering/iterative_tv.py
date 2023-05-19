@@ -8,7 +8,6 @@ from meteor import dsutils
 from meteor import maps
 from meteor import tv
 from meteor import classes
-from meteor import validate
 
 import seaborn as sns
 sns.set_context("notebook", font_scale=1.8)

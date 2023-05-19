@@ -3,15 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-import seaborn as sns
-from tqdm import tqdm
-sns.set_context("notebook", font_scale=1.4)
-
 from meteor import io
 from meteor import dsutils
 from meteor import maps
 from meteor import validate
 from meteor import classes
+
+import seaborn as sns
+from tqdm import tqdm
+sns.set_context("notebook", font_scale=1.4)
+
 
 """
 Make a background subtracted map with an optimal Nbg value (Nbg_max).

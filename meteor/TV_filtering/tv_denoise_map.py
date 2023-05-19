@@ -2,14 +2,14 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-
-import seaborn as sns
-sns.set_context("notebook", font_scale=1.8)
-
 from meteor import io
 from meteor import validate
 from meteor import tv
 from meteor import classes
+import seaborn as sns
+sns.set_context("notebook", font_scale=1.8)
+
+
 
 
 """
