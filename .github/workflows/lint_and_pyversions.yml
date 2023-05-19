@@ -1,6 +1,6 @@
 name: Ruff and Python version testing
 
-run-name: ${{ github.actor }} run.
+#run-name: ${{ github.actor }} run.
 
 on: [push]
 
@@ -35,3 +35,5 @@ jobs:
       #- name: Test with pytest
         #run: |
           #pytest
+      # Update the run-name to include trigger event and branch information
+      name: ${{ github.event_name }}-${{ github.ref }}-${{ github.actor }} run
