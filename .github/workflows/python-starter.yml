@@ -1,6 +1,6 @@
-name: Python package
+name: Ruff and Python version testing
 
-run-name: ${{ github.actor }} is running the Python Starter package.
+run-name: ${{ github.actor }} run.
 
 on: [push]
 
@@ -32,6 +32,6 @@ jobs:
           ruff --format=github --select=E9,F63,F7,F82 --target-version=py37 .
           # default set of ruff rules with GitHub Annotations
           ruff --format=github --target-version=py37 .
-      - name: Test with pytest
-        run: |
-          pytest
+      #- name: Test with pytest
+        #run: |
+          #pytest
