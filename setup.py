@@ -1,8 +1,10 @@
 
 
-DESCRIPTION      =   "Scripts for crystallographic electron density maps containing low occupancy species"
+DESCRIPTION      =   "Scripts for crystallographic electron \
+  density maps containing low occupancy species"
 LONG_DESCRIPTION = """
-METEOR contains commandline scripts and functions for finding low occupancy species in crystallographic maps.
+METEOR contains commandline scripts and functions for finding \
+  low occupancy species in crystallographic maps.
 This module will be part of reciprocalspaceship and its "booster" package, rs-booster.
 """
 
