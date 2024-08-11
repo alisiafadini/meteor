@@ -1,5 +1,6 @@
 import numpy as np
 import gemmi as gm
+import reciprocalspaceship as rs
 from scipy.stats import binned_statistic
 
 
@@ -73,23 +74,45 @@ def positive_Fs(df, phases, Fs, phases_new, Fs_new):
     return df_new
 
 
-def map_from_Fs(dataset, Fs, phis, map_res):
-    """
-    Return a GEMMI CCP4 map object from an rs.Dataset object
-
-    Parameters :
-
-    dataset  : rs.Dataset of interest
-    Fs, phis : (str) and (str) labels for amplitudes and phases to be used
-    map_res  : (float) to determine map spacing resolution
-
-    """
-
-    mtz = dataset.to_gemmi()
-    ccp4 = gm.Ccp4Map()
-    ccp4.grid = mtz.transform_f_phi_to_map(
-        "{}".format(Fs), "{}".format(phis), sample_rate=map_res
+def compute_map_from_coefficients(
+    *,
+    map_coefficients: rs.DataSet,
+    amplitude_label: str,
+    phase_label: str,
+    map_sampling: int,
+) -> gm.Ccp4Map:
+    map_coefficients_gemmi_format = map_coefficients.to_gemmi()
+    ccp4_map = gm.Ccp4Map()
+    ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
+        amplitude_label, phase_label, sample_rate=map_sampling
     )
-    ccp4.update_ccp4_header(2, True)
+    ccp4_map.update_ccp4_header()
 
-    return ccp4
+    return ccp4_map
+
+
+def compute_coefficients_from_map(
+    *,
+    ccp4_map: gm.Ccp4Map,
+    high_resolution_limit: float,
+    amplitude_label: str,
+    phase_label: str,
+) -> rs.DataSet:
+    # to ensure we include the final shell of reflections, add a small buffer to the resolution
+    high_resolution_buffer = 0.05
+
+    gemmi_structure_factors = gm.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
+    data = gemmi_structure_factors.prepare_asu_data(
+        dmin=high_resolution_limit - high_resolution_buffer, with_sys_abs=True
+    )
+
+    mtz = gm.Mtz(with_base=True)
+    mtz.spacegroup = gemmi_structure_factors.spacegroup
+    mtz.set_cell_for_all(gemmi_structure_factors.unit_cell)
+    mtz.add_dataset("FromMap")
+    mtz.add_column(amplitude_label, "F")
+    mtz.add_column(phase_label, "P")
+    mtz.set_data(data)
+    mtz.switch_to_asu_hkl()
+
+    return rs.DataSet.from_gemmi(mtz)

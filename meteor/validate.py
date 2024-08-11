@@ -4,13 +4,32 @@ from scipy.stats import differential_entropy
 
 def negentropy(samples: np.ndarray, tolerance: float = 0.01) -> float:
     """
-    Return negentropy (float) of X (numpy array)
+    Computes the negentropy of a given sample array.
 
-    The negetropy is defined as the difference between the entropy of a distribution
-    and a Gaussian with same variance.
+    Negentropy is defined as the difference between the entropy of a given
+    distribution and the entropy of a Gaussian distribution with the same variance.
+    It is a measure of non-Gaussianity, with higher values indicating greater deviation
+    from Gaussianity.
 
-    citation:
+    Args:
+        samples (np.ndarray): A numpy array of sample data for which to calculate the negentropy.
+        tolerance (float): A tolerance level for checking if the negentropy is suspiciously negative.
+                           Defaults to 0.01.
+
+    Returns:
+        float: The computed negentropy of the sample data.
+
+    Raises:
+        ValueError: If the computed negentropy is less than the negative tolerance,
+                    indicating potential issues with the computation.
+
+    References:
         http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
+
+    Example:
+        >>> samples = np.random.normal(size=1000)
+        >>> negentropy(samples)
+        0.0012  # Example output, varies with input samples.
     """
 
     std = np.std(samples.flatten())

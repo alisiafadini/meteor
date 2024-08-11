@@ -1,6 +1,6 @@
-
 import numpy as np
 from meteor import validate
+
 
 def test_negentropy_gaussian() -> None:
     n_samples = 10000
@@ -16,5 +16,5 @@ def test_negentropy_uniform() -> None:
     samples = np.random.uniform(size=n_samples)
     negentropy = validate.negentropy(samples)
 
-    uniform_negentropy = (1./2.) * np.log(np.pi * np.exp(1) / 6.0)
+    uniform_negentropy = (1.0 / 2.0) * np.log(np.pi * np.exp(1) / 6.0)
     assert np.abs(negentropy - uniform_negentropy) < 1e-2
