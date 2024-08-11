@@ -23,5 +23,6 @@ jobs:
     - name: mypy
       run: |
         pip install mypy
+        mypy --install-types
         mypy meteor/
         mypy test/
