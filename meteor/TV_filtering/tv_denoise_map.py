@@ -1,13 +1,10 @@
 import argparse
-import matplotlib.pyplot as plt
 import numpy as np
 import os
+import reciprocalspaceship as rs
 
-import seaborn as sns
 
-sns.set_context("notebook", font_scale=1.8)
-
-from meteor import io
+from meteor import meteor_io
 from meteor import dsutils
 from meteor import tv
 
@@ -16,10 +13,8 @@ from meteor import tv
 
 Apply a total variation (TV) filter to a map.
 The level of filtering (determined by the regularization parameter lambda)
-is chosen so as to minimize the error between denoised and measured amplitudes or maximize the map negentropy
-for a free set ('test' set) of reflections.
+is chosen so as to maximize the map negentropy
 
-Write two denoised map file (MTZ), one for each optimal parameter, and optionally the plot/save the plot from the lambda determination (PNG).
 
 """
 
@@ -40,19 +35,7 @@ def parse_arguments():
         help=("MTZ to be used for initial map. Specified as (filename, F, Phi)"),
     )
 
-    parser.add_argument(
-        "-ref",
-        "--refpdb",
-        nargs=1,
-        metavar=("pdb"),
-        required=True,
-        help=(
-            "PDB to be used as reference ('off') structure. " "Specified as (filename)."
-        ),
-    )
-
     # Optional arguments
-
     parser.add_argument(
         "-d_h",
         "--highres",
@@ -61,71 +44,33 @@ def parse_arguments():
         help="If set, high res to truncate maps",
     )
 
-    parser.add_argument(
-        "-fl",
-        "--flags",
-        type=str,
-        default=None,
-        help="If set, label for Rfree flags to use as test set",
-    )
-
-    parser.add_argument(
-        "--plot",
-        help="--plot for optional plotting and saving, --no-plot to skip",
-        action=argparse.BooleanOptionalAction,
-    )
-
     return parser.parse_args()
 
 
 def main():
-    np.random.seed(42)
 
-    # Map writing parameters
-    map_res = 4
+    # Magic numbers
+    map_spacing = 4
 
     # Parse commandline arguments
     args = parse_arguments()
 
     path = os.path.split(args.mtz[0])[0]
-    name = os.path.split(args.mtz[0])[1].split(".")[0]
-    cell, space_group = io.get_pdbinfo(args.refpdb[0])
+    name = os.path.split(args.mtz[0])[1].split(".")[
+        0
+    ]  # TODO this seems problematic when full paths are not given
 
-    print(
-        "%%%%%%%%%% ANALYZING DATASET : {n} in {p} %%%%%%%%%%%".format(n=name, p=path)
-    )
-    print("CELL         : {}".format(cell))
-    print("SPACEGROUP   : {}".format(space_group))
+    og_mtz = meteor_io.subset_to_FandPhi(
+        *args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}
+    ).dropna()
 
     # Apply resolution cut if specified
     if args.highres is not None:
         high_res = args.highres
     else:
-        high_res = np.min(io.load_mtz(args.mtz[0]).compute_dHKL()["dHKL"])
+        high_res = np.min(og_mtz.compute_dHKL()["dHKL"])
 
-    # Use own R-free flags set if specified
-    if args.flags is not None:
-        og_mtz = io.subset_to_FandPhi(
-            *args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}, args.flags
-        ).dropna()
-        (
-            TVmap_best_err,
-            TVmap_best_entr,
-            lambda_best_err,
-            lambda_best_entr,
-            errors,
-            entropies,
-            amp_change,
-            ph_change,
-        ) = tv.find_TVmap(
-            og_mtz, "F", "Phi", name, path, map_res, cell, space_group, flags=args.flags
-        )
-
-    else:
         # Read in mtz file
-        og_mtz = io.subset_to_FandPhi(
-            *args.mtz, {args.mtz[1]: "F", args.mtz[2]: "Phi"}
-        ).dropna()
 
         og_mtz = og_mtz.compute_dHKL()
         # og_mtz = og_mtz[og_mtz["dHKL"] < 10]
