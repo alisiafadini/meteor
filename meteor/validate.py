@@ -1,26 +1,21 @@
 import numpy as np
 from scipy.stats import differential_entropy
 
-from . import mask
 
-
-def negentropy(X):
+def negentropy(samples: np.ndarray, tolerance: float = 1e-4) -> float:
     """
     Return negentropy (float) of X (numpy array)
+
+    The negetropy is defined as the difference between the entropy of a distribution
+    and a Gaussian with same variance.
+
+    citation:
+        http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
     """
 
-    # negetropy is the difference between the entropy of samples x
-    # and a Gaussian with same variance
-    # http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
-
-    std = np.std(X)
-    # neg_e = np.log(std*np.sqrt(2*np.pi*np.exp(1))) - differential_entropy(X)
-    neg_e = 0.5 * np.log(2.0 * np.pi * std**2) + 0.5 - differential_entropy(X)
-    # assert neg_e >= 0.0 + 1e-8
+    std = np.std(samples.flatten())
+    neg_e = 0.5 * np.log(2.0 * np.pi * std**2) + 0.5 - differential_entropy(samples.flatten())
+    if not neg_e >= -tolerance:
+        raise ValueError(f"negentropy is a relatively big negative number {neg_e} that exceeds the tolerance {tolerance} -- something may have gone wrong")
 
     return neg_e
-
-
-
-
-

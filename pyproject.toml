@@ -7,6 +7,9 @@ authors = [
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
 ]
 dependencies = [
+    "numpy",
+    "scipy",
+    "skimage",
     "reciprocalspaceship",
 ]
 
