@@ -1,0 +1,20 @@
+[project]
+name = "meteor"
+description = "denoise crystallographic difference maps"
+version = "2.0.0"
+authors = [
+    { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
+    { name = "Thomas Lane", email = "thomas.lane@desy.de" }
+]
+dependencies = [
+    "reciprocalspaceship",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+]
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
