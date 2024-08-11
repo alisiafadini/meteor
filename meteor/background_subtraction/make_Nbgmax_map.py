@@ -120,6 +120,7 @@ def main():
     offmtz            = io.subset_to_FSigF(*args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"})
     cell, space_group = io.get_pdbinfo(args.refpdb[0])
     calc              = io.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
+    #calc = io.load_mtz("./7ar6_SFALL.mtz")
 
     # Join all data
     alldata         = onmtz.merge(offmtz, on=["H", "K", "L"], suffixes=("_on", "_off")).dropna()
@@ -127,6 +128,9 @@ def main():
     alldata         = alldata.loc[common].compute_dHKL()
     alldata["PHIC"] = calc.loc[common, "PHIC"]
     alldata["FC"]   = calc.loc[common, "FC"]
+
+    #alldata["PHIC"] = calc.loc[common, "PHIC_ALL"]
+    #alldata["FC"]   = calc.loc[common, "FC_ALL"]
         
     # Scale both to FCalcs and write differences
     if args.highres is not None:
@@ -147,7 +151,7 @@ def main():
 
     for Nbg in tqdm(Nbgs) :
         
-        alldata, weights  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, Nbg)
+        alldata, weights  = maps.find_w_diffs(alldata, "F_on", "F_off", "SIGF_on", "SIGF_off", args.refpdb[0], h_res, path, args.alpha, 1-Nbg)
         Nbg_map  = dsutils.map_from_Fs(alldata, "WDF", "PHIC", map_res)
         
         CC_diff, CC_loc, CC_glob = validate.get_corrdiff(Nbg_map, calc_map, np.array(args.center).astype(float), args.radius, args.refpdb[0], cell, spacing)
@@ -167,26 +171,30 @@ def main():
         ax[1].plot(Nbgs, CC_diffs, color='silver', linestyle= 'dashed', label=r'R$_\mathrm{glob}$ - R$_\mathrm{loc}$', linewidth=3)
         ax[1].vlines(Nbgs[np.argmax(CC_diffs)], 0.22, 0, 'r', linestyle= 'dashed', linewidth=2.5, label='Max={}'.format(np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
 
-        ax[0].set_title('{}'.format(name), fontsize=17)
-        ax[0].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        #ax[0].set_title('{}'.format(name), fontsize=17)
+        ax[0].set_title("Reciprocal Space Weighted Amplitude Extrapolation")
+        #ax[0].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        ax[0].set_xlabel(r'$\alpha$')
         ax[0].set_ylabel('CC')
-        ax[1].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        #ax[1].set_xlabel('N$_{\mathrm{bg}}$', fontsize=17)
+        ax[1].set_xlabel(r'$\alpha$')
         ax[1].set_ylabel('CC Difference')
         ax[0].legend(fontsize=17)
         ax[1].legend(fontsize=17)
-        fig.savefig("{p}/{n}_plotCCdiff.png".format(p=path, n=name))
-        print("Saved {p}/{n}_plotCCdiff.png".format(p=path, n=name))
+        fig.savefig("{p}{n}_plotCCdiff.png".format(p=path, n=name))
+        print("Saved {p}{n}_plotCCdiff.png".format(p=path, n=name))
     
     
     #Save map with optimal Nbg
     
-    alldata["DF-Nbgmax"] = weights * (alldata["scaled_on"] - Nbgs[np.argmax(CC_diffs)] * alldata["scaled_off"])
+    alldata["DF-Nbgmax"] = weights * (alldata["scaled_on"] - (1 - Nbgs[np.argmax(CC_diffs)]) * alldata["scaled_off"])
+    #alldata["DF-Nbgmax"] = weights * (alldata["scaled_on"] - Nbgs[94] * alldata["scaled_off"])
     alldata["DF-Nbgmax"] = alldata["DF-Nbgmax"].astype("SFAmplitude")
     alldata.write_mtz("{p}{n}_Nbgmax.mtz".format(p=path, n=name))
     print("Wrote {p}{n}_Nbgmax.mtz with Nbg of {N}".format(p=path, n=name, N=np.round(Nbgs[np.argmax(CC_diffs)], decimals=3)))
     print("SAVING FINAL MAP")
     finmap = dsutils.map_from_Fs(alldata, "DF-Nbgmax", "PHIC", 6)
-    finmap.write_ccp4_map("{p}{n}_Nbgmax.ccp4".format(p=path, n=name))  
+    finmap.write_ccp4_map("{p}{n}_Nbgmax_alpha{a}.ccp4".format(p=path, n=name, a=args.alpha))  
 
 if __name__ == "__main__":
     main()

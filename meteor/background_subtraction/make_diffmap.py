@@ -99,14 +99,18 @@ def main():
         *args.offmtz, {args.offmtz[1]: "F", args.offmtz[2]: "SIGF"}
     )
     cell, space_group = io.get_pdbinfo(args.refpdb[0])
-    calc = io.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
+    # calc = io.get_Fcalcs(args.refpdb[0], np.min(onmtz.compute_dHKL()["dHKL"]), path)
+
+    calc = io.load_mtz("can/dark_files/can_dark_SFALL.mtz")
 
     # Join all data
     alldata = onmtz.merge(offmtz, on=["H", "K", "L"], suffixes=("_on", "_off")).dropna()
     common = alldata.index.intersection(calc.index).sort_values()
     alldata = alldata.loc[common].compute_dHKL()
-    alldata["PHIC"] = calc.loc[common, "PHIC"]
-    alldata["FC"] = calc.loc[common, "FC"]
+    alldata["PHIC"] = calc.loc[common, "PHIC_ALL"]
+    alldata["FC"] = calc.loc[common, "FC_ALL"]
+    # alldata["PHIC"] = calc.loc[common, "PHIC"]
+    # alldata["FC"] = calc.loc[common, "FC"]
 
     # Scale both to FCalcs and write differences
     if args.highres is not None:
@@ -130,11 +134,21 @@ def main():
     )
 
     # Save map with optimal Nbg
-    alldata.write_mtz("{p}{n}_diffmap.mtz".format(p=path, n=name))
-    print("Wrote {p}{n}_diffmap.mtz".format(p=path, n=name))
+    alldata.write_mtz(
+        "{p}/{n}_diffmap_{alpha:.2f}_{hres:.2f}.mtz".format(
+            p=path, n=name, alpha=args.alpha, hres=h_res
+        )
+    )
+    print(
+        "Wrote {p}/{n}_diffmap_{alpha:.2f}_{hres:.2f}.mtz".format(
+            p=path, n=name, alpha=args.alpha, hres=h_res
+        )
+    )
     print("SAVING FINAL MAP")
-    finmap = dsutils.map_from_Fs(alldata, "WDF", "PHIC", 6)
-    finmap.write_ccp4_map("{p}{n}_diffmap.ccp4".format(p=path, n=name))
+    # finmap = dsutils.map_from_Fs(alldata, "WDF", "PHIC", 6)
+    # finmap.write_ccp4_map(
+    #    "{p}/{n}_{alpha:.2f}_diffmap.ccp4".format(p=path, n=name, alpha=args.alpha)
+    # )
 
 
 if __name__ == "__main__":
