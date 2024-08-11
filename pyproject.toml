@@ -9,6 +9,7 @@ authors = [
 dependencies = [
     "numpy",
     "scipy",
+    "gemmi",
     "scikit-image",
     "reciprocalspaceship",
 ]

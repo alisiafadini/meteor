@@ -1,8 +1,9 @@
-
 import reciprocalspaceship as rs
 
 
-def scale_structure_factors(reference: rs.DataSet, dataset_to_scale: rs.DataSet) -> rs.DataSet:
+def scale_structure_factors(
+    reference: rs.DataSet, dataset_to_scale: rs.DataSet
+) -> rs.DataSet:
     """
     Apply an anisotropic scaling so that `dataset_to_scale` is on the same scale as `reference`.
 
@@ -11,7 +12,7 @@ def scale_structure_factors(reference: rs.DataSet, dataset_to_scale: rs.DataSet)
 
     This is the same procedure implemented by CCP4's SCALEIT.
 
-    
+
     .. https://www.ccp4.ac.uk/html/scaleit.html
     """
     ...
