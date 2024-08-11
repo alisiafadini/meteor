@@ -10,12 +10,10 @@ def tv_denoise_single_pass(mtz):
 def find_TV_reg_lambda(
     mtz,
     Flabel,
-
 ):
-    
     print("Scanning TV weights")
     lambdas = np.linspace(1e-8, 0.4, 100)
-    
+
     entropies = []
     amp_changes = []
     phase_changes = []
@@ -25,12 +23,12 @@ def find_TV_reg_lambda(
         fit_TV_map, entropy = TV_filter(
             fit_map, l, fit_map.grid.shape, cell, space_group
         )
-        Fs_TV = dsutils.from_gemmi(io.map2mtz(fit_TV_map, highres))
-        
+        dsutils.from_gemmi(io.map2mtz(fit_TV_map, highres))
+
         entropies.append(entropy)
         amp_changes.append(amp_change)
         phase_changes.append(phase_change)
-    
+
     entropies = np.array(entropies)
     best_entropy = np.max(entropies)
     lambda_best_entr = lambdas[np.argmax(entropies)]
@@ -40,14 +38,11 @@ def find_TV_reg_lambda(
     TVmap_best_entr, _ = TV_filter(
         fit_map, lambda_best_entr, fit_map.grid.shape, cell, space_group
     )
-    
-    return TVmap_best_entr, 
 
-
+    return (TVmap_best_entr,)
 
 
 def TV_filter(map, l, grid_size, cell, space_group):
-
     """
     Apply TV filtering to a Gemmi map object. Compute negentropy for denoised array.
 
@@ -62,8 +57,6 @@ def TV_filter(map, l, grid_size, cell, space_group):
 
     Denoised map (GEMMI object) and associated negentropy (float)
     """
-
-    
 
     TV_arr = denoise_tv_chambolle(
         np.array(map.grid), eps=0.00000005, weight=l, max_num_iter=50
@@ -111,7 +104,6 @@ def TV_iteration(
 
     """
 
-
     return new_amps, new_phases, test_proj_error, entropy, phase_change, z
 
 
@@ -143,5 +135,3 @@ def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus, ws):
     proj_error = np.absolute(np.absolute(z) - Fon)
 
     return new_amps, new_phases, proj_error, np.angle(z, deg=True)
-
-

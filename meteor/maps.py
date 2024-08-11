@@ -1,8 +1,5 @@
 import numpy as np
 import gemmi as gm
-from tqdm import tqdm
-from meteor import dsutils, validate, mask
-from scipy.stats import kurtosis
 
 from . import scale
 from . import io
@@ -105,6 +102,3 @@ def find_w_diffs(mtz, Fon, Foff, SIGon, SIGoff, pdb, high_res, path, a, Nbg=1.00
     mtz.infer_mtz_dtypes(inplace=True)
 
     return mtz, ws
-
-
-

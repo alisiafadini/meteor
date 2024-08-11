@@ -168,7 +168,6 @@ def get_pdbinfo(pdb):
     with open(pdb, "r") as f:
         for line in f:
             if line.startswith("CRYST1"):
-
                 split_line = line.strip().split()
                 unit_cell = [float(i) for i in split_line[1:7]]
                 space_group = "".join(split_line[7:11])
