@@ -5,6 +5,9 @@ import reciprocalspaceship as rs
 from skimage.restoration import denoise_tv_chambolle
 from scipy.optimize import minimize_scalar
 
+from typing import Sequence
+
+from .validate import negentropy
 from .utils import compute_map_from_coefficients, compute_coefficients_from_map
 from .settings import (
     TV_LAMBDA_RANGE,
@@ -16,15 +19,35 @@ from .settings import (
 )
 
 
+def _tv_denoise_ccp4_map(*, map: gm.Ccp4Map, weight: float) -> np.ndarray:
+    """
+    Closure convienence function to generate more readable code.
+    """
+    denoised_map = denoise_tv_chambolle(
+        np.array(map.grid),
+        weight=weight,
+        eps=TV_STOP_TOLERANCE,
+        max_num_iter=TV_MAX_NUM_ITER,
+    )
+    return denoised_map
+
+
+
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
+    lambda_values_to_scan: Sequence[float] | None = None,
 ) -> tuple[rs.DataSet, float]:
     """
+
+    lambda_values_to_scan = None --> Golden method
+
     Returns:
        rs.Dataset: denoised dataset with new columns `DFtv`, `DPHItv`
     """
+
+    # TODO write decent docstring
 
     difference_map = compute_map_from_coefficients(
         map_coefficients=difference_map_coefficients,
@@ -34,52 +57,36 @@ def tv_denoise_difference_map(
     )
 
     def negentropy_objective(tv_lambda: float):
-        return denoise_tv_chambolle(
-            np.array(difference_map.grid),
-            eps=TV_STOP_TOLERANCE,
-            weight=tv_lambda,
-            max_num_iter=TV_MAX_NUM_ITER,
+        denoised_map = _tv_denoise_ccp4_map(map=difference_map, weight=tv_lambda)
+        return negentropy(denoised_map.flatten())
+    
+    optimal_lambda: float
+
+    if lambda_values_to_scan:
+        highest_negentropy = -1e8
+        for tv_lambda in lambda_values_to_scan:
+            trial_negentropy = negentropy_objective(tv_lambda)
+            if negentropy_objective(tv_lambda) > highest_negentropy:
+                optimal_lambda = tv_lambda
+                highest_negentropy = trial_negentropy
+    else:
+        optimizer_result = minimize_scalar(
+            negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
         )
+        assert optimizer_result.success
+        optimal_lambda = optimizer_result.x
 
-    optimizer_result = minimize_scalar(
-        negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
-    )
-    assert optimizer_result.success
+    final_map_array = _tv_denoise_ccp4_map(map=difference_map, weight=optimal_lambda)
 
-    optimal_lambda: float = optimizer_result.x
+    # TODO: verify correctness
+    final_map_coefficients = (np.fft.fftn(final_map_array)[::TV_MAP_SAMPLING, ::TV_MAP_SAMPLING, ::TV_MAP_SAMPLING]).flatten()
+    print(final_map_coefficients.shape, len(difference_map_coefficients))
 
-    final_map_array: np.ndarray = denoise_tv_chambolle(
-        np.array(difference_map.grid),
-        eps=TV_STOP_TOLERANCE,
-        weight=optimal_lambda,
-        max_num_iter=TV_MAX_NUM_ITER,
-    )
+    # TODO: need to be sure HKLs line up
+    difference_map_coefficients[[TV_AMPLITUDE_LABEL]] = np.abs(final_map_coefficients)
+    difference_map_coefficients[[TV_PHASE_LABEL]] = np.angle(final_map_coefficients, deg=True)
 
-    # TODO: we may be able to simplify the code by going directly from a numpy
-    #       array to rs.DataSet here -- right now, we go through gemmi format
-
-    ccp4_map = gm.Ccp4Map()
-
-    ccp4_map.grid = gm.FloatGrid(final_map_array)
-    ccp4_map.grid.set_unit_cell(gm.UnitCell(*difference_map_coefficients.cell))
-    ccp4_map.grid.set_size(difference_map_coefficients.get_reciprocal_grid_size())
-    ccp4_map.grid.spacegroup = gm.find_spacegroup_by_name(
-        difference_map_coefficients.space_group
-    )
-    ccp4_map.grid.symmetrize_max()
-    ccp4_map.update_ccp4_header()
-
-    high_resolution_limit = np.min(difference_map_coefficients.compute_dHKL())
-    denoised_dataset = compute_coefficients_from_map(
-        ccp4_map=ccp4_map,
-        high_resolution_limit=high_resolution_limit,
-        amplitude_label=TV_AMPLITUDE_LABEL,
-        phase_label=TV_PHASE_LABEL,
-    )
-
-    # ^^^ replace this with something better!
-
-    return denoised_dataset
+    return difference_map_coefficients
 
 
 def iterative_tv_phase_retrieval(): ...

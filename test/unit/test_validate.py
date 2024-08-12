@@ -18,3 +18,8 @@ def test_negentropy_uniform() -> None:
 
     uniform_negentropy = (1.0 / 2.0) * np.log(np.pi * np.exp(1) / 6.0)
     assert np.abs(negentropy - uniform_negentropy) < 1e-2
+
+
+def test_negentropy_zero() -> None:
+    negentropy = validate.negentropy(np.zeros(100))
+    assert negentropy == np.inf
