@@ -19,8 +19,6 @@ from .settings import (
     TV_STOP_TOLERANCE,
     TV_MAP_SAMPLING,
     TV_MAX_NUM_ITER,
-    TV_AMPLITUDE_LABEL,
-    TV_PHASE_LABEL,
 )
 
 
@@ -43,13 +41,7 @@ def tv_denoise_difference_map(
     difference_map_phase_column: str = "PHIC",
     lambda_values_to_scan: Sequence[float] | None = None,
 ) -> tuple[rs.DataSet, float]:
-    """
-
-    lambda_values_to_scan = None --> Golden method
-
-    Returns:
-       rs.Dataset: denoised dataset with new columns `DFtv`, `DPHItv`
-    """
+    """ lambda_values_to_scan = None --> Golden method """
 
     # TODO write decent docstring
 
@@ -63,11 +55,13 @@ def tv_denoise_difference_map(
     difference_map_as_array = np.array(difference_map.grid)
 
     def negentropy_objective(tv_lambda: float):
-        denoised_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=tv_lambda)
+        denoised_map = _tv_denoise_array(
+            map_as_array=difference_map_as_array, weight=tv_lambda
+        )
         return negentropy(denoised_map.flatten())
 
     optimal_lambda: float
-    if lambda_values_to_scan:
+    if lambda_values_to_scan is not None:
         highest_negentropy = -1e8
         for tv_lambda in lambda_values_to_scan:
             trial_negentropy = negentropy_objective(tv_lambda)
@@ -83,19 +77,21 @@ def tv_denoise_difference_map(
         ), "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
 
-    final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
+    final_map = _tv_denoise_array(
+        map_as_array=difference_map_as_array, weight=optimal_lambda
+    )
     final_map = numpy_array_to_map(
         final_map,
         spacegroup=difference_map_coefficients.spacegroup,
-        cell=difference_map_coefficients.cell
+        cell=difference_map_coefficients.cell,
     )
 
     _, dmin = resolution_limits(difference_map_coefficients)
     final_map_coefficients = compute_coefficients_from_map(
         ccp4_map=final_map,
         high_resolution_limit=dmin,
-        amplitude_label=TV_AMPLITUDE_LABEL,
-        phase_label=TV_PHASE_LABEL,
+        amplitude_label=difference_map_amplitude_column,
+        phase_label=difference_map_phase_column,
     )
 
     return final_map_coefficients

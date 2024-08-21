@@ -86,7 +86,7 @@ def test_compute_map_from_coefficients(flat_difference_map: rs.DataSet) -> None:
         map_sampling=1,
     )
     assert isinstance(map, gemmi.Ccp4Map)
-    assert map.grid.shape == (6,6,6)
+    assert map.grid.shape == (6, 6, 6)
 
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])

@@ -64,11 +64,24 @@ def canonicalize_amplitudes(
         return None
 
 
-def numpy_array_to_map(array: np.ndarray, *, spacegroup: str | int, cell: tuple[float, float, float, float, float, float]) -> gemmi.Ccp4Map:
+def numpy_array_to_map(
+    array: np.ndarray,
+    *,
+    spacegroup: str | int | gemmi.SpaceGroup,
+    cell: tuple[float, float, float, float, float, float] | gemmi.UnitCell,
+) -> gemmi.Ccp4Map:
     ccp4_map = gemmi.Ccp4Map()
-    ccp4_map.grid = gemmi.FloatGrid(array, dtype=array.dtype)
-    ccp4_map.grid.unit_cell.set(*cell)
-    ccp4_map.grid.spacegroup = gemmi.SpaceGroup(spacegroup)
+    ccp4_map.grid = gemmi.FloatGrid(array.astype(np.float32))
+
+    if isinstance(cell, gemmi.UnitCell):
+        ccp4_map.grid.unit_cell = cell
+    else:
+        ccp4_map.grid.unit_cell.set(*cell)
+
+    if not isinstance(spacegroup, gemmi.SpaceGroup):
+        spacegroup = gemmi.SpaceGroup(spacegroup)
+    ccp4_map.grid.spacegroup = spacegroup
+
     return ccp4_map
 
 
@@ -97,7 +110,7 @@ def compute_coefficients_from_map(
     phase_label: str,
 ) -> rs.DataSet:
     # to ensure we include the final shell of reflections, add a small buffer to the resolution
-    
+
     high_resolution_buffer = 1e-8
     gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
