@@ -1,7 +1,7 @@
 from meteor import utils
 import reciprocalspaceship as rs
 import pytest
-import gemmi as gm
+import gemmi
 import pandas as pd
 import numpy as np
 
@@ -85,23 +85,16 @@ def test_compute_map_from_coefficients(flat_difference_map: rs.DataSet) -> None:
         phase_label="PHIC",
         map_sampling=1,
     )
-    assert isinstance(map, gm.Ccp4Map)
-    assert map.grid.shape == (6, 6, 6)
+    assert isinstance(map, gemmi.Ccp4Map)
+    assert map.grid.shape == (6,6,6)
 
 
-@pytest.mark.parametrize("map_sampling", [1, 2, 3, 5])
-def test_map_round_trip_ccp4_format(
+@pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
+def test_map_to_coefficients_round_trip(
     map_sampling: int, flat_difference_map: rs.DataSet
 ) -> None:
     amplitude_label = "DF"
     phase_label = "PHIC"
-
-    utils.canonicalize_amplitudes(
-        flat_difference_map,
-        amplitude_label=amplitude_label,
-        phase_label=phase_label,
-        inplace=True,
-    )
 
     map = utils.compute_map_from_coefficients(
         map_coefficients=flat_difference_map,
@@ -113,7 +106,7 @@ def test_map_round_trip_ccp4_format(
     _, dmin = utils.resolution_limits(flat_difference_map)
 
     output_coefficients = utils.compute_coefficients_from_map(
-        map=map,
+        ccp4_map=map,
         high_resolution_limit=dmin,
         amplitude_label=amplitude_label,
         phase_label=phase_label,

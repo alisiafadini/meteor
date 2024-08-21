@@ -1,7 +1,8 @@
 from pytest import fixture
 import reciprocalspaceship as rs
 import numpy as np
-import gemmi as gm
+import gemmi
+from meteor.utils import canonicalize_amplitudes
 
 
 @fixture
@@ -11,8 +12,8 @@ def random_intensities() -> rs.DataSet:
     """
 
     params = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    cell = gm.UnitCell(*params)
-    sg_1 = gm.SpaceGroup(1)
+    cell = gemmi.UnitCell(*params)
+    sg_1 = gemmi.SpaceGroup(1)
     Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 1.0, anomalous=False)
 
     H, K, L = Hall.T
@@ -38,8 +39,8 @@ def flat_difference_map() -> rs.DataSet:
     """
 
     params = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    cell = gm.UnitCell(*params)
-    sg_1 = gm.SpaceGroup(1)
+    cell = gemmi.UnitCell(*params)
+    sg_1 = gemmi.SpaceGroup(1)
     Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 5.0, anomalous=False)
 
     H, K, L = Hall.T
@@ -57,5 +58,12 @@ def flat_difference_map() -> rs.DataSet:
 
     ds.set_index(["H", "K", "L"], inplace=True)
     ds["DF"] = ds["DF"].astype("SFAmplitude")
+
+    canonicalize_amplitudes(
+        ds,
+        amplitude_label="DF",
+        phase_label="PHIC",
+        inplace=True,
+    )
 
     return ds

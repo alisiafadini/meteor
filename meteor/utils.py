@@ -1,5 +1,5 @@
 import numpy as np
-import gemmi as gm
+import gemmi
 import reciprocalspaceship as rs
 from typing import overload, Literal
 
@@ -64,15 +64,23 @@ def canonicalize_amplitudes(
         return None
 
 
+def numpy_array_to_map(array: np.ndarray, *, spacegroup: str | int, cell: tuple[float, float, float, float, float, float]) -> gemmi.Ccp4Map:
+    ccp4_map = gemmi.Ccp4Map()
+    ccp4_map.grid = gemmi.FloatGrid(array, dtype=array.dtype)
+    ccp4_map.grid.unit_cell.set(*cell)
+    ccp4_map.grid.spacegroup = gemmi.SpaceGroup(spacegroup)
+    return ccp4_map
+
+
 def compute_map_from_coefficients(
     *,
     map_coefficients: rs.DataSet,
     amplitude_label: str,
     phase_label: str,
     map_sampling: int,
-) -> gm.Ccp4Map:
+) -> gemmi.Ccp4Map:
     map_coefficients_gemmi_format = map_coefficients.to_gemmi()
-    ccp4_map = gm.Ccp4Map()
+    ccp4_map = gemmi.Ccp4Map()
     ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
         amplitude_label, phase_label, sample_rate=map_sampling
     )
@@ -83,59 +91,26 @@ def compute_map_from_coefficients(
 
 def compute_coefficients_from_map(
     *,
-    map: np.ndarray | gm.Ccp4Map,
-    high_resolution_limit: float,
-    amplitude_label: str,
-    phase_label: str,
-) -> rs.DataSet:
-    if isinstance(map, np.ndarray):
-        return _compute_coefficients_from_numpy_array(
-            map_array=map,
-            high_resolution_limit=high_resolution_limit,
-            amplitude_label=amplitude_label,
-            phase_label=phase_label,
-        )
-    elif isinstance(map, gm.Ccp4Map):
-        return _compute_coefficients_from_ccp4_map(
-            ccp4_map=map,
-            high_resolution_limit=high_resolution_limit,
-            amplitude_label=amplitude_label,
-            phase_label=phase_label,
-        )
-    else:
-        raise TypeError(f"invalid type {type(map)} for `map`")
-
-
-def _compute_coefficients_from_numpy_array(
-    *,
-    map_array: np.ndarray,
-    high_resolution_limit: float,
-    amplitude_label: str,
-    phase_label: str,
-) -> rs.DataSet: ...
-
-
-def _compute_coefficients_from_ccp4_map(
-    *,
-    ccp4_map: gm.Ccp4Map,
+    ccp4_map: gemmi.Ccp4Map,
     high_resolution_limit: float,
     amplitude_label: str,
     phase_label: str,
 ) -> rs.DataSet:
     # to ensure we include the final shell of reflections, add a small buffer to the resolution
-    high_resolution_buffer = 0.05
-
-    gemmi_structure_factors = gm.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
+    
+    high_resolution_buffer = 1e-8
+    gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
         dmin=high_resolution_limit - high_resolution_buffer, with_sys_abs=True
     )
 
-    mtz = gm.Mtz(with_base=True)
+    mtz = gemmi.Mtz(with_base=True)
     mtz.spacegroup = gemmi_structure_factors.spacegroup
     mtz.set_cell_for_all(gemmi_structure_factors.unit_cell)
     mtz.add_dataset("FromMap")
     mtz.add_column(amplitude_label, "F")
     mtz.add_column(phase_label, "P")
+
     mtz.set_data(data)
     mtz.switch_to_asu_hkl()
 

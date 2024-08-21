@@ -1,5 +1,5 @@
 import numpy as np
-import gemmi as gm
+import gemmi
 import reciprocalspaceship as rs
 
 from skimage.restoration import denoise_tv_chambolle
@@ -12,6 +12,7 @@ from .utils import (
     compute_map_from_coefficients,
     compute_coefficients_from_map,
     resolution_limits,
+    numpy_array_to_map,
 )
 from .settings import (
     TV_LAMBDA_RANGE,
@@ -23,12 +24,12 @@ from .settings import (
 )
 
 
-def _tv_denoise_ccp4_map(*, map: gm.Ccp4Map, weight: float) -> np.ndarray:
+def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """
     Closure convienence function to generate more readable code.
     """
     denoised_map = denoise_tv_chambolle(
-        np.array(map.grid),
+        map_as_array,
         weight=weight,
         eps=TV_STOP_TOLERANCE,
         max_num_iter=TV_MAX_NUM_ITER,
@@ -59,12 +60,13 @@ def tv_denoise_difference_map(
         map_sampling=TV_MAP_SAMPLING,
     )
 
+    difference_map_as_array = np.array(difference_map.grid)
+
     def negentropy_objective(tv_lambda: float):
-        denoised_map = _tv_denoise_ccp4_map(map=difference_map, weight=tv_lambda)
+        denoised_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=tv_lambda)
         return negentropy(denoised_map.flatten())
 
     optimal_lambda: float
-
     if lambda_values_to_scan:
         highest_negentropy = -1e8
         for tv_lambda in lambda_values_to_scan:
@@ -81,25 +83,22 @@ def tv_denoise_difference_map(
         ), "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
 
-    final_map_array = _tv_denoise_ccp4_map(map=difference_map, weight=optimal_lambda)
+    final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
+    final_map = numpy_array_to_map(
+        final_map,
+        spacegroup=difference_map_coefficients.spacegroup,
+        cell=difference_map_coefficients.cell
+    )
 
-    # TODO: verify correctness
-
-    _, high_resolution_limit = resolution_limits(difference_map_coefficients)
+    _, dmin = resolution_limits(difference_map_coefficients)
     final_map_coefficients = compute_coefficients_from_map(
-        map=final_map_array,
-        high_resolution_limit=high_resolution_limit,
+        ccp4_map=final_map,
+        high_resolution_limit=dmin,
         amplitude_label=TV_AMPLITUDE_LABEL,
         phase_label=TV_PHASE_LABEL,
     )
 
-    # TODO: need to be sure HKLs line up
-    difference_map_coefficients[[TV_AMPLITUDE_LABEL]] = np.abs(final_map_coefficients)
-    difference_map_coefficients[[TV_PHASE_LABEL]] = np.angle(
-        final_map_coefficients, deg=True
-    )
-
-    return difference_map_coefficients
+    return final_map_coefficients
 
 
 def iterative_tv_phase_retrieval(): ...
