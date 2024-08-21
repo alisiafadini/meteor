@@ -21,6 +21,7 @@ def cut_resolution(dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin
 @overload
 def canonicalize_amplitudes(
         dataset: rs.DataSet,
+        *,
         amplitude_label: str,
         phase_label: str,
         inplace: Literal[False],
@@ -31,6 +32,7 @@ def canonicalize_amplitudes(
 @overload
 def canonicalize_amplitudes(
         dataset: rs.DataSet,
+        *,
         amplitude_label: str,
         phase_label: str,
         inplace: Literal[True],
@@ -40,6 +42,7 @@ def canonicalize_amplitudes(
 
 def canonicalize_amplitudes(
         dataset: rs.DataSet,
+        *,
         amplitude_label: str,
         phase_label: str,
         inplace: bool = False,

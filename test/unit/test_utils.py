@@ -42,6 +42,7 @@ def test_cut_resolution(random_intensities: rs.DataSet, dmax_limit: float, dmin_
     assert dmax <= expected_max_dmax
     assert dmin >= expected_min_dmin
 
+
 @pytest.mark.parametrize("inplace", [False, True])
 def test_canonicalize_amplitudes(inplace: bool, flat_difference_map: rs.DataSet) -> None:
     amplitude_label = "DF"
@@ -83,31 +84,32 @@ def test_compute_map_from_coefficients(flat_difference_map: rs.DataSet) -> None:
     assert map.grid.shape == (6,6,6)
     
 
-# def test_map_round_trip_ccp4_format(flat_difference_map: rs.DataSet) -> None:
-#     amplitude_label = "DF"
-#     phase_label = "PHIC"
-#     map_sampling = 1
+def test_map_round_trip_ccp4_format(flat_difference_map: rs.DataSet) -> None:
+    amplitude_label = "DF"
+    phase_label = "PHIC"
+    map_sampling = 1
 
-#     flat_difference_map = utils.canonicalize_amplitudes(
-#         flat_difference_map,
-#         amplitude_label=amplitude_label,
-#         phase_label=phase_label
-#     )
+    utils.canonicalize_amplitudes(
+        flat_difference_map,
+        amplitude_label=amplitude_label,
+        phase_label=phase_label,
+        inplace=True
+    )
 
-#     map = utils.compute_map_from_coefficients(
-#         map_coefficients=flat_difference_map,
-#         amplitude_label=amplitude_label,
-#         phase_label=phase_label,
-#         map_sampling=map_sampling,
-#     )
+    map = utils.compute_map_from_coefficients(
+        map_coefficients=flat_difference_map,
+        amplitude_label=amplitude_label,
+        phase_label=phase_label,
+        map_sampling=map_sampling,
+    )
 
-#     _, dmin = utils.resolution_limits(flat_difference_map)
+    _, dmin = utils.resolution_limits(flat_difference_map)
 
-#     output_coefficients = utils.compute_coefficients_from_map(
-#         map=map,
-#         high_resolution_limit=dmin,
-#         amplitude_label=amplitude_label,
-#         phase_label=phase_label,
-#     )
+    output_coefficients = utils.compute_coefficients_from_map(
+        map=map,
+        high_resolution_limit=dmin,
+        amplitude_label=amplitude_label,
+        phase_label=phase_label,
+    )
 
-#     pd.testing.assert_frame_equal(left=flat_difference_map, right=output_coefficients, check_exact=False) 
+    pd.testing.assert_frame_equal(left=flat_difference_map, right=output_coefficients, atol=1e-5) 
