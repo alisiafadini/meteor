@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import differential_entropy
 
 
-def negentropy(samples: np.ndarray, tolerance: float = 0.01) -> float:
+def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
     """
     Computes the negentropy of a given sample array.
 

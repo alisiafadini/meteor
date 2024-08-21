@@ -40,8 +40,8 @@ def tv_denoise_difference_map(
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
     lambda_values_to_scan: Sequence[float] | None = None,
-) -> tuple[rs.DataSet, float]:
-    """ lambda_values_to_scan = None --> Golden method """
+) -> rs.DataSet:
+    """ lambda_values_to_scan = None --> Golden method , ducktype optimal_lambda """
 
     # TODO write decent docstring
 
@@ -80,7 +80,7 @@ def tv_denoise_difference_map(
     final_map = _tv_denoise_array(
         map_as_array=difference_map_as_array, weight=optimal_lambda
     )
-    final_map = numpy_array_to_map(
+    final_map_as_ccp4 = numpy_array_to_map(
         final_map,
         spacegroup=difference_map_coefficients.spacegroup,
         cell=difference_map_coefficients.cell,
@@ -88,11 +88,14 @@ def tv_denoise_difference_map(
 
     _, dmin = resolution_limits(difference_map_coefficients)
     final_map_coefficients = compute_coefficients_from_map(
-        ccp4_map=final_map,
+        ccp4_map=final_map_as_ccp4,
         high_resolution_limit=dmin,
         amplitude_label=difference_map_amplitude_column,
         phase_label=difference_map_phase_column,
     )
+
+    # ducktype for now
+    final_map_coefficients.optimal_lambda = optimal_lambda
 
     return final_map_coefficients
 
