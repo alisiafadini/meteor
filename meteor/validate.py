@@ -35,7 +35,7 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.01) -> float:
     std = np.std(samples.flatten())
     if std <= 0.0:
         return np.inf
-    
+
     neg_e = (
         0.5 * np.log(2.0 * np.pi * std**2)
         + 0.5

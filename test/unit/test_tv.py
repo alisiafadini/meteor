@@ -1,17 +1,12 @@
-
-
 import reciprocalspaceship as rs
-import gemmi as gm
-import numpy as np
 from meteor import tv
 
 
 def test_tv_denoise_difference_map_smoke(flat_difference_map: rs.DataSet) -> None:
-
     # test sequence pf specified lambda
     tv.tv_denoise_difference_map(
         difference_map_coefficients=flat_difference_map,
-        lambda_values_to_scan=[1.0, 2.0]
+        lambda_values_to_scan=[1.0, 2.0],
     )
 
     # test golden optimizer
@@ -21,8 +16,7 @@ def test_tv_denoise_difference_map_smoke(flat_difference_map: rs.DataSet) -> Non
     )
 
 
-def test_tv_denoise_difference_map_golden():
-    ...
+def test_tv_denoise_difference_map_golden(): ...
 
-def test_tv_denoise_difference_map_specific_lambdas():
-    ...
+
+def test_tv_denoise_difference_map_specific_lambdas(): ...

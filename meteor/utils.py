@@ -1,7 +1,7 @@
 import numpy as np
 import gemmi as gm
 import reciprocalspaceship as rs
-from typing import overload, Literal, Union
+from typing import overload, Literal
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
@@ -9,7 +9,12 @@ def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
     return dHKL.max(), dHKL.min()
 
 
-def cut_resolution(dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin_limit: float | None = None) -> rs.DataSet:
+def cut_resolution(
+    dataset: rs.DataSet,
+    *,
+    dmax_limit: float | None = None,
+    dmin_limit: float | None = None,
+) -> rs.DataSet:
     dHKL = dataset.compute_dHKL()["dHKL"]
     if dmax_limit:
         dataset = dataset.loc[(dHKL <= dmax_limit)]
@@ -20,34 +25,31 @@ def cut_resolution(dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin
 
 @overload
 def canonicalize_amplitudes(
-        dataset: rs.DataSet,
-        *,
-        amplitude_label: str,
-        phase_label: str,
-        inplace: Literal[False],
-    ) -> rs.DataSet:
-    ...
+    dataset: rs.DataSet,
+    *,
+    amplitude_label: str,
+    phase_label: str,
+    inplace: Literal[False],
+) -> rs.DataSet: ...
 
 
 @overload
 def canonicalize_amplitudes(
-        dataset: rs.DataSet,
-        *,
-        amplitude_label: str,
-        phase_label: str,
-        inplace: Literal[True],
-    ) -> None:
-    ...
+    dataset: rs.DataSet,
+    *,
+    amplitude_label: str,
+    phase_label: str,
+    inplace: Literal[True],
+) -> None: ...
 
 
 def canonicalize_amplitudes(
-        dataset: rs.DataSet,
-        *,
-        amplitude_label: str,
-        phase_label: str,
-        inplace: bool = False,
-    ) -> rs.DataSet | None:
-
+    dataset: rs.DataSet,
+    *,
+    amplitude_label: str,
+    phase_label: str,
+    inplace: bool = False,
+) -> rs.DataSet | None:
     dataset.canonicalize_phases(inplace=inplace)
     if not inplace:
         dataset = dataset.copy(deep=True)
@@ -69,7 +71,6 @@ def compute_map_from_coefficients(
     phase_label: str,
     map_sampling: int,
 ) -> gm.Ccp4Map:
-    
     map_coefficients_gemmi_format = map_coefficients.to_gemmi()
     ccp4_map = gm.Ccp4Map()
     ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
@@ -92,18 +93,17 @@ def compute_coefficients_from_map(
             map_array=map,
             high_resolution_limit=high_resolution_limit,
             amplitude_label=amplitude_label,
-            phase_label=phase_label
+            phase_label=phase_label,
         )
     elif isinstance(map, gm.Ccp4Map):
         return _compute_coefficients_from_ccp4_map(
             ccp4_map=map,
             high_resolution_limit=high_resolution_limit,
             amplitude_label=amplitude_label,
-            phase_label=phase_label
+            phase_label=phase_label,
         )
     else:
         raise TypeError(f"invalid type {type(map)} for `map`")
-
 
 
 def _compute_coefficients_from_numpy_array(
@@ -112,8 +112,7 @@ def _compute_coefficients_from_numpy_array(
     high_resolution_limit: float,
     amplitude_label: str,
     phase_label: str,
-) -> rs.DataSet:
-    ...
+) -> rs.DataSet: ...
 
 
 def _compute_coefficients_from_ccp4_map(

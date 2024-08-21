@@ -15,13 +15,13 @@ def random_intensities() -> rs.DataSet:
     sg_1 = gm.SpaceGroup(1)
     Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 1.0, anomalous=False)
 
-    h, k, l = Hall.T
+    H, K, L = Hall.T
     ds = rs.DataSet(
         {
-            "H": h,
-            "K": k,
-            "L": l,
-            "IMEAN": np.abs(np.random.randn(len(h))),
+            "H": H,
+            "K": K,
+            "L": L,
+            "IMEAN": np.abs(np.random.randn(len(H))),
         },
         spacegroup=sg_1,
         cell=cell,
@@ -42,19 +42,19 @@ def flat_difference_map() -> rs.DataSet:
     sg_1 = gm.SpaceGroup(1)
     Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 5.0, anomalous=False)
 
-    h, k, l = Hall.T
+    H, K, L = Hall.T
     ds = rs.DataSet(
         {
-            "H": h,
-            "K": k,
-            "L": l,
-            "DF": np.random.randn(len(h)),
-            "PHIC": np.zeros(len(h)),
+            "H": H,
+            "K": K,
+            "L": L,
+            "DF": np.random.randn(len(H)),
+            "PHIC": np.zeros(len(H)),
         },
         spacegroup=sg_1,
         cell=cell,
     ).infer_mtz_dtypes()
-    
+
     ds.set_index(["H", "K", "L"], inplace=True)
     ds["DF"] = ds["DF"].astype("SFAmplitude")
 
