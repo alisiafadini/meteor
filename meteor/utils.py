@@ -1,6 +1,7 @@
 import numpy as np
 import gemmi as gm
 import reciprocalspaceship as rs
+from typing import overload, Literal, Union
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
@@ -17,34 +18,45 @@ def cut_resolution(dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin
     return dataset
 
 
+@overload
 def canonicalize_amplitudes(
         dataset: rs.DataSet,
         amplitude_label: str,
         phase_label: str,
+        inplace: Literal[False],
     ) -> rs.DataSet:
-    # TODO review and improve
-    # I think we can infer phase types
+    ...
 
-    new_phis = dataset[phase_label].copy(deep=True)
-    new_Fs = dataset[amplitude_label].copy(deep=True)
 
-    negs = np.where(dataset[amplitude_label] < 0)
+@overload
+def canonicalize_amplitudes(
+        dataset: rs.DataSet,
+        amplitude_label: str,
+        phase_label: str,
+        inplace: Literal[True],
+    ) -> None:
+    ...
 
-    dataset.canonicalize_phases(inplace=True)
 
-    for i in negs:
-        new_phis.iloc[i] = dataset[phase_label].iloc[i] + 180
-        new_Fs.iloc[i] = np.abs(new_Fs.iloc[i])
+def canonicalize_amplitudes(
+        dataset: rs.DataSet,
+        amplitude_label: str,
+        phase_label: str,
+        inplace: bool = False,
+    ) -> rs.DataSet | None:
 
-    new_phis.canonicalize_phases(inplace=True)
+    dataset.canonicalize_phases(inplace=inplace)
+    if not inplace:
+        dataset = dataset.copy(deep=True)
 
-    df_new = dataset.copy(deep=True)
-    df_new[amplitude_label] = new_Fs
-    df_new[amplitude_label] = df_new[amplitude_label].astype("SFAmplitude")
-    df_new[phase_label] = new_phis
-    df_new[phase_label] = df_new[phase_label].astype("Phase")
+    negative_amplitude_indices = dataset[amplitude_label] < 0.0
+    dataset[amplitude_label] = np.abs(dataset[amplitude_label])
+    dataset.loc[negative_amplitude_indices, phase_label] += 180.0
 
-    return df_new
+    if not inplace:
+        return dataset
+    else:
+        return None
 
 
 def compute_map_from_coefficients(
@@ -79,7 +91,7 @@ def compute_coefficients_from_map(
             amplitude_label=amplitude_label,
             phase_label=phase_label
         )
-    elif isinstance(map, np.ndarray):
+    elif isinstance(map, gm.Ccp4Map):
         return _compute_coefficients_from_ccp4_map(
             ccp4_map=map,
             high_resolution_limit=high_resolution_limit,
@@ -111,7 +123,7 @@ def _compute_coefficients_from_ccp4_map(
     # to ensure we include the final shell of reflections, add a small buffer to the resolution
     high_resolution_buffer = 0.05
 
-    gemmi_structure_factors = gm.transform_map_to_f_phi(map.grid, half_l=False)
+    gemmi_structure_factors = gm.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
         dmin=high_resolution_limit - high_resolution_buffer, with_sys_abs=True
     )

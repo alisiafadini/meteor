@@ -8,7 +8,7 @@ from scipy.optimize import minimize_scalar
 from typing import Sequence
 
 from .validate import negentropy
-from .utils import compute_map_from_coefficients, compute_coefficients_from_map
+from .utils import compute_map_from_coefficients, compute_coefficients_from_map, resolution_limits
 from .settings import (
     TV_LAMBDA_RANGE,
     TV_STOP_TOLERANCE,
@@ -73,14 +73,20 @@ def tv_denoise_difference_map(
         optimizer_result = minimize_scalar(
             negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
         )
-        assert optimizer_result.success
+        assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
 
     final_map_array = _tv_denoise_ccp4_map(map=difference_map, weight=optimal_lambda)
 
     # TODO: verify correctness
-    final_map_coefficients = (np.fft.fftn(final_map_array)[::TV_MAP_SAMPLING, ::TV_MAP_SAMPLING, ::TV_MAP_SAMPLING]).flatten()
-    print(final_map_coefficients.shape, len(difference_map_coefficients))
+
+    _, high_resolution_limit = resolution_limits(difference_map_coefficients)
+    final_map_coefficients = compute_coefficients_from_map(
+        map=final_map_array,
+        high_resolution_limit=high_resolution_limit,
+        amplitude_label=TV_AMPLITUDE_LABEL,
+        phase_label=TV_PHASE_LABEL,
+    )
 
     # TODO: need to be sure HKLs line up
     difference_map_coefficients[[TV_AMPLITUDE_LABEL]] = np.abs(final_map_coefficients)
