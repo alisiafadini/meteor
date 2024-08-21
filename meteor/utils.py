@@ -1,75 +1,48 @@
 import numpy as np
 import gemmi as gm
 import reciprocalspaceship as rs
-from scipy.stats import binned_statistic
 
 
-def res_cutoff(df, h_res, l_res):
-    """
-    Apply specified low and high resolution cutoffs to rs.Dataset.
-    """
-    df = df.loc[(df["dHKL"] >= h_res) & (df["dHKL"] <= l_res)]
-    return df
+def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
+    dHKL = dataset.compute_dHKL()["dHKL"]
+    return dHKL.max(), dHKL.min()
 
 
-def resolution_shells(data, dhkl, n):
-    """Average data in n resolution shells"""
-
-    mean_data = binned_statistic(
-        dhkl, data, statistic="mean", bins=n, range=(np.min(dhkl), np.max(dhkl))
-    )
-    bin_centers = (mean_data.bin_edges[:-1] + mean_data.bin_edges[1:]) / 2
-
-    return bin_centers, mean_data.statistic
+def cut_resolution(dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin_limit: float | None = None) -> rs.DataSet:
+    dHKL = dataset.compute_dHKL()["dHKL"]
+    if dmax_limit:
+        dataset = dataset.loc[(dHKL <= dmax_limit)]
+    if dmin_limit:
+        dataset = dataset.loc[(dHKL >= dmin_limit)]
+    return dataset
 
 
-def adjust_phi_interval(phi):
-    """Given a set of phases, return the equivalent in -180 <= phi <= 180 interval"""
+def canonicalize_amplitudes(
+        dataset: rs.DataSet,
+        amplitude_label: str,
+        phase_label: str,
+    ) -> rs.DataSet:
+    # TODO review and improve
+    # I think we can infer phase types
 
-    phi = phi % 360
-    phi[phi > 180] -= 360
+    new_phis = dataset[phase_label].copy(deep=True)
+    new_Fs = dataset[amplitude_label].copy(deep=True)
 
-    assert np.min(phi) >= -181
-    assert np.max(phi) <= 181
+    negs = np.where(dataset[amplitude_label] < 0)
 
-    return phi
-
-
-def positive_Fs(df, phases, Fs, phases_new, Fs_new):
-    """
-    Convert between an MTZ format where difference structure factor amplitudes are saved as both positive and negative, to format where they are only positive.
-
-    Parameters :
-
-    df                 : (rs.Dataset) from MTZ of interest
-    phases, Fs         : (str) labels for phases and amplitudes in original MTZ
-    phases_new, Fs_new : (str) labels for phases and amplitudes in new MTZ
-
-
-    Returns :
-
-    rs.Dataset with new labels
-
-    """
-
-    new_phis = df[phases].copy(deep=True)
-    new_Fs = df[Fs].copy(deep=True)
-
-    negs = np.where(df[Fs] < 0)
-
-    df[phases] = adjust_phi_interval(df[phases])
+    dataset.canonicalize_phases(inplace=True)
 
     for i in negs:
-        new_phis.iloc[i] = df[phases].iloc[i] + 180
+        new_phis.iloc[i] = dataset[phase_label].iloc[i] + 180
         new_Fs.iloc[i] = np.abs(new_Fs.iloc[i])
 
-    new_phis = adjust_phi_interval(new_phis)
+    new_phis.canonicalize_phases(inplace=True)
 
-    df_new = df.copy(deep=True)
-    df_new[Fs_new] = new_Fs
-    df_new[Fs_new] = df_new[Fs_new].astype("SFAmplitude")
-    df_new[phases_new] = new_phis
-    df_new[phases_new] = df_new[phases_new].astype("Phase")
+    df_new = dataset.copy(deep=True)
+    df_new[amplitude_label] = new_Fs
+    df_new[amplitude_label] = df_new[amplitude_label].astype("SFAmplitude")
+    df_new[phase_label] = new_phis
+    df_new[phase_label] = df_new[phase_label].astype("Phase")
 
     return df_new
 
@@ -81,6 +54,7 @@ def compute_map_from_coefficients(
     phase_label: str,
     map_sampling: int,
 ) -> gm.Ccp4Map:
+    
     map_coefficients_gemmi_format = map_coefficients.to_gemmi()
     ccp4_map = gm.Ccp4Map()
     ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
@@ -93,6 +67,42 @@ def compute_map_from_coefficients(
 
 def compute_coefficients_from_map(
     *,
+    map: np.ndarray | gm.Ccp4Map,
+    high_resolution_limit: float,
+    amplitude_label: str,
+    phase_label: str,
+) -> rs.DataSet:
+    if isinstance(map, np.ndarray):
+        return _compute_coefficients_from_numpy_array(
+            map_array=map,
+            high_resolution_limit=high_resolution_limit,
+            amplitude_label=amplitude_label,
+            phase_label=phase_label
+        )
+    elif isinstance(map, np.ndarray):
+        return _compute_coefficients_from_ccp4_map(
+            ccp4_map=map,
+            high_resolution_limit=high_resolution_limit,
+            amplitude_label=amplitude_label,
+            phase_label=phase_label
+        )
+    else:
+        raise TypeError(f"invalid type {type(map)} for `map`")
+
+
+
+def _compute_coefficients_from_numpy_array(
+    *,
+    map_array: np.ndarray,
+    high_resolution_limit: float,
+    amplitude_label: str,
+    phase_label: str,
+) -> rs.DataSet:
+    ...
+
+
+def _compute_coefficients_from_ccp4_map(
+    *,
     ccp4_map: gm.Ccp4Map,
     high_resolution_limit: float,
     amplitude_label: str,
@@ -101,7 +111,7 @@ def compute_coefficients_from_map(
     # to ensure we include the final shell of reflections, add a small buffer to the resolution
     high_resolution_buffer = 0.05
 
-    gemmi_structure_factors = gm.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
+    gemmi_structure_factors = gm.transform_map_to_f_phi(map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
         dmin=high_resolution_limit - high_resolution_buffer, with_sys_abs=True
     )
