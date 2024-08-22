@@ -3,6 +3,13 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
+from dataclasses import dataclass
+
+
+@dataclass
+class MapLabels:
+    amplitude: str
+    phases: str
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:

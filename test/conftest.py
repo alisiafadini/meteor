@@ -3,11 +3,18 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.utils import canonicalize_amplitudes
+from meteor.utils import canonicalize_amplitudes, MapLabels
 
 
 @pytest.fixture
-def random_difference_map() -> rs.DataSet:
+def diffmap_labels() -> MapLabels:
+    return MapLabels(
+        amplitude="DF",
+        phases="PHIC",
+    )
+
+@pytest.fixture
+def random_difference_map(diffmap_labels: MapLabels) -> rs.DataSet:
     resolution = 1.0
     cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     space_group = gemmi.SpaceGroup(1)
@@ -21,8 +28,8 @@ def random_difference_map() -> rs.DataSet:
             "H": h,
             "K": k,
             "L": l,
-            "DF": np.random.randn(number_of_reflections),
-            "PHIC": np.random.uniform(-180, 180, size=number_of_reflections),
+            diffmap_labels.amplitude: np.random.randn(number_of_reflections),
+            diffmap_labels.phases: np.random.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=space_group,
         cell=cell,

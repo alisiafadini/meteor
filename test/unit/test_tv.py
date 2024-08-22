@@ -6,11 +6,9 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor import tv
-from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients
+from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients, MapLabels
 
-# TODO make these universal in the tests
-TEST_AMPLITUDE_LABEL = "DF"
-TEST_PHASE_LABEL = "PHIC"
+
 
 
 def _generate_single_carbon_density(
@@ -80,17 +78,17 @@ def displaced_single_atom_difference_map_coefficients(
     return difference_map_coefficients
 
 
-def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet) -> float:
+def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: MapLabels) -> float:
     map1 = compute_map_from_coefficients(
         map_coefficients=ds1,
-        amplitude_label=TEST_AMPLITUDE_LABEL,
-        phase_label=TEST_PHASE_LABEL,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
         map_sampling=3,
     )
     map2 = compute_map_from_coefficients(
         map_coefficients=ds2,
-        amplitude_label=TEST_AMPLITUDE_LABEL,
-        phase_label=TEST_PHASE_LABEL,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
         map_sampling=3,
     )
 
@@ -130,36 +128,37 @@ def test_tv_denoise_difference_map_smoke(random_difference_map: rs.DataSet) -> N
 
 @pytest.mark.parametrize("lambda_values_to_scan", [None, np.logspace(-3, 2, 100)])
 def test_tv_denoise_difference_map(
-    lambda_values_to_scan: None | Sequence[float], noise_free_map: rs.DataSet, noisy_map: rs.DataSet
+    lambda_values_to_scan: None | Sequence[float], noise_free_map: rs.DataSet, noisy_map: rs.DataSet, diffmap_labels: MapLabels,
 ) -> None:
-    rms_before_denoising = rms_between_coefficients(noise_free_map, noisy_map)
+    rms_before_denoising = rms_between_coefficients(noise_free_map, noisy_map, diffmap_labels)
     denoised_map, result = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=True,
     )
-    rms_after_denoising = rms_between_coefficients(noise_free_map, denoised_map)
-    # assert rms_after_denoising < rms_before_denoising
-    print("xyz", result.optimal_lambda, rms_before_denoising, rms_after_denoising)
+    rms_after_denoising = rms_between_coefficients(noise_free_map, denoised_map, diffmap_labels)
+    assert rms_after_denoising < rms_before_denoising
 
-    testmap = compute_map_from_coefficients(
-        map_coefficients=noise_free_map,
-        amplitude_label=TEST_AMPLITUDE_LABEL,
-        phase_label=TEST_PHASE_LABEL,
-        map_sampling=1,
-    )
-    testmap.write_ccp4_map("original.ccp4")
-    testmap = compute_map_from_coefficients(
-        map_coefficients=noisy_map,
-        amplitude_label=TEST_AMPLITUDE_LABEL,
-        phase_label=TEST_PHASE_LABEL,
-        map_sampling=1,
-    )
-    testmap.write_ccp4_map("noisy.ccp4")
-    testmap = compute_map_from_coefficients(
-        map_coefficients=denoised_map,
-        amplitude_label=TEST_AMPLITUDE_LABEL,
-        phase_label=TEST_PHASE_LABEL,
-        map_sampling=1,
-    )
-    testmap.write_ccp4_map("denoised.ccp4")
+    # print("xyz", result.optimal_lambda, rms_before_denoising, rms_after_denoising)
+
+    # testmap = compute_map_from_coefficients(
+    #     map_coefficients=noise_free_map,
+    #     amplitude_label=diffmap_labels.amplitude,
+    #     phase_label=diffmap_labels.phases,
+    #     map_sampling=1,
+    # )
+    # testmap.write_ccp4_map("original.ccp4")
+    # testmap = compute_map_from_coefficients(
+    #     map_coefficients=noisy_map,
+    #     amplitude_label=diffmap_labels.amplitude,
+    #     phase_label=diffmap_labels.phases,
+    #     map_sampling=1,
+    # )
+    # testmap.write_ccp4_map("noisy.ccp4")
+    # testmap = compute_map_from_coefficients(
+    #     map_coefficients=denoised_map,
+    #     amplitude_label=diffmap_labels.amplitude,
+    #     phase_label=diffmap_labels.phases,
+    #     map_sampling=1,
+    # )
+    # testmap.write_ccp4_map("denoised.ccp4")

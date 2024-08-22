@@ -47,41 +47,39 @@ def test_cut_resolution(
 
 
 @pytest.mark.parametrize("inplace", [False, True])
-def test_canonicalize_amplitudes(inplace: bool, random_difference_map: rs.DataSet) -> None:
-    amplitude_label = "DF"
-    phase_label = "PHIC"
+def test_canonicalize_amplitudes(inplace: bool, random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels) -> None:
 
     if inplace:
         canonicalized = random_difference_map
         utils.canonicalize_amplitudes(
             canonicalized,
-            amplitude_label=amplitude_label,
-            phase_label=phase_label,
+            amplitude_label=diffmap_labels.amplitude,
+            phase_label=diffmap_labels.phases,
             inplace=inplace,
         )
     else:
         canonicalized = utils.canonicalize_amplitudes(
             random_difference_map,
-            amplitude_label=amplitude_label,
-            phase_label=phase_label,
+            amplitude_label=diffmap_labels.amplitude,
+            phase_label=diffmap_labels.phases,
             inplace=inplace,
         )
 
-    assert (canonicalized[amplitude_label] >= 0.0).all(), "not all amplitudes positive"
-    assert (canonicalized[phase_label] >= -180.0).all(), "not all phases > -180"
-    assert (canonicalized[phase_label] <= 180.0).all(), "not all phases < +180"
+    assert (canonicalized[diffmap_labels.amplitude] >= 0.0).all(), "not all amplitudes positive"
+    assert (canonicalized[diffmap_labels.phases] >= -180.0).all(), "not all phases > -180"
+    assert (canonicalized[diffmap_labels.phases] <= 180.0).all(), "not all phases < +180"
 
     np.testing.assert_almost_equal(
-        np.array(np.abs(random_difference_map[amplitude_label])),
-        np.array(canonicalized[amplitude_label]),
+        np.array(np.abs(random_difference_map[diffmap_labels.amplitude])),
+        np.array(canonicalized[diffmap_labels.amplitude]),
     )
 
 
-def test_compute_map_from_coefficients(random_difference_map: rs.DataSet) -> None:
+def test_compute_map_from_coefficients(random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels) -> None:
     map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
-        amplitude_label="DF",
-        phase_label="PHIC",
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
         map_sampling=1,
     )
     assert isinstance(map, gemmi.Ccp4Map)
@@ -89,16 +87,13 @@ def test_compute_map_from_coefficients(random_difference_map: rs.DataSet) -> Non
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
 def test_map_to_coefficients_round_trip(
-    map_sampling: int, random_difference_map: rs.DataSet
+    map_sampling: int, random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels
 ) -> None:
-    # TODO fix this
-    amplitude_label = "DF"
-    phase_label = "PHIC"
 
     map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
-        amplitude_label=amplitude_label,
-        phase_label=phase_label,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
         map_sampling=map_sampling,
     )
 
@@ -107,11 +102,11 @@ def test_map_to_coefficients_round_trip(
     output_coefficients = utils.compute_coefficients_from_map(
         ccp4_map=map,
         high_resolution_limit=dmin,
-        amplitude_label=amplitude_label,
-        phase_label=phase_label,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
     )
 
     utils.canonicalize_amplitudes(
-        output_coefficients, amplitude_label=amplitude_label, phase_label=phase_label, inplace=True
+        output_coefficients, amplitude_label=diffmap_labels.amplitude, phase_label=diffmap_labels.phases, inplace=True
     )
     pd.testing.assert_frame_equal(left=random_difference_map, right=output_coefficients, atol=0.5)
