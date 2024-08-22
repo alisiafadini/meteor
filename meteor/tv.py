@@ -25,6 +25,7 @@ from .validate import negentropy
 class TvDenoiseResult:
     optimal_lambda: float
     optimal_negentropy: float
+    map_sampling_used_for_tv: float
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
@@ -178,7 +179,9 @@ def tv_denoise_difference_map(
 
     if full_output:
         tv_result = TvDenoiseResult(
-            optimal_lambda=optimal_lambda, optimal_negentropy=highest_negentropy
+            optimal_lambda=optimal_lambda,
+            optimal_negentropy=highest_negentropy,
+            map_sampling_used_for_tv=TV_MAP_SAMPLING,
         )
         return final_map_coefficients, tv_result
     else:
