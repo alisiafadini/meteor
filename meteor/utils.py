@@ -5,6 +5,8 @@ import gemmi
 import numpy as np
 import reciprocalspaceship as rs
 
+GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+
 
 @dataclass
 class MapLabels:
@@ -120,10 +122,9 @@ def compute_coefficients_from_map(
 ) -> rs.DataSet:
     # to ensure we include the final shell of reflections, add a small buffer to the resolution
 
-    high_resolution_buffer = 1e-4
     gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
-        dmin=high_resolution_limit - high_resolution_buffer, with_sys_abs=True
+        dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER, with_sys_abs=True
     )
 
     mtz = gemmi.Mtz(with_base=True)
