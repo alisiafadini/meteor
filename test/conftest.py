@@ -1,7 +1,8 @@
-from pytest import fixture
-import reciprocalspaceship as rs
-import numpy as np
 import gemmi
+import numpy as np
+import reciprocalspaceship as rs
+from pytest import fixture
+
 from meteor.utils import canonicalize_amplitudes
 
 

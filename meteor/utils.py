@@ -1,7 +1,8 @@
-import numpy as np
+from typing import Literal, overload
+
 import gemmi
+import numpy as np
 import reciprocalspaceship as rs
-from typing import overload, Literal
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:

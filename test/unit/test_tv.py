@@ -1,9 +1,10 @@
-import reciprocalspaceship as rs
-from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients
-from meteor import tv
 import gemmi
 import numpy as np
+import reciprocalspaceship as rs
 from pytest import fixture
+
+from meteor import tv
+from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients
 
 # TODO make these universal in the tests
 TEST_AMPLITUDE_LABEL = "DF"
@@ -47,7 +48,8 @@ def _generate_single_carbon_density(
 
 
 def displaced_single_atom_difference_map_coefficients(
-    *, noise_sigma: float,
+    *,
+    noise_sigma: float,
 ) -> rs.DataSet:
     unit_cell = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
     space_group = gemmi.find_spacegroup_by_name("P1")
@@ -56,12 +58,22 @@ def displaced_single_atom_difference_map_coefficients(
     carbon_position1 = (5.0, 5.0, 5.0)
     carbon_position2 = (5.1, 5.0, 5.0)
 
-    density1 = _generate_single_carbon_density(carbon_position1, space_group, unit_cell, d_min)
-    density2 = _generate_single_carbon_density(carbon_position2, space_group, unit_cell, d_min)
+    density1 = _generate_single_carbon_density(
+        carbon_position1, space_group, unit_cell, d_min
+    )
+    density2 = _generate_single_carbon_density(
+        carbon_position2, space_group, unit_cell, d_min
+    )
 
     ccp4_map = gemmi.Ccp4Map()
-    grid_values = np.array(density2) - np.array(density1) + noise_sigma * np.random.randn(*density2.shape)
-    ccp4_map.grid = gemmi.FloatGrid(grid_values.astype(np.float32), unit_cell, space_group)
+    grid_values = (
+        np.array(density2)
+        - np.array(density1)
+        + noise_sigma * np.random.randn(*density2.shape)
+    )
+    ccp4_map.grid = gemmi.FloatGrid(
+        grid_values.astype(np.float32), unit_cell, space_group
+    )
     ccp4_map.update_ccp4_header()
 
     difference_map_coefficients = compute_coefficients_from_map(
@@ -80,13 +92,13 @@ def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet) -> float:
         map_coefficients=ds1,
         amplitude_label=TEST_AMPLITUDE_LABEL,
         phase_label=TEST_PHASE_LABEL,
-        map_sampling=3
+        map_sampling=3,
     )
     map2 = compute_map_from_coefficients(
         map_coefficients=ds2,
         amplitude_label=TEST_AMPLITUDE_LABEL,
         phase_label=TEST_PHASE_LABEL,
-        map_sampling=3
+        map_sampling=3,
     )
 
     map1_array = np.array(map2.grid)
@@ -123,39 +135,43 @@ def test_tv_denoise_difference_map_smoke(flat_difference_map: rs.DataSet) -> Non
     )
 
 
-def test_tv_denoise_difference_map_golden(noise_free_map: rs.DataSet, noisy_map: rs.DataSet) -> None:
+def test_tv_denoise_difference_map_golden(
+    noise_free_map: rs.DataSet, noisy_map: rs.DataSet
+) -> None:
     rms_before_denoising = rms_between_coefficients(noise_free_map, noisy_map)
     denoised_map = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,
     )
     rms_after_denoising = rms_between_coefficients(noise_free_map, denoised_map)
-    #assert rms_after_denoising < rms_before_denoising
+    # assert rms_after_denoising < rms_before_denoising
     print("xyz", denoised_map.optimal_lambda, rms_before_denoising, rms_after_denoising)
 
-    # testmap = compute_map_from_coefficients(
-    #     map_coefficients=noise_free_map,
-    #     amplitude_label=TEST_AMPLITUDE_LABEL,
-    #     phase_label=TEST_PHASE_LABEL,
-    #     map_sampling=1
-    # )
-    # testmap.write_ccp4_map("original.ccp4")
-    # testmap = compute_map_from_coefficients(
-    #     map_coefficients=noisy_map,
-    #     amplitude_label=TEST_AMPLITUDE_LABEL,
-    #     phase_label=TEST_PHASE_LABEL,
-    #     map_sampling=1
-    # )
-    # testmap.write_ccp4_map("noisy.ccp4")
-    # testmap = compute_map_from_coefficients(
-    #     map_coefficients=denoised_map,
-    #     amplitude_label=TEST_AMPLITUDE_LABEL,
-    #     phase_label=TEST_PHASE_LABEL,
-    #     map_sampling=1
-    # )
-    # testmap.write_ccp4_map("denoised.ccp4")
+    testmap = compute_map_from_coefficients(
+        map_coefficients=noise_free_map,
+        amplitude_label=TEST_AMPLITUDE_LABEL,
+        phase_label=TEST_PHASE_LABEL,
+        map_sampling=1,
+    )
+    testmap.write_ccp4_map("original.ccp4")
+    testmap = compute_map_from_coefficients(
+        map_coefficients=noisy_map,
+        amplitude_label=TEST_AMPLITUDE_LABEL,
+        phase_label=TEST_PHASE_LABEL,
+        map_sampling=1,
+    )
+    testmap.write_ccp4_map("noisy.ccp4")
+    testmap = compute_map_from_coefficients(
+        map_coefficients=denoised_map,
+        amplitude_label=TEST_AMPLITUDE_LABEL,
+        phase_label=TEST_PHASE_LABEL,
+        map_sampling=1,
+    )
+    testmap.write_ccp4_map("denoised.ccp4")
 
 
-def test_tv_denoise_difference_map_specific_lambdas(noise_free_map: rs.DataSet, noisy_map: rs.DataSet) -> None:
+def test_tv_denoise_difference_map_specific_lambdas(
+    noise_free_map: rs.DataSet, noisy_map: rs.DataSet
+) -> None:
     rms_before_denoising = rms_between_coefficients(noise_free_map, noisy_map)
     denoised_map = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,

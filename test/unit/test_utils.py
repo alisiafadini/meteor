@@ -1,9 +1,10 @@
-from meteor import utils
-import reciprocalspaceship as rs
-import pytest
 import gemmi
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+import reciprocalspaceship as rs
+
+from meteor import utils
 
 
 def test_resolution_limits(random_intensities: rs.DataSet) -> None:
