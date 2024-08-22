@@ -113,19 +113,6 @@ def noisy_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
 
 
-def test_tv_denoise_difference_map_smoke(random_difference_map: rs.DataSet) -> None:
-    # test sequence pf specified lambda
-    tv.tv_denoise_difference_map(
-        difference_map_coefficients=random_difference_map,
-        lambda_values_to_scan=[1.0, 2.0],
-    )
-    # test golden optimizer
-    tv.TV_LAMBDA_RANGE = (1.0, 2.0)
-    tv.tv_denoise_difference_map(
-        difference_map_coefficients=random_difference_map,
-    )
-
-
 @pytest.mark.parametrize("lambda_values_to_scan", [None, np.logspace(-3, 2, 100)])
 def test_tv_denoise_difference_map(
     lambda_values_to_scan: None | Sequence[float], noise_free_map: rs.DataSet, noisy_map: rs.DataSet, diffmap_labels: MapLabels,
