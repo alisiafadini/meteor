@@ -23,10 +23,14 @@ dev = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = "reciprocalspaceship.*,gemmi.*,scipy.stats.*,scipy.optimize.*"
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 100
 lint.flake8-pytest-style.fixture-parentheses = false
-
 lint.select = [
     "E",  # pycodestyle (PEP 8) rules
     "F",  # pyflakes rules
@@ -37,7 +41,6 @@ lint.select = [
     "Q",  # quote rules (e.g., enforcing consistent quote usage)
     "PT", # flake8-pytest-style rules for pytest
 ]
-
 exclude = [
     "build/",
     "dist/",
