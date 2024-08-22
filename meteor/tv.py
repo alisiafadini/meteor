@@ -28,9 +28,7 @@ class TvDenoiseResult:
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
-    """
-    Closure convienence function to generate more readable code.
-    """
+    """Closure convienence function to generate more readable code."""
     denoised_map = denoise_tv_chambolle(
         map_as_array,
         weight=weight,
@@ -62,13 +60,12 @@ def tv_denoise_difference_map(
 
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
-    full_output: bool = True,
+    full_output: bool = False,
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
     lambda_values_to_scan: Sequence[float] | None = None,
 ) -> rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]:
-    """
-    Single-pass TV denoising of a difference map.
+    """Single-pass TV denoising of a difference map.
 
     Automatically selects the optimal level of regularization (the TV lambda parameter) by maximizing the negentropy of the denoised map. Two modes can be used to dictate which candidate values of lambda are assessed:
 
@@ -83,7 +80,7 @@ def tv_denoise_difference_map(
         difference map.
     full_output : bool, optional
         If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult` object containing the optimal
-        lambda and the associated negentropy. If `False`, only the denoised map coefficients are returned. Default is `True`.
+        lambda and the associated negentropy. If `False`, only the denoised map coefficients are returned. Default is `False`.
     difference_map_amplitude_column : str, optional
         The column name in `difference_map_coefficients` that contains the amplitude values for the difference map. Default is "DF".
     difference_map_phase_column : str, optional
@@ -117,8 +114,8 @@ def tv_denoise_difference_map(
     >>> coefficients = rs.read_mtz("./path/to/difference_map.mtz")  # load dataset
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
     >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
-    """
 
+    """
     difference_map = compute_map_from_coefficients(
         map_coefficients=difference_map_coefficients,
         amplitude_label=difference_map_amplitude_column,
@@ -128,9 +125,7 @@ def tv_denoise_difference_map(
     difference_map_as_array = np.array(difference_map.grid)
 
     def negentropy_objective(tv_lambda: float):
-        denoised_map = _tv_denoise_array(
-            map_as_array=difference_map_as_array, weight=tv_lambda
-        )
+        denoised_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=tv_lambda)
         return -1.0 * negentropy(denoised_map.flatten())
 
     optimal_lambda: float
@@ -152,16 +147,12 @@ def tv_denoise_difference_map(
         optimizer_result = minimize_scalar(
             negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
         )
-        assert (
-            optimizer_result.success
-        ), "Golden minimization failed to find optimal TV lambda"
+        assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
         highest_negentropy = negentropy_objective(optimal_lambda)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
-    final_map = _tv_denoise_array(
-        map_as_array=difference_map_as_array, weight=optimal_lambda
-    )
+    final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
     final_map_as_ccp4 = numpy_array_to_map(
         final_map,
         spacegroup=difference_map_coefficients.spacegroup,

@@ -51,13 +51,15 @@ def canonicalize_amplitudes(
     phase_label: str,
     inplace: bool = False,
 ) -> rs.DataSet | None:
-    dataset.canonicalize_phases(inplace=inplace)
+    
     if not inplace:
         dataset = dataset.copy(deep=True)
 
     negative_amplitude_indices = dataset[amplitude_label] < 0.0
     dataset[amplitude_label] = np.abs(dataset[amplitude_label])
     dataset.loc[negative_amplitude_indices, phase_label] += 180.0
+
+    dataset.canonicalize_phases(inplace=True)
 
     if not inplace:
         return dataset

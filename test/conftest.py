@@ -6,54 +6,25 @@ from pytest import fixture
 from meteor.utils import canonicalize_amplitudes
 
 
-@fixture
-def random_intensities() -> rs.DataSet:
-    """
-    A simple 10x10x10 P1 dataset, with random intensities
-    """
+@fixture()
+def random_difference_map() -> rs.DataSet:
+    resolution = 1.0
+    cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    space_group = gemmi.SpaceGroup(1)
+    Hall = rs.utils.generate_reciprocal_asu(cell, space_group, resolution, anomalous=False)
 
-    params = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    cell = gemmi.UnitCell(*params)
-    sg_1 = gemmi.SpaceGroup(1)
-    Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 1.0, anomalous=False)
-
-    H, K, L = Hall.T
+    h, k, l = Hall.T
+    number_of_reflections = len(h)
+    
     ds = rs.DataSet(
         {
-            "H": H,
-            "K": K,
-            "L": L,
-            "IMEAN": np.abs(np.random.randn(len(H))),
+            "H": h,
+            "K": k,
+            "L": l,
+            "DF": np.random.randn(number_of_reflections),
+            "PHIC": np.random.uniform(-180, 180, size=number_of_reflections),
         },
-        spacegroup=sg_1,
-        cell=cell,
-    ).infer_mtz_dtypes()
-    ds.set_index(["H", "K", "L"], inplace=True)
-
-    return ds
-
-
-@fixture
-def flat_difference_map() -> rs.DataSet:
-    """
-    A simple 3x3x3 P1 map, random
-    """
-
-    params = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    cell = gemmi.UnitCell(*params)
-    sg_1 = gemmi.SpaceGroup(1)
-    Hall = rs.utils.generate_reciprocal_asu(cell, sg_1, 5.0, anomalous=False)
-
-    H, K, L = Hall.T
-    ds = rs.DataSet(
-        {
-            "H": H,
-            "K": K,
-            "L": L,
-            "DF": np.random.randn(len(H)),
-            "PHIC": np.zeros(len(H)),
-        },
-        spacegroup=sg_1,
+        spacegroup=space_group,
         cell=cell,
     ).infer_mtz_dtypes()
 
