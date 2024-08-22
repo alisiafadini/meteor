@@ -111,6 +111,34 @@ def noisy_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
 
 
+@pytest.mark.parametrize(
+    "lambda_values_to_scan",
+    [
+        None,
+        [
+            1.0,
+        ],
+    ],
+)
+@pytest.mark.parametrize("full_output", [False, True])
+def test_tv_denoise_difference_map_smoke(
+    lambda_values_to_scan: None | Sequence[float],
+    full_output: bool,
+    noisy_map: rs.DataSet,
+) -> None:
+    output = tv.tv_denoise_difference_map(
+        difference_map_coefficients=noisy_map,
+        lambda_values_to_scan=lambda_values_to_scan,
+        full_output=full_output,
+    )  # type: ignore
+    if full_output:
+        assert len(output) == 2
+        assert isinstance(output[0], rs.DataSet)
+        assert isinstance(output[1], tv.TvDenoiseResult)
+    else:
+        assert isinstance(output, rs.DataSet)
+
+
 @pytest.mark.parametrize("lambda_values_to_scan", [None, np.logspace(-3, 2, 100)])
 def test_tv_denoise_difference_map(
     lambda_values_to_scan: None | Sequence[float],

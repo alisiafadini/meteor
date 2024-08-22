@@ -63,7 +63,7 @@ def tv_denoise_difference_map(
     full_output: bool = False,
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
-    lambda_values_to_scan: Sequence[float] | None = None,
+    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]:
     """Single-pass TV denoising of a difference map.
 
