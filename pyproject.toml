@@ -1,7 +1,7 @@
 [project]
 name = "meteor"
 description = "denoise crystallographic difference maps"
-version = "2.0.0"
+version = "0.2.0"
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
@@ -12,6 +12,7 @@ dependencies = [
     "gemmi",
     "scikit-image",
     "reciprocalspaceship",
+    "pytest",
 ]
 
 [project.optional-dependencies]
