@@ -10,7 +10,7 @@ from meteor.utils import MapLabels, canonicalize_amplitudes
 def diffmap_labels() -> MapLabels:
     return MapLabels(
         amplitude="DF",
-        phases="PHIC",
+        phase="PHIC",
     )
 
 
@@ -30,7 +30,7 @@ def random_difference_map(diffmap_labels: MapLabels) -> rs.DataSet:
             "K": k,
             "L": l,
             diffmap_labels.amplitude: np.random.randn(number_of_reflections),
-            diffmap_labels.phases: np.random.uniform(-180, 180, size=number_of_reflections),
+            diffmap_labels.phase: np.random.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=space_group,
         cell=cell,

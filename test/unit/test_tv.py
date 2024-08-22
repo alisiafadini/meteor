@@ -80,13 +80,13 @@ def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: M
     map1 = compute_map_from_coefficients(
         map_coefficients=ds1,
         amplitude_label=diffmap_labels.amplitude,
-        phase_label=diffmap_labels.phases,
+        phase_label=diffmap_labels.phase,
         map_sampling=3,
     )
     map2 = compute_map_from_coefficients(
         map_coefficients=ds2,
         amplitude_label=diffmap_labels.amplitude,
-        phase_label=diffmap_labels.phases,
+        phase_label=diffmap_labels.phase,
         map_sampling=3,
     )
 
@@ -116,7 +116,7 @@ def noisy_map() -> rs.DataSet:
     [
         None,
         [
-            1.0,
+            0.01,
         ],
     ],
 )
@@ -160,21 +160,21 @@ def test_tv_denoise_difference_map(
     # testmap = compute_map_from_coefficients(
     #     map_coefficients=noise_free_map,
     #     amplitude_label=diffmap_labels.amplitude,
-    #     phase_label=diffmap_labels.phases,
+    #     phase_label=diffmap_labels.phase,
     #     map_sampling=1,
     # )
     # testmap.write_ccp4_map("original.ccp4")
     # testmap = compute_map_from_coefficients(
     #     map_coefficients=noisy_map,
     #     amplitude_label=diffmap_labels.amplitude,
-    #     phase_label=diffmap_labels.phases,
+    #     phase_label=diffmap_labels.phase,
     #     map_sampling=1,
     # )
     # testmap.write_ccp4_map("noisy.ccp4")
     # testmap = compute_map_from_coefficients(
     #     map_coefficients=denoised_map,
     #     amplitude_label=diffmap_labels.amplitude,
-    #     phase_label=diffmap_labels.phases,
+    #     phase_label=diffmap_labels.phase,
     #     map_sampling=1,
     # )
     # testmap.write_ccp4_map("denoised.ccp4")

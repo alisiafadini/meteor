@@ -11,7 +11,7 @@ GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
 @dataclass
 class MapLabels:
     amplitude: str
-    phases: str
+    phase: str
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
