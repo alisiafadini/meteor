@@ -23,4 +23,4 @@ def test_negentropy_uniform() -> None:
 
 def test_negentropy_zero() -> None:
     negentropy = validate.negentropy(np.zeros(100))
-    assert negentropy == np.inf
+    assert negentropy == -np.inf
