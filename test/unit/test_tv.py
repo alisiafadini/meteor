@@ -1,8 +1,9 @@
+from typing import Sequence
+
 import gemmi
 import numpy as np
-import reciprocalspaceship as rs
 import pytest
-from typing import Sequence
+import reciprocalspaceship as rs
 
 from meteor import tv
 from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients
@@ -135,7 +136,7 @@ def test_tv_denoise_difference_map(
     denoised_map, result = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
-        full_output=True
+        full_output=True,
     )
     rms_after_denoising = rms_between_coefficients(noise_free_map, denoised_map)
     # assert rms_after_denoising < rms_before_denoising
@@ -162,5 +163,3 @@ def test_tv_denoise_difference_map(
         map_sampling=1,
     )
     testmap.write_ccp4_map("denoised.ccp4")
-
-

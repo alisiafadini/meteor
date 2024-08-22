@@ -13,7 +13,7 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
     Args:
     ----
         samples (np.ndarray): A numpy array of sample data for which to calculate the negentropy.
-        tolerance (float): A tolerance level for checking if the negentropy is suspiciously negative.
+        tolerance (float): Tolerance level determining if the negentropy is suspiciously negative.
                            Defaults to 0.01.
 
     Returns:
@@ -38,12 +38,13 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
     """
     std = np.std(samples.flatten())
     if std <= 0.0:
-        return np.inf
+        return -np.inf
 
     neg_e = 0.5 * np.log(2.0 * np.pi * std**2) + 0.5 - differential_entropy(samples.flatten())
     if not neg_e >= -tolerance:
         raise ValueError(
-            f"negentropy is a relatively big negative number {neg_e} that exceeds the tolerance {tolerance} -- something may have gone wrong"
+            f"negentropy is a large negative number {neg_e}, exceeds the tolerance {tolerance}"
+            " -- something may have gone wrong"
         )
 
     return neg_e

@@ -6,8 +6,8 @@ import reciprocalspaceship as rs
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
-    dHKL = dataset.compute_dHKL()["dHKL"]
-    return dHKL.max(), dHKL.min()
+    d_hkl = dataset.compute_dHKL()["dHKL"]
+    return d_hkl.max(), d_hkl.min()
 
 
 def cut_resolution(
@@ -16,11 +16,11 @@ def cut_resolution(
     dmax_limit: float | None = None,
     dmin_limit: float | None = None,
 ) -> rs.DataSet:
-    dHKL = dataset.compute_dHKL()["dHKL"]
+    d_hkl = dataset.compute_dHKL()["dHKL"]
     if dmax_limit:
-        dataset = dataset.loc[(dHKL <= dmax_limit)]
+        dataset = dataset.loc[(d_hkl <= dmax_limit)]
     if dmin_limit:
-        dataset = dataset.loc[(dHKL >= dmin_limit)]
+        dataset = dataset.loc[(d_hkl >= dmin_limit)]
     return dataset
 
 
@@ -51,7 +51,6 @@ def canonicalize_amplitudes(
     phase_label: str,
     inplace: bool = False,
 ) -> rs.DataSet | None:
-    
     if not inplace:
         dataset = dataset.copy(deep=True)
 

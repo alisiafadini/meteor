@@ -1,21 +1,21 @@
 import gemmi
 import numpy as np
+import pytest
 import reciprocalspaceship as rs
-from pytest import fixture
 
 from meteor.utils import canonicalize_amplitudes
 
 
-@fixture()
+@pytest.fixture()
 def random_difference_map() -> rs.DataSet:
     resolution = 1.0
     cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     space_group = gemmi.SpaceGroup(1)
-    Hall = rs.utils.generate_reciprocal_asu(cell, space_group, resolution, anomalous=False)
+    hall = rs.utils.generate_reciprocal_asu(cell, space_group, resolution, anomalous=False)
 
-    h, k, l = Hall.T
+    h, k, l = hall.T  # noqa: E741
     number_of_reflections = len(h)
-    
+
     ds = rs.DataSet(
         {
             "H": h,

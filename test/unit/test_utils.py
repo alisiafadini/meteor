@@ -14,7 +14,7 @@ def test_resolution_limits(random_difference_map: rs.DataSet) -> None:
 
 
 @pytest.mark.parametrize(
-    "dmax_limit, dmin_limit",
+    ("dmax_limit", "dmin_limit"),
     [
         (None, None),
         (None, 2.0),
@@ -88,8 +88,9 @@ def test_compute_map_from_coefficients(random_difference_map: rs.DataSet) -> Non
 
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
-def test_map_to_coefficients_round_trip(map_sampling: int, random_difference_map: rs.DataSet) -> None:
-
+def test_map_to_coefficients_round_trip(
+    map_sampling: int, random_difference_map: rs.DataSet
+) -> None:
     # TODO fix this
     amplitude_label = "DF"
     phase_label = "PHIC"
@@ -111,9 +112,6 @@ def test_map_to_coefficients_round_trip(map_sampling: int, random_difference_map
     )
 
     utils.canonicalize_amplitudes(
-        output_coefficients,
-        amplitude_label=amplitude_label,
-        phase_label=phase_label,
-        inplace=True
+        output_coefficients, amplitude_label=amplitude_label, phase_label=phase_label, inplace=True
     )
     pd.testing.assert_frame_equal(left=random_difference_map, right=output_coefficients, atol=0.5)

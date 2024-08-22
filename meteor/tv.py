@@ -67,35 +67,43 @@ def tv_denoise_difference_map(
 ) -> rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]:
     """Single-pass TV denoising of a difference map.
 
-    Automatically selects the optimal level of regularization (the TV lambda parameter) by maximizing the negentropy of the denoised map. Two modes can be used to dictate which candidate values of lambda are assessed:
+    Automatically selects the optimal level of regularization (the TV lambda parameter) by
+    maximizing the negentropy of the denoised map. Two modes can be used to dictate which
+    candidate values of lambda are assessed:
 
-      1. By default (`lambda_values_to_scan=None`), the golden-section search algorithm selects a lambda value according to the bounds and convergence criteria set in meteor.settings.
-      2. Alternatively, an explicit list of lambda values to assess can be provided using `lambda_values_to_scan`.
+      1. By default (`lambda_values_to_scan=None`), the golden-section search algorithm selects
+         a lambda value according to the bounds and convergence criteria set in meteor.settings.
+      2. Alternatively, an explicit list of lambda values to assess can be provided using
+        `lambda_values_to_scan`.
 
 
     Parameters
     ----------
     difference_map_coefficients : rs.DataSet
-        The input dataset containing the difference map coefficients (amplitude and phase) that will be used to compute the
-        difference map.
+        The input dataset containing the difference map coefficients (amplitude and phase)
+        that will be used to compute the difference map.
     full_output : bool, optional
-        If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult` object containing the optimal
-        lambda and the associated negentropy. If `False`, only the denoised map coefficients are returned. Default is `False`.
+        If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult`
+         object containing the optimal lambda and the associated negentropy. If `False`, only
+         the denoised map coefficients are returned. Default is `False`.
     difference_map_amplitude_column : str, optional
-        The column name in `difference_map_coefficients` that contains the amplitude values for the difference map. Default is "DF".
+        The column name in `difference_map_coefficients` that contains the amplitude values for
+        the difference map. Default is "DF".
     difference_map_phase_column : str, optional
-        The column name in `difference_map_coefficients` that contains the phase values for the difference map. Default is "PHIC".
+        The column name in `difference_map_coefficients` that contains the phase values for the
+        difference map. Default is "PHIC".
     lambda_values_to_scan : Sequence[float] | None, optional
-        A sequence of lambda values to explicitly scan for determining the optimal value. If `None`, the function uses the
-        golden-section search method to determine the optimal lambda. Default is `None`.
+        A sequence of lambda values to explicitly scan for determining the optimal value. If
+        `None`, the function uses the golden-section search method to determine the optimal
+        lambda. Default is `None`.
 
     Returns
     -------
     rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]
-        If `full_output` is `False`, returns a `rs.DataSet` containing the denoised map coefficients.
+        If `full_output` is `False`, returns a `rs.DataSet`, the denoised map coefficients.
         If `full_output` is `True`, returns a tuple containing:
         - `rs.DataSet`: The denoised map coefficients.
-        - `TvDenoiseResult`: An object containing the optimal lambda and the corresponding negentropy.
+        - `TvDenoiseResult`: An object w/ the optimal lambda and the corresponding negentropy.
 
     Raises
     ------
@@ -104,9 +112,11 @@ def tv_denoise_difference_map(
 
     Notes
     -----
-    - The function is designed to maximize the negentropy of the denoised map, which is a measure of the map's "randomness."
+    - The function is designed to maximize the negentropy of the denoised map, which is a
+      measure of the map's "randomness."
       Higher negentropy generally corresponds to a more informative and less noisy map.
-    - The golden-section search is a robust method for optimizing unimodal functions, particularly suited for scenarios where
+    - The golden-section search is a robust method for optimizing unimodal functions,
+      particularly suited for scenarios where
       an explicit list of candidate values is not provided.
 
     Example
