@@ -6,7 +6,7 @@ import reciprocalspaceship as rs
 from meteor.utils import canonicalize_amplitudes
 
 
-@pytest.fixture()
+@pytest.fixture
 def random_difference_map() -> rs.DataSet:
     resolution = 1.0
     cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)

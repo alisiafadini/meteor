@@ -105,12 +105,12 @@ def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet) -> float:
     return rms
 
 
-@pytest.fixture()
+@pytest.fixture
 def noise_free_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
 
 
-@pytest.fixture()
+@pytest.fixture
 def noisy_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
 
