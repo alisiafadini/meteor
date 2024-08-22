@@ -7,6 +7,10 @@ import reciprocalspaceship as rs
 from meteor import utils
 
 
+def omit_nones_in_list(input_list: list) -> list:
+    return [x for x in input_list if x]
+
+
 def test_resolution_limits(random_difference_map: rs.DataSet) -> None:
     dmax, dmin = utils.resolution_limits(random_difference_map)
     assert dmax == 10.0
@@ -26,15 +30,8 @@ def test_cut_resolution(
     random_difference_map: rs.DataSet, dmax_limit: float, dmin_limit: float
 ) -> None:
     dmax_before_cut, dmin_before_cut = utils.resolution_limits(random_difference_map)
-    if not dmax_limit:
-        expected_max_dmax = dmax_before_cut
-    else:
-        expected_max_dmax = dmax_limit
-
-    if not dmin_limit:
-        expected_min_dmin = dmin_before_cut
-    else:
-        expected_min_dmin = dmin_limit
+    expected_dmax_upper_bound: float = max(omit_nones_in_list([dmax_before_cut, dmax_limit]))
+    expected_dmin_lower_bound: float = min(omit_nones_in_list([dmin_before_cut, dmin_limit]))
 
     random_intensities = utils.cut_resolution(
         random_difference_map, dmax_limit=dmax_limit, dmin_limit=dmin_limit
@@ -42,8 +39,8 @@ def test_cut_resolution(
     assert len(random_intensities) > 0
 
     dmax, dmin = utils.resolution_limits(random_intensities)
-    assert dmax <= expected_max_dmax
-    assert dmin >= expected_min_dmin
+    assert dmax <= expected_dmax_upper_bound
+    assert dmin >= expected_dmin_lower_bound
 
 
 @pytest.mark.parametrize("inplace", [False, True])
