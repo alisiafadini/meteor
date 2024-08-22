@@ -6,9 +6,7 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor import tv
-from meteor.utils import compute_coefficients_from_map, compute_map_from_coefficients, MapLabels
-
-
+from meteor.utils import MapLabels, compute_coefficients_from_map, compute_map_from_coefficients
 
 
 def _generate_single_carbon_density(
@@ -103,19 +101,22 @@ def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: M
     return rms
 
 
-@pytest.fixture
+@pytest.fixture()
 def noise_free_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
 
 
-@pytest.fixture
+@pytest.fixture()
 def noisy_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
 
 
 @pytest.mark.parametrize("lambda_values_to_scan", [None, np.logspace(-3, 2, 100)])
 def test_tv_denoise_difference_map(
-    lambda_values_to_scan: None | Sequence[float], noise_free_map: rs.DataSet, noisy_map: rs.DataSet, diffmap_labels: MapLabels,
+    lambda_values_to_scan: None | Sequence[float],
+    noise_free_map: rs.DataSet,
+    noisy_map: rs.DataSet,
+    diffmap_labels: MapLabels,
 ) -> None:
     rms_before_denoising = rms_between_coefficients(noise_free_map, noisy_map, diffmap_labels)
     denoised_map, result = tv.tv_denoise_difference_map(

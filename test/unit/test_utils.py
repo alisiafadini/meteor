@@ -47,8 +47,9 @@ def test_cut_resolution(
 
 
 @pytest.mark.parametrize("inplace", [False, True])
-def test_canonicalize_amplitudes(inplace: bool, random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels) -> None:
-
+def test_canonicalize_amplitudes(
+    inplace: bool, random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels
+) -> None:
     if inplace:
         canonicalized = random_difference_map
         utils.canonicalize_amplitudes(
@@ -75,7 +76,9 @@ def test_canonicalize_amplitudes(inplace: bool, random_difference_map: rs.DataSe
     )
 
 
-def test_compute_map_from_coefficients(random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels) -> None:
+def test_compute_map_from_coefficients(
+    random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels
+) -> None:
     map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=diffmap_labels.amplitude,
@@ -89,7 +92,6 @@ def test_compute_map_from_coefficients(random_difference_map: rs.DataSet, diffma
 def test_map_to_coefficients_round_trip(
     map_sampling: int, random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels
 ) -> None:
-
     map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=diffmap_labels.amplitude,
@@ -107,6 +109,9 @@ def test_map_to_coefficients_round_trip(
     )
 
     utils.canonicalize_amplitudes(
-        output_coefficients, amplitude_label=diffmap_labels.amplitude, phase_label=diffmap_labels.phases, inplace=True
+        output_coefficients,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phases,
+        inplace=True,
     )
     pd.testing.assert_frame_equal(left=random_difference_map, right=output_coefficients, atol=0.5)

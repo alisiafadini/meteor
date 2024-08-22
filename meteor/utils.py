@@ -1,9 +1,9 @@
+from dataclasses import dataclass
 from typing import Literal, overload
 
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from dataclasses import dataclass
 
 
 @dataclass
