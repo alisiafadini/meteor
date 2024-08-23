@@ -1,7 +1,7 @@
 [project]
 name = "meteor"
 description = "denoise crystallographic difference maps"
-version = "2.0.0"
+version = "0.2.0"
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
@@ -12,6 +12,7 @@ dependencies = [
     "gemmi",
     "scikit-image",
     "reciprocalspaceship",
+    "pytest",
 ]
 
 [project.optional-dependencies]
@@ -22,3 +23,31 @@ dev = [
 [build-system]
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = "reciprocalspaceship.*,gemmi.*,scipy.stats.*,scipy.optimize.*"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+lint.flake8-pytest-style.fixture-parentheses = false
+lint.select = [
+    "E",  # pycodestyle (PEP 8) rules
+    "F",  # pyflakes rules
+    "W",  # warnings like trailing whitespace
+    "C90",  # specific rules for use of commas, e.g., avoid trailing commas
+    "I",  # isort rules for import sorting
+    "N",  # flake8 naming conventions
+    "Q",  # quote rules (e.g., enforcing consistent quote usage)
+    "PT", # flake8-pytest-style rules for pytest
+]
+exclude = [
+    "build/",
+    "dist/",
+    "migrations/",
+    ".venv/",
+    ".git/",
+    "__pycache__/",
+    "*.pyc",
+]
