@@ -1,317 +1,192 @@
+from dataclasses import dataclass
+from typing import Literal, Sequence, overload
+
 import numpy as np
-from tqdm import tqdm
+import reciprocalspaceship as rs
+from scipy.optimize import minimize_scalar
 from skimage.restoration import denoise_tv_chambolle
-from memory_profiler import profile
 
-# from scipy.stats import kurtosis
+from .settings import (
+    TV_LAMBDA_RANGE,
+    TV_MAP_SAMPLING,
+    TV_MAX_NUM_ITER,
+    TV_STOP_TOLERANCE,
+)
+from .utils import (
+    compute_coefficients_from_map,
+    compute_map_from_coefficients,
+    numpy_array_to_map,
+    resolution_limits,
+)
+from .validate import negentropy
 
-from . import maps
-from . import validate
-from . import dsutils
-from . import io
 
-"""
-def TV_filter(map, l, grid_size, cell, space_group):
-    
-    Apply TV filtering to a Gemmi map object. Compute negentropy for denoised array.
+@dataclass
+class TvDenoiseResult:
+    optimal_lambda: float
+    optimal_negentropy: float
+    map_sampling_used_for_tv: float
 
-    Parameters :
 
-    map           : (GEMMI map object)
-    l             : (float) lambda – regularization parameter to be used in filtering.
-    grid_size         : (list) specifying grid dimensions for the map
-    cell, space_group : (list) and (str)
-
-    Returns :
-
-    Denoised map (GEMMI object) and associated negentropy (float)
-
-    
-
-    TV_arr = denoise_tv_chambolle(
-        np.array(map.grid), eps=0.00000005, weight=l, max_num_iter=50
+def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
+    """Closure convienence function to generate more readable code."""
+    denoised_map = denoise_tv_chambolle(
+        map_as_array,
+        weight=weight,
+        eps=TV_STOP_TOLERANCE,
+        max_num_iter=TV_MAX_NUM_ITER,
     )
-    entropy = validate.negentropy(TV_arr.flatten())
-    TV_map = maps.make_map(TV_arr, grid_size, cell, space_group)
-
-    return TV_map, entropy
-"""
+    return denoised_map
 
 
-from joblib import Parallel, delayed
+@overload
+def tv_denoise_difference_map(
+    difference_map_coefficients: rs.DataSet,
+    full_output: Literal[False],
+    difference_map_amplitude_column: str = "DF",
+    difference_map_phase_column: str = "PHIC",
+    lambda_values_to_scan: Sequence[float] | None = None,
+) -> rs.DataSet: ...
 
 
-# @profile
-def TV_filter(map, l, grid_size, cell, space_group):
+@overload
+def tv_denoise_difference_map(
+    difference_map_coefficients: rs.DataSet,
+    full_output: Literal[True],
+    difference_map_amplitude_column: str = "DF",
+    difference_map_phase_column: str = "PHIC",
+    lambda_values_to_scan: Sequence[float] | None = None,
+) -> tuple[rs.DataSet, TvDenoiseResult]: ...
+
+
+def tv_denoise_difference_map(
+    difference_map_coefficients: rs.DataSet,
+    full_output: bool = False,
+    difference_map_amplitude_column: str = "DF",
+    difference_map_phase_column: str = "PHIC",
+    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
+) -> rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]:
+    """Single-pass TV denoising of a difference map.
+
+    Automatically selects the optimal level of regularization (the TV lambda parameter) by
+    maximizing the negentropy of the denoised map. Two modes can be used to dictate which
+    candidate values of lambda are assessed:
+
+      1. By default (`lambda_values_to_scan=None`), the golden-section search algorithm selects
+         a lambda value according to the bounds and convergence criteria set in meteor.settings.
+      2. Alternatively, an explicit list of lambda values to assess can be provided using
+        `lambda_values_to_scan`.
+
+
+    Parameters
+    ----------
+    difference_map_coefficients : rs.DataSet
+        The input dataset containing the difference map coefficients (amplitude and phase)
+        that will be used to compute the difference map.
+    full_output : bool, optional
+        If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult`
+         object containing the optimal lambda and the associated negentropy. If `False`, only
+         the denoised map coefficients are returned. Default is `False`.
+    difference_map_amplitude_column : str, optional
+        The column name in `difference_map_coefficients` that contains the amplitude values for
+        the difference map. Default is "DF".
+    difference_map_phase_column : str, optional
+        The column name in `difference_map_coefficients` that contains the phase values for the
+        difference map. Default is "PHIC".
+    lambda_values_to_scan : Sequence[float] | None, optional
+        A sequence of lambda values to explicitly scan for determining the optimal value. If
+        `None`, the function uses the golden-section search method to determine the optimal
+        lambda. Default is `None`.
+
+    Returns
+    -------
+    rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]
+        If `full_output` is `False`, returns a `rs.DataSet`, the denoised map coefficients.
+        If `full_output` is `True`, returns a tuple containing:
+        - `rs.DataSet`: The denoised map coefficients.
+        - `TvDenoiseResult`: An object w/ the optimal lambda and the corresponding negentropy.
+
+    Raises
+    ------
+    AssertionError
+        If the golden-section search fails to find an optimal lambda.
+
+    Notes
+    -----
+    - The function is designed to maximize the negentropy of the denoised map, which is a
+      measure of the map's "randomness."
+      Higher negentropy generally corresponds to a more informative and less noisy map.
+    - The golden-section search is a robust method for optimizing unimodal functions,
+      particularly suited for scenarios where
+      an explicit list of candidate values is not provided.
+
+    Example
+    -------
+    >>> coefficients = rs.read_mtz("./path/to/difference_map.mtz")  # load dataset
+    >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
+    >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
+
     """
-    Apply TV filtering to a Gemmi map object. Compute negentropy for denoised array.
-
-    Parameters :
-
-    map           : (GEMMI map object)
-    l             : (float) lambda – regularization parameter to be used in filtering.
-    grid_size     : (list) specifying grid dimensions for the map
-    cell, space_group : (list) and (str)
-
-    Returns :
-
-    Denoised map (GEMMI object) and associated negentropy (float)
-
-    """
-
-    # Convert map.grid to a numpy array with a specified data type for memory efficiency
-    grid_array = np.array(
-        map.grid, dtype=np.float32
-    )  # Use float32 or other appropriate type
-
-    # Determine the number of chunks for parallel processing
-    num_chunks = 4
-    sub_arrays = np.array_split(grid_array, num_chunks)
-
-    # Define the parallel denoising function
-    def parallel_denoise(sub_array, weight, max_num_iter):
-        return denoise_tv_chambolle(sub_array, weight=weight, max_num_iter=max_num_iter)
-
-    # Process in parallel
-    TV_arrs = Parallel(n_jobs=num_chunks)(
-        delayed(parallel_denoise)(sub, l, 50) for sub in sub_arrays
+    difference_map = compute_map_from_coefficients(
+        map_coefficients=difference_map_coefficients,
+        amplitude_label=difference_map_amplitude_column,
+        phase_label=difference_map_phase_column,
+        map_sampling=TV_MAP_SAMPLING,
     )
+    difference_map_as_array = np.array(difference_map.grid)
 
-    # Combine sub-arrays back into one array
-    TV_arr = np.concatenate(TV_arrs)
+    def negentropy_objective(tv_lambda: float):
+        denoised_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=tv_lambda)
+        return -1.0 * negentropy(denoised_map.flatten())
 
-    # Delete the original array to free memory
-    del grid_array
+    optimal_lambda: float
 
-    # Compute negentropy in a memory-efficient manner
-    entropy = validate.negentropy(
-        TV_arr.ravel()
-    )  # Use ravel instead of flatten if possible
+    # scan a specific set of lambda values and find the best one
+    if lambda_values_to_scan is not None:
+        # use no denoising as the default to beat
+        optimal_lambda = 0.0  # initialization
+        highest_negentropy = negentropy(difference_map_as_array.flatten())
 
-    # Create the map from the denoised array
-    TV_map = maps.make_map(TV_arr, grid_size, cell, space_group)
+        for tv_lambda in lambda_values_to_scan:
+            trial_negentropy = -1.0 * negentropy_objective(tv_lambda)
+            if trial_negentropy > highest_negentropy:
+                optimal_lambda = tv_lambda
+                highest_negentropy = trial_negentropy
 
-    # Delete the TV_arr to free memory
-    del TV_arr
-
-    return TV_map, entropy
-
-
-# @profile
-def TV_iteration(
-    mtz,
-    diffs,
-    phi_diffs,
-    Fon,
-    Foff,
-    phicalc,
-    map_res,
-    cell,
-    space_group,
-    flags,
-    l,
-    highres,
-    ws,
-):
-    """
-    Go through one iteration of TV denoising Fon-Foff map + projection onto measured Fon magnitude
-    to obtain new phases estimates for the difference structure factors vector.
-
-    Parameters :
-
-    1. MTZ, diffs, phi_diffs, Fon, Foff, phicalc : (rsDataset) with specified structure factor and phase labels (str)
-    2. map_res                                   : (float) spacing for map generation
-    3. cell, space group                         : (array) and (str)
-    4. flags                                     : (boolean array) where True marks reflections to keep for test set
-    5. l                                         : (float) weighting parameter for TV denoising
-    6. highres                                   : (float) high resolution cutoff for map generation
-
-    Returns :
-
-    1. new amps, new phases                      : (1D-array) for new difference amplitude and phase estimates after the iteration
-    2. test_proj_errror                          : (float) the magnitude of the projection of the TV difference vector onto Fon for the test set
-    3. entropy                                   : (float) negentropy of TV denoised map
-    4. phase_change                              : (float) mean change in phases between input (phi_diffs) and output (new_phases) arrays
-
-    """
-
-    # Fon - Foff and TV denoise
-    mtz = dsutils.positive_Fs(mtz, phi_diffs, diffs, "phases-pos", "diffs-pos")
-    fit_mtz = mtz[np.invert(flags)]
-
-    fit_map = dsutils.map_from_Fs(fit_mtz, "diffs-pos", "phases-pos", map_res)
-    entropy = validate.negentropy(np.array(fit_map.grid).flatten())
-    fit_TV_map, _ = TV_filter(fit_map, l, fit_map.grid.shape, cell, space_group)
-    mtz_TV = dsutils.from_gemmi(io.map2mtz(fit_TV_map, highres))
-    del fit_TV_map
-    mtz_TV = mtz_TV[mtz_TV.index.isin(mtz.index)]
-    F_plus = np.array(mtz_TV["FWT"].astype("float"))
-    phi_plus = np.radians(np.array(mtz_TV["PHWT"].astype("float")))
-
-    # Call to function that does projection
-    new_amps, new_phases, proj_error, z = TV_projection(
-        np.array(mtz[Foff]).astype("float"),
-        np.array(mtz[Fon]).astype("float"),
-        np.radians(np.array(mtz[phicalc]).astype("float")),
-        F_plus,
-        phi_plus,
-        ws,
-    )
-    test_proj_error = proj_error[np.array(flags).astype(bool)]
-    phase_changes = np.abs(np.array(mtz["phases-pos"] - new_phases))
-    phase_changes = dsutils.adjust_phi_interval(phase_changes)
-    phase_change = np.mean(phase_changes)
-
-    return new_amps, new_phases, test_proj_error, entropy, phase_change, z
-
-
-def TV_projection(Foff, Fon, phi_calc, F_plus, phi_plus, ws):
-    """
-    Project a TV denoised difference structure factor vector onto measured Fon magnitude
-    to obtain new phases estimates for the difference structure factors.
-
-    Parameters :
-
-    1. Foff, Fon                      : (1D arrays) of measured amplitudes used for the 'Fon - Foff' difference
-    2. phi_calc                       : (1D array)  of phases calculated from refined 'off' model
-    3. F_plus, phi_plus               : (1D arrays) from TV denoised 'Fon - Foff' electron density map
-
-    Returns :
-
-    1. new amps, new phases           : (1D array) for new difference amplitude and phase estimates after the iteration
-    2. proj_error                     : (1D array) magnitude of the projection of the TV difference vector onto Fon
-
-    """
-
-    z = F_plus * np.exp(phi_plus * 1j) + Foff * np.exp(phi_calc * 1j)
-    p_deltaF = (Fon / np.absolute(z)) * z - Foff * np.exp(phi_calc * 1j)
-
-    # new_amps   = np.absolute(p_deltaF).astype(np.float32) * ws
-    new_amps = np.absolute(p_deltaF).astype(np.float32)
-    new_phases = np.angle(p_deltaF, deg=True).astype(np.float32)
-
-    proj_error = np.absolute(np.absolute(z) - Fon)
-
-    return new_amps, new_phases, proj_error, np.angle(z, deg=True)
-
-
-# @profile
-def find_TVmap(
-    mtz,
-    Flabel,
-    philabel,
-    name,
-    path,
-    map_res,
-    cell,
-    space_group,
-    percent=0.10,
-    flags=None,
-    highres=None,
-):
-    """
-    Find two TV denoised maps (one that maximizes negentropy and one that minimizes free set error) from an initial mtz and associated information.
-
-    Optional arguments are whether to generate a new set of free (test) reflections – and specify what percentage of total reflections to reserve for this -
-    and whether to apply a resolution cutoff.
-    Screen the regularization parameter (lambda) from 0 to 0.1
-
-    Required Parameters :
-
-    1. MTZ, Flabel, philabefl : (rsDataset) with specified structure factor and phase labels (str)
-    2. name, path            : (str) for test/fit set and MTZ output
-    3. map_res               : (float) spacing for map generation
-    4. cell, space group     : (array) and (str)
-
-    Returns :
-
-    1. The two optimal TV denoised maps (GEMMI objects) and corresponding regularization parameter used (float)
-    2. Errors and negentropy values from the regularization screening (numpy arrays)
-    3. Mean changes in amplitude and phase between TV-denoised and observed datasets
-
-    """
-
-    mtz_pos = dsutils.positive_Fs(mtz, philabel, Flabel, "ogPhis_pos", "ogFs_pos")
-
-    # if Rfree flags were specified, use these
-    if flags is not None:
-        test_set, fit_set, choose_test = validate.make_test_set(
-            mtz_pos, percent, "ogFs_pos", name, path, flags
-        )  # choose_test is Boolean array to select free (test) reflections from entire set
-
-    # Keep 3% of reflections for test set
+    # use golden ratio optimization to pick an optimal lambda
     else:
-        test_set, fit_set, choose_test = validate.make_test_set(
-            mtz_pos, percent, "ogFs_pos", name, path
+        optimizer_result = minimize_scalar(
+            negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
         )
+        assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
+        optimal_lambda = optimizer_result.x
+        highest_negentropy = negentropy_objective(optimal_lambda)
 
-    # Loop through values of lambda
-
-    print("Scanning TV weights")
-    lambdas = np.linspace(1e-8, 0.4, 100)
-    # lambdas = np.linspace(1e-8, 0.1, 10)
-    # lambdas = [1e-8]
-    errors = []
-    entropies = []
-    amp_changes = []
-    phase_changes = []
-
-    for l in tqdm(lambdas):
-        fit_map = dsutils.map_from_Fs(mtz_pos, "fit-set", "ogPhis_pos", map_res)
-        fit_TV_map, entropy = TV_filter(
-            fit_map, l, fit_map.grid.shape, cell, space_group
-        )
-
-        if highres is not None:
-            Fs_fit_TV = dsutils.from_gemmi(io.map2mtz(fit_TV_map, highres))
-        else:
-            Fs_fit_TV = dsutils.from_gemmi(
-                io.map2mtz(fit_TV_map, np.min(mtz_pos.compute_dHKL()["dHKL"]))
-            )
-
-        Fs_fit_TV = Fs_fit_TV[Fs_fit_TV.index.isin(mtz_pos.index)]
-        test_TV = Fs_fit_TV["FWT"][choose_test]
-        amp_change = np.array(mtz_pos["ogFs_pos"]) - np.array(Fs_fit_TV["FWT"])
-        phase_change = np.abs(
-            np.array(mtz_pos["ogPhis_pos"]) - np.array(Fs_fit_TV["PHWT"])
-        )
-
-        phase_change = dsutils.adjust_phi_interval(phase_change)
-        # error = np.sum(np.array(test_set) - np.array(test_TV)) ** 2
-        error = np.sum(np.array(test_set) - np.array(test_TV)) / np.sum(
-            np.array(test_set)
-        )
-        errors.append(error)
-        entropies.append(entropy)
-        amp_changes.append(amp_change)
-        phase_changes.append(phase_change)
-
-    # Normalize errors
-    # errors = np.array(errors) / len(errors)
-    entropies = np.array(entropies)
-    print("ERRORS", errors)
-    print("ENTROPIES", entropies)
-    print("TEST SET IS", test_TV)
-
-    # Find lambda that minimizes error and that maximizes negentropy
-    lambda_best_err = lambdas[np.argmin(errors)]
-    lambda_best_entr = lambdas[np.argmax(entropies)]
-    print("BEST ENTROPY VALUE : ", np.max(entropies))
-    print("ENTROPY FOR BEST ERROR :", entropies[np.argmin(errors)])
-    TVmap_best_err, _ = TV_filter(
-        fit_map, lambda_best_err, fit_map.grid.shape, cell, space_group
+    # denoise using the optimized parameters and convert to an rs.DataSet
+    final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
+    final_map_as_ccp4 = numpy_array_to_map(
+        final_map,
+        spacegroup=difference_map_coefficients.spacegroup,
+        cell=difference_map_coefficients.cell,
     )
-    TVmap_best_entr, _ = TV_filter(
-        fit_map, lambda_best_entr, fit_map.grid.shape, cell, space_group
+    _, dmin = resolution_limits(difference_map_coefficients)
+    final_map_coefficients = compute_coefficients_from_map(
+        ccp4_map=final_map_as_ccp4,
+        high_resolution_limit=dmin,
+        amplitude_label=difference_map_amplitude_column,
+        phase_label=difference_map_phase_column,
     )
 
-    return (
-        TVmap_best_err,
-        TVmap_best_entr,
-        lambda_best_err,
-        lambda_best_entr,
-        errors,
-        entropies,
-        amp_changes,
-        phase_changes,
-    )  # , phase_corrs
+    if full_output:
+        tv_result = TvDenoiseResult(
+            optimal_lambda=optimal_lambda,
+            optimal_negentropy=highest_negentropy,
+            map_sampling_used_for_tv=TV_MAP_SAMPLING,
+        )
+        return final_map_coefficients, tv_result
+    else:
+        return final_map_coefficients
+
+
+def iterative_tv_phase_retrieval():
+    raise NotImplementedError()

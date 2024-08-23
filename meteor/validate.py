@@ -1,99 +1,50 @@
 import numpy as np
 from scipy.stats import differential_entropy
 
-from . import mask
 
+def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
+    """Computes the negentropy of a given sample array.
 
-def negentropy(X):
+    Negentropy is defined as the difference between the entropy of a given
+    distribution and the entropy of a Gaussian distribution with the same variance.
+    It is a measure of non-Gaussianity, with higher values indicating greater deviation
+    from Gaussianity.
+
+    Args:
+    ----
+        samples (np.ndarray): A numpy array of sample data for which to calculate the negentropy.
+        tolerance (float): Tolerance level determining if the negentropy is suspiciously negative.
+                           Defaults to 0.01.
+
+    Returns:
+    -------
+        float: The computed negentropy of the sample data.
+
+    Raises:
+    ------
+        ValueError: If the computed negentropy is less than the negative tolerance,
+                    indicating potential issues with the computation.
+
+    References:
+    ----------
+        http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
+
+    Example:
+    -------
+        >>> samples = np.random.normal(size=1000)
+        >>> negentropy(samples)
+        0.0012  # Example output, varies with input samples.
+
     """
-    Return negentropy (float) of X (numpy array)
-    """
+    std = np.std(samples.flatten())
+    if std <= 0.0:
+        return -np.inf
 
-    # negetropy is the difference between the entropy of samples x
-    # and a Gaussian with same variance
-    # http://gregorygundersen.com/blog/2020/09/01/gaussian-entropy/
-
-    std = np.std(X)
-    # neg_e = np.log(std*np.sqrt(2*np.pi*np.exp(1))) - differential_entropy(X)
-    neg_e = 0.5 * np.log(2.0 * np.pi * std**2) + 0.5 - differential_entropy(X)
-    # assert neg_e >= 0.0 + 1e-8
+    neg_e = 0.5 * np.log(2.0 * np.pi * std**2) + 0.5 - differential_entropy(samples.flatten())
+    if not neg_e >= -tolerance:
+        raise ValueError(
+            f"negentropy is a large negative number {neg_e}, exceeds the tolerance {tolerance}"
+            " -- something may have gone wrong"
+        )
 
     return neg_e
-
-
-def make_test_set(df, percent, Fs, out_name, path, flags=False):
-    """
-    Write MTZ file where data from an original MTZ has been divided in a "fit" set and a "test" set.
-
-    Additionally save test set indices as numpy object.
-
-    Required parameters :
-
-    df                : (rs.Dataset) to split
-    percent           : (float) fraction of reflections to keep for test set – e.g. 0.03
-    Fs                : (str) labels for structure factors to split
-    out_name, path    : (str) and (str) output file name and path specifications
-
-    Returns :
-
-    test_set, fit_set : (rs.Dataset) and (rs.Dataset) for the two sets
-    choose_test       : (1D array) containing test data indices as boolean type
-
-    """
-    if flags is not False:
-        choose_test = df[flags] == 0
-
-    else:
-        np.random.seed(42)
-        choose_test = np.random.binomial(1, percent, df[Fs].shape[0]).astype(bool)
-    test_set = df[Fs][choose_test]  # e.g. 3%
-    fit_set = df[Fs][np.invert(choose_test)]  # 97%
-
-    df["fit-set"] = fit_set
-    df["fit-set"] = df["fit-set"].astype("SFAmplitude")
-    df["test-set"] = test_set
-    df["test-set"] = df["test-set"].astype("SFAmplitude")
-    df.infer_mtz_dtypes(inplace=True)
-    df.write_mtz("{path}split-{name}.mtz".format(path=path, name=out_name))
-    np.save("{path}test_flags-{name}.npy".format(path=path, name=out_name), choose_test)
-
-    return test_set, fit_set, choose_test
-
-
-def get_corrdiff(on_map, off_map, center, radius, pdb, cell, spacing):
-    """
-    Function to find the correlation coefficient difference between two maps in local and global regions.
-
-    FIRST applies solvent mask to 'on' and an 'off' map.
-    THEN applies a  mask around a specified region
-
-    Parameters :
-
-    on_map, off_map : (GEMMI objects) to be compared
-    center          : (numpy array) XYZ coordinates in PDB for the region of interest
-    radius          : (float) radius for local region of interest
-    pdb, cell       : (str) and (list) PDB file name and cell information
-    spacing         : (float) spacing to generate solvent mask
-
-    Returns :
-
-    diff            : (float) difference between local and global correlation coefficients of 'on'-'off' values
-    CC_loc, CC_glob : (numpy array) local and global correlation coefficients of 'on'-'off' values
-
-    """
-
-    off_a = np.array(off_map.grid)
-    on_a = np.array(on_map.grid)
-    on_nosolvent = np.nan_to_num(mask.solvent_mask(pdb, cell, on_a, spacing))
-    off_nosolvent = np.nan_to_num(mask.solvent_mask(pdb, cell, off_a, spacing))
-    reg_mask = mask.get_mapmask(on_map.grid, center, radius)
-
-    loc_reg = np.array(reg_mask, copy=True).flatten().astype(bool)
-    CC_loc = np.corrcoef(on_a.flatten()[loc_reg], off_a.flatten()[loc_reg])[0, 1]
-    CC_glob = np.corrcoef(
-        on_nosolvent[np.logical_not(loc_reg)], off_nosolvent[np.logical_not(loc_reg)]
-    )[0, 1]
-
-    diff = np.array(CC_glob) - np.array(CC_loc)
-
-    return diff, CC_loc, CC_glob
