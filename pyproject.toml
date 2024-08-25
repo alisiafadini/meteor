@@ -51,3 +51,6 @@ exclude = [
     "__pycache__/",
     "*.pyc",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov=meteor --cov-report=xml"
