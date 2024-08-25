@@ -1,8 +1,14 @@
-
 import gemmi
 import numpy as np
+import pytest
+import reciprocalspaceship as rs
 
 from meteor.utils import compute_coefficients_from_map
+
+DEFAULT_RESOLUTION = 1.0
+DEFAULT_CELL_SIZE = 10.0
+DEFAULT_CARBON1_POSITION = (5.0, 5.0, 5.0)
+DEFAULT_CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 
 def generate_single_carbon_density(
@@ -40,16 +46,17 @@ def generate_single_carbon_density(
     return density_map.grid
 
 
+@pytest.fixture
 def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,
+    d_min: float = DEFAULT_RESOLUTION,
+    cell_size: float = DEFAULT_CELL_SIZE,
+    carbon_position1: tuple[float, float, float] = DEFAULT_CARBON1_POSITION,
+    carbon_position2: tuple[float, float, float] = DEFAULT_CARBON2_POSITION,
 ) -> rs.DataSet:
-    unit_cell = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
+    unit_cell = gemmi.UnitCell(a=cell_size, b=cell_size, c=cell_size, alpha=90, beta=90, gamma=90)
     space_group = gemmi.find_spacegroup_by_name("P1")
-    d_min = 1.0
-
-    carbon_position1 = (5.0, 5.0, 5.0)
-    carbon_position2 = (5.1, 5.0, 5.0)
 
     density1 = generate_single_carbon_density(carbon_position1, space_group, unit_cell, d_min)
     density2 = generate_single_carbon_density(carbon_position2, space_group, unit_cell, d_min)
