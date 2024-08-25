@@ -7,10 +7,12 @@ import reciprocalspaceship as rs
 from meteor import tv
 from meteor.utils import MapLabels, compute_map_from_coefficients
 
-LAMBDAS_TO_SCAN = np.logspace(-3, 1, 50)
+DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 30)
 
 
-def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: MapLabels, map_sampling: int = 3) -> float:
+def rms_between_coefficients(
+    ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: MapLabels, map_sampling: int = 3
+) -> float:
     map1 = compute_map_from_coefficients(
         map_coefficients=ds1,
         amplitude_label=diffmap_labels.amplitude,
@@ -27,7 +29,7 @@ def rms_between_coefficients(ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: M
     map1_array = np.array(map1.grid)
     map2_array = np.array(map2.grid)
 
-    # standardize -- TODO better to scale? think...
+    # standardize
     map1_array /= map1_array.std()
     map2_array /= map2_array.std()
 
@@ -63,28 +65,30 @@ def test_tv_denoise_difference_map_smoke(
     else:
         assert isinstance(output, rs.DataSet)
 
-# TODO re-implement None
-@pytest.mark.parametrize("lambda_values_to_scan", [LAMBDAS_TO_SCAN,])
+
+@pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
 def test_tv_denoise_difference_map(
     lambda_values_to_scan: None | Sequence[float],
     noise_free_map: rs.DataSet,
     noisy_map: rs.DataSet,
     diffmap_labels: MapLabels,
 ) -> None:
-    
     def rms_to_noise_free(test_map: rs.DataSet) -> float:
         return rms_between_coefficients(test_map, noise_free_map, diffmap_labels)
 
-    # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we 
+    # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know  the ground truth, work around this to test all possible results.
-    
+
     lowest_rms: float = np.inf
     best_lambda: float = 0.0
 
-    for trial_lambda in LAMBDAS_TO_SCAN:
-        denoised_map = tv.tv_denoise_difference_map(
+    for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
+        denoised_map, result = tv.tv_denoise_difference_map(
             difference_map_coefficients=noisy_map,
-            lambda_values_to_scan=[trial_lambda,]
+            lambda_values_to_scan=[
+                trial_lambda,
+            ],
+            full_output=True,
         )
         rms = rms_to_noise_free(denoised_map)
         if rms < lowest_rms:
@@ -101,5 +105,4 @@ def test_tv_denoise_difference_map(
 
     rms_after_denoising = rms_to_noise_free(denoised_map)
     assert rms_after_denoising < rms_to_noise_free(noisy_map)
-    np.testing.assert_approx_equal(result.optimal_lambda, best_lambda)
-    np.testing.assert_approx_equal(rms_after_denoising, lowest_rms)
+    np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.2)

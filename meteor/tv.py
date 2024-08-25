@@ -163,7 +163,7 @@ def tv_denoise_difference_map(
         )
         assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
-        optimal_negentropy = negentropy_objective(optimal_lambda)
+        optimal_negentropy = -1.0 * negentropy_objective(optimal_lambda)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
