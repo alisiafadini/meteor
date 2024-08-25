@@ -46,7 +46,6 @@ def generate_single_carbon_density(
     return density_map.grid
 
 
-@pytest.fixture
 def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,

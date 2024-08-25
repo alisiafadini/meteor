@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Sequence, overload
 
 import numpy as np
@@ -26,6 +26,7 @@ class TvDenoiseResult:
     optimal_lambda: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
+    negetropies_for_lambdas_scanned: list[float] = field(default_factory=list)
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
@@ -42,10 +43,10 @@ def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
 @overload
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
-    full_output: Literal[False],
+    full_output: Literal[False] = False,
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
-    lambda_values_to_scan: Sequence[float] | None = None,
+    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> rs.DataSet: ...
 
 
@@ -55,7 +56,7 @@ def tv_denoise_difference_map(
     full_output: Literal[True],
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
-    lambda_values_to_scan: Sequence[float] | None = None,
+    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> tuple[rs.DataSet, TvDenoiseResult]: ...
 
 
@@ -140,18 +141,20 @@ def tv_denoise_difference_map(
         return -1.0 * negentropy(denoised_map.flatten())
 
     optimal_lambda: float
+    negetropies_for_lambdas_scanned = []
 
     # scan a specific set of lambda values and find the best one
     if lambda_values_to_scan is not None:
         # use no denoising as the default to beat
-        optimal_lambda = 0.0  # initialization
-        highest_negentropy = negentropy(difference_map_as_array.flatten())
+        optimal_lambda = lambda_values_to_scan[0]  # initialization
+        optimal_negentropy = negentropy(difference_map_as_array.flatten())
 
         for tv_lambda in lambda_values_to_scan:
             trial_negentropy = -1.0 * negentropy_objective(tv_lambda)
-            if trial_negentropy > highest_negentropy:
+            negetropies_for_lambdas_scanned.append(trial_negentropy)
+            if trial_negentropy > optimal_negentropy:
                 optimal_lambda = tv_lambda
-                highest_negentropy = trial_negentropy
+                optimal_negentropy = trial_negentropy
 
     # use golden ratio optimization to pick an optimal lambda
     else:
@@ -160,7 +163,7 @@ def tv_denoise_difference_map(
         )
         assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
         optimal_lambda = optimizer_result.x
-        highest_negentropy = negentropy_objective(optimal_lambda)
+        optimal_negentropy = negentropy_objective(optimal_lambda)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
@@ -180,8 +183,9 @@ def tv_denoise_difference_map(
     if full_output:
         tv_result = TvDenoiseResult(
             optimal_lambda=optimal_lambda,
-            optimal_negentropy=highest_negentropy,
+            optimal_negentropy=optimal_negentropy,
             map_sampling_used_for_tv=TV_MAP_SAMPLING,
+            negetropies_for_lambdas_scanned=negetropies_for_lambdas_scanned,
         )
         return final_map_coefficients, tv_result
     else:
