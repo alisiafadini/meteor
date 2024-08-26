@@ -13,6 +13,7 @@ dependencies = [
     "scikit-image",
     "reciprocalspaceship",
     "pytest",
+    "pytest-cov",
 ]
 
 [project.optional-dependencies]
@@ -51,3 +52,6 @@ exclude = [
     "__pycache__/",
     "*.pyc",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov=meteor --cov-report=xml"
