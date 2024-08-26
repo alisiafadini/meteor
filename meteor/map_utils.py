@@ -1,7 +1,8 @@
+from typing import Literal, overload
+
 import numpy as np
 import reciprocalspaceship as rs
 import scipy.optimize as opt
-from typing import Literal, overload
 
 
 @overload
