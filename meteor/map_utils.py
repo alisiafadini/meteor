@@ -1,5 +1,6 @@
-from typing import Literal, overload
+from typing import Literal, overload, Union, Optional
 
+import gemmi
 import numpy as np
 import reciprocalspaceship as rs
 import scipy.optimize as opt
@@ -9,6 +10,7 @@ import scipy.optimize as opt
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
+    uncertainties: Optional[rs.DataSeries] = None,
     inplace: Literal[True] = True,
 ) -> None:
     ...
@@ -18,14 +20,16 @@ def scale_structure_factors(
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
+    uncertainties: Optional[rs.DataSeries] = None,
     inplace: Literal[False] = False,
-) -> rs.DataSeries:
+) -> Union[rs.DataSeries, tuple[rs.DataSeries, rs.DataSeries]]:
     ...
 
 
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
+    uncertainties: Optional[rs.DataSeries] = None,
     inplace: bool = True,
 ) -> None | rs.DataSeries:
     """
@@ -64,6 +68,7 @@ def scale_structure_factors(
 
     reference_data = reference.to_numpy()
     scale_data = dataset_to_scale.to_numpy()
+    uncertainties_data = uncertainties.to_numpy() if uncertainties is not None else None
 
     miller_indices_ref = np.array(list(reference.index))
     miller_indices_scale = np.array(list(dataset_to_scale.index))
@@ -95,37 +100,117 @@ def scale_structure_factors(
         + 2 * kl_prod * result.x[6]
     )
 
-    scaled_data = (result.x[0] * np.exp(t)) * scale_data
+    scale_factor = result.x[0] * np.exp(t)
+    scaled_data = scale_factor * scale_data
+
+    if uncertainties is not None:
+        scaled_uncertainties = scale_factor * uncertainties_data
+    else:
+        scaled_uncertainties = None
 
     if inplace:
         dataset_to_scale[:] = scaled_data
+        if uncertainties is not None:
+            uncertainties[:] = scaled_uncertainties
         return None
     else:
         scaled_dataset = dataset_to_scale.copy()
         scaled_dataset[:] = scaled_data
+        if uncertainties is not None:
+            scaled_uncertainties_series = uncertainties.copy()
+            scaled_uncertainties_series[:] = scaled_uncertainties
+            return scaled_dataset, scaled_uncertainties_series
         return scaled_dataset
 
 def compute_amplitude_fofo_difference(
-    data1: rs.DataSeries, data2: rs.DataSeries, data3: rs.DataSeries
-) -> rs.DataSeries:
+    data1: rs.DataSeries,
+    data2: rs.DataSeries,
+    data3: rs.DataSeries,
+    uncertainties1: Optional[rs.DataSeries] = None,
+    uncertainties2: Optional[rs.DataSeries] = None,
+) -> Union[rs.DataSeries, tuple[rs.DataSeries, rs.DataSeries]]:
     """
-    First, scale data1 and data2 to the common scale defined by data3
-    then compute the difference (data2 - data1).
+    First, scale data1 and data2 to the common scale defined by data3,
+    then compute the difference (data2 - data1). Optionally, propagate uncertainties.
 
     Parameters:
-    data1 (rs.DataSeries): First dataset to be used in difference calculation (e.g. F_off).
-    data2 (rs.DataSeries): Second dataset to be used in difference calculation (e.g. F_on).
-    data3 (rs.DataSeries): Reference dataset used for scaling data1 and data2 (e.g. F_calc).
+    data1 (rs.DataSeries): First dataset to be used in difference calculation (e.g., F_off).
+    data2 (rs.DataSeries): Second dataset to be used in difference calculation (e.g., F_on).
+    data3 (rs.DataSeries): Reference dataset used for scaling data1 and data2 (e.g., F_calc).
+    uncertainties1 (Optional[rs.DataSeries]): Uncertainties corresponding to data1 (e.g. SIGF_off).
+    uncertainties2 (Optional[rs.DataSeries]): Uncertainties corresponding to data2 (e.g. SIGF_on).
 
     Returns:
-    rs.DataSeries: The difference (data2 - data1) after scaling to the reference scale.
+    rs.DataSeries or tuple: The difference (data2 - data1) after scaling to the reference scale.
+    If uncertainties are provided, returns a tuple (difference, propagated_uncertainties).
     """
 
-    # Scale data1 and data2 to the scale of data3
-    scaled_data1 = scale_structure_factors(reference=data3, dataset_to_scale=data1, inplace=False)
-    scaled_data2 = scale_structure_factors(reference=data3, dataset_to_scale=data2, inplace=False)
+    # Ensure that both or neither uncertainties are provided
+    if (uncertainties1 is not None) != (uncertainties2 is not None):
+        raise ValueError("Either provide uncertainties for both data1 and data2, or provide none.")
 
-    # Compute the difference between the scaled data2 and data1
-    difference = scaled_data2 - scaled_data1
+    if uncertainties1 is not None and uncertainties2 is not None:
+        # Scale data and uncertainties
+        scaled_data1, scaled_uncertainties1 = scale_structure_factors(
+            reference=data3, dataset_to_scale=data1, uncertainties=uncertainties1, inplace=False
+        )
+        scaled_data2, scaled_uncertainties2 = scale_structure_factors(
+            reference=data3, dataset_to_scale=data2, uncertainties=uncertainties2, inplace=False
+        )
+        # Compute the difference between the scaled data2 and data1
+        difference = scaled_data2 - scaled_data1
+        # Propagate the uncertainties (assuming independent errors)
+        propagated_uncertainties = np.sqrt(scaled_uncertainties1**2 + scaled_uncertainties2**2)
+        return difference, propagated_uncertainties
+    else:
+        # Scale data without uncertainties
+        scaled_data1 = scale_structure_factors(reference=data3,
+                                               dataset_to_scale=data1,
+                                               inplace=False)
+        scaled_data2 = scale_structure_factors(reference=data3,
+                                               dataset_to_scale=data2,
+                                               inplace=False)
+        # Compute the difference between the scaled data2 and data1
+        difference = scaled_data2 - scaled_data1
+        return difference
 
-    return difference
+
+def compute_fofo_difference_map(
+    data1: rs.DataSeries,
+    data2: rs.DataSeries,
+    f_calcs: rs.DataSeries,
+    phases: rs.DataSeries,
+    spacegroup: gemmi.SpaceGroup,
+    cell: gemmi.UnitCell
+) -> rs.DataSet:
+    """
+    Compute the FoFo difference map using two datasets and pre-calculated structure factors.
+
+    Parameters:
+    data1 (rs.DataSeries): First dataset for FoFo difference computation.
+    data2 (rs.DataSeries): Second dataset for FoFo difference computation.
+    f_calcs (rs.DataSeries): Pre-calculated structure factor amplitudes.
+    phases (rs.DataSeries): Pre-calculated phases.
+
+    Returns:
+    rs.DataSet: A DataSet containing the pre-calculated phases and the FoFo amplitude differences.
+    """
+
+    # Compute the FoFo amplitude differences by scaling to fcalcs
+    fofo_diff = compute_amplitude_fofo_difference(data1, data2, f_calcs)
+
+    # Create the final DataSet with phases and FoFo differences
+    result = rs.DataSet({
+        "FoFo": fofo_diff,
+        "Phases": phases,
+    }) #TODO standardize outputs in settings.py?
+
+    #Assign unit cell, spacegroup
+    result.spacegroup = spacegroup
+    result.cell = cell
+
+    return result
+
+
+
+
