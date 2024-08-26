@@ -54,23 +54,18 @@ def test_scale_structure_factors_identical(identical_datasets, inplace):
 @pytest.mark.parametrize("inplace", [True, False])
 def test_scale_structure_factors_different(different_datasets, inplace):
     reference, dataset_to_scale = different_datasets
-
+    # should correctly recover from + 5 scale
     if inplace:
-        original_data = dataset_to_scale.copy()
         map_utils.scale_structure_factors(
             reference, dataset_to_scale, inplace=inplace
         )
-        assert not np.array_equal(
-            original_data.to_numpy(), dataset_to_scale.to_numpy()
-        )
+        np.testing.assert_array_almost_equal(dataset_to_scale.to_numpy(), reference.to_numpy())
     else:
         result = map_utils.scale_structure_factors(
             reference, dataset_to_scale, inplace=inplace
         )
         assert result is not None
-        assert not np.array_equal(
-            dataset_to_scale.to_numpy(), result.to_numpy()
-        )
+        np.testing.assert_array_almost_equal(result.to_numpy(), reference.to_numpy())
 
 
 def test_miller_indices_mismatch():
@@ -88,5 +83,22 @@ def test_miller_indices_mismatch():
     ):
         map_utils.scale_structure_factors(reference, dataset_to_scale)
 
+def test_compute_amplitude_fofo_difference_identical(identical_datasets):
+    data1, data2 = identical_datasets
+    reference_data = data1  # Since they are identical, use the same as reference
 
+    result = map_utils.compute_amplitude_fofo_difference(data1, data2, reference_data)
 
+    # The difference should be an array of zeros
+    expected = np.zeros(len(data1))
+    np.testing.assert_array_almost_equal(result.to_numpy(), expected)
+
+def test_compute_amplitude_fofo_difference_non_identical(different_datasets):
+    data1, data2 = different_datasets
+    reference_data = data1  # Use data1 as the reference for scaling
+
+    result = map_utils.compute_amplitude_fofo_difference(data1, data2, reference_data)
+    # data2 is [15.0, 25.0, 35.0, 45.0] and data1 is [10.0, 20.0, 30.0, 40.0],
+    # after scaling to the reference scale of data1, the difference should be [0.0, 0.0, 0.0, 0.0]
+    expected = np.zeros(len(data1))
+    np.testing.assert_array_almost_equal(result.to_numpy(), expected)

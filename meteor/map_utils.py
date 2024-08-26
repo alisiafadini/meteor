@@ -104,3 +104,28 @@ def scale_structure_factors(
         scaled_dataset = dataset_to_scale.copy()
         scaled_dataset[:] = scaled_data
         return scaled_dataset
+
+def compute_amplitude_fofo_difference(
+    data1: rs.DataSeries, data2: rs.DataSeries, data3: rs.DataSeries
+) -> rs.DataSeries:
+    """
+    First, scale data1 and data2 to the common scale defined by data3
+    then compute the difference (data2 - data1).
+
+    Parameters:
+    data1 (rs.DataSeries): First dataset to be used in difference calculation (e.g. F_off).
+    data2 (rs.DataSeries): Second dataset to be used in difference calculation (e.g. F_on).
+    data3 (rs.DataSeries): Reference dataset used for scaling data1 and data2 (e.g. F_calc).
+
+    Returns:
+    rs.DataSeries: The difference (data2 - data1) after scaling to the reference scale.
+    """
+
+    # Scale data1 and data2 to the scale of data3
+    scaled_data1 = scale_structure_factors(reference=data3, dataset_to_scale=data1, inplace=False)
+    scaled_data2 = scale_structure_factors(reference=data3, dataset_to_scale=data2, inplace=False)
+
+    # Compute the difference between the scaled data2 and data1
+    difference = scaled_data2 - scaled_data1
+
+    return difference
