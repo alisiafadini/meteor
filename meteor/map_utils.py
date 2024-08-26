@@ -8,22 +8,24 @@ from typing import Literal, overload
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
-    inplace: Literal[True] = True
-) -> None: ...
+    inplace: Literal[True] = True,
+) -> None:
+    ...
 
 
 @overload
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
-    inplace: Literal[False] = False
-) -> rs.DataSeries: ...
+    inplace: Literal[False] = False,
+) -> rs.DataSeries:
+    ...
 
 
 def scale_structure_factors(
     reference: rs.DataSeries,
     dataset_to_scale: rs.DataSeries,
-    inplace: bool = True
+    inplace: bool = True,
 ) -> None | rs.DataSeries:
     """
     Apply an anisotropic scaling so that `dataset_to_scale` is on the same scale as `reference`.
@@ -36,7 +38,8 @@ def scale_structure_factors(
     Parameters:
     reference (rs.DataSeries): Single-column DataSeries to use as the reference for scaling.
     dataset_to_scale (rs.DataSeries): Single-column DataSeries to be scaled.
-    inplace (bool): If `True`, modifies the original DataSeries. If `False`, returns a new scaled DataSeries.
+    inplace (bool): If `True`, modifies the original DataSeries. If `False`,
+    returns a new scaled DataSeries.
 
     Returns:
     None if `inplace` is True, otherwise rs.DataSeries with scaled data.
@@ -48,12 +51,12 @@ def scale_structure_factors(
         hk_prod, hl_prod, kl_prod = h * k, h * l, k * l
 
         t = -(
-            h_sq * params[1] +
-            k_sq * params[2] +
-            l_sq * params[3] +
-            2 * hk_prod * params[4] +
-            2 * hl_prod * params[5] +
-            2 * kl_prod * params[6]
+            h_sq * params[1]
+            + k_sq * params[2]
+            + l_sq * params[3]
+            + 2 * hk_prod * params[4]
+            + 2 * hl_prod * params[5]
+            + 2 * kl_prod * params[6]
         )
 
         return x_ref - params[0] * np.exp(t) * x_scale
@@ -61,21 +64,20 @@ def scale_structure_factors(
     reference_data = reference.to_numpy()
     scale_data = dataset_to_scale.to_numpy()
 
-    # Convert the Miller indices to a 2D NumPy array if they are not already
     miller_indices_ref = np.array(list(reference.index))
     miller_indices_scale = np.array(list(dataset_to_scale.index))
 
-    # Ensure that Miller indices match between reference and dataset_to_scale
-    assert np.array_equal(miller_indices_ref, miller_indices_scale), "Miller indices of reference and dataset_to_scale do not match."  # noqa: E501
+    assert np.array_equal(
+        miller_indices_ref, miller_indices_scale
+    ), "Miller indices of reference and dataset_to_scale do not match."  # noqa: E501
 
-    # Initial guess for the parameters: [C, B11, B22, B33, B12, B13, B23]
+    # Initial guess for: [C, B11, B22, B33, B12, B13, B23]
     initial_params = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
-    # Optimize parameters to scale dataset_to_scale to reference
     result = opt.least_squares(
         aniso_scale_func,
         initial_params,
-        args=(reference_data, scale_data, miller_indices_scale)
+        args=(reference_data, scale_data, miller_indices_scale),
     )
 
     # Apply the scaling to dataset_to_scale
@@ -84,12 +86,12 @@ def scale_structure_factors(
     hk_prod, hl_prod, kl_prod = h * k, h * l, k * l
 
     t = -(
-        h_sq * result.x[1] +
-        k_sq * result.x[2] +
-        l_sq * result.x[3] +
-        2 * hk_prod * result.x[4] +
-        2 * hl_prod * result.x[5] +
-        2 * kl_prod * result.x[6]
+        h_sq * result.x[1]
+        + k_sq * result.x[2]
+        + l_sq * result.x[3]
+        + 2 * hk_prod * result.x[4]
+        + 2 * hl_prod * result.x[5]
+        + 2 * kl_prod * result.x[6]
     )
 
     scaled_data = (result.x[0] * np.exp(t)) * scale_data
