@@ -1,156 +1,139 @@
-from typing import Literal, Optional, Tuple, Union, overload
+from typing import Final, Tuple
 
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
 
-
-@overload
-def scale_structure_factors(
-    reference: rs.DataSeries,
-    dataset_to_scale: rs.DataSeries,
-    uncertainties: Optional[rs.DataSeries] = None,
-    inplace: Literal[True] = True,
-) -> None: ...
-
-
-@overload
-def scale_structure_factors(
-    reference: rs.DataSeries,
-    dataset_to_scale: rs.DataSeries,
-    uncertainties: Optional[rs.DataSeries] = None,
-    inplace: Literal[False] = False,
-) -> Union[rs.DataSeries, tuple[rs.DataSeries, rs.DataSeries]]: ...
+DTYPES_TO_SCALE: Final[list[rs.MTZFloat32Dtype]] = [
+    rs.AnomalousDifferenceDtype(),
+    rs.FriedelIntensityDtype(),
+    rs.FriedelStructureFactorAmplitudeDtype(),
+    rs.IntensityDtype(),
+    rs.NormalizedStructureFactorAmplitudeDtype(),
+    rs.StandardDeviationDtype(),
+    rs.StandardDeviationFriedelIDtype(),
+    rs.StandardDeviationFriedelSFDtype(),
+    rs.StructureFactorAmplitudeDtype(),
+]
+""" automatically scale these types when they appear in an rs.DataSet """
 
 
-def scale_structure_factors(
-    reference: rs.DataSeries,
-    dataset_to_scale: rs.DataSeries,
-    uncertainties: Optional[rs.DataSeries] = None,
-    inplace: bool = True,
-) -> None | rs.DataSeries | Tuple[rs.DataSeries, rs.DataSeries]:
+ScaleParameters = Tuple[float, float, float, float, float, float, float]
+""" 7x float tuple to hold anisotropic scaling parameters """
+
+
+def _compute_anisotropic_scale_factors(
+    miller_indices: pd.Index, anisotropic_scale_parameters: ScaleParameters
+) -> np.ndarray:
+    for miller_index in ["H", "K", "L"]:
+        assert miller_index in miller_indices
+
+    miller_indices_as_array = np.array(list(miller_indices))
+    squared_miller_indices = np.square(miller_indices_as_array)
+
+    h_squared = squared_miller_indices[:, 0]
+    k_squared = squared_miller_indices[:, 1]
+    l_squared = squared_miller_indices[:, 2]
+
+    hk_product = miller_indices_as_array[:, 0] * miller_indices_as_array[:, 1]
+    hl_product = miller_indices_as_array[:, 0] * miller_indices_as_array[:, 2]
+    kl_product = miller_indices_as_array[:, 1] * miller_indices_as_array[:, 2]
+
+    # Anisotropic scaling term
+    exponential_argument = -(
+        h_squared * anisotropic_scale_parameters[1]
+        + k_squared * anisotropic_scale_parameters[2]
+        + l_squared * anisotropic_scale_parameters[3]
+        + 2 * hk_product * anisotropic_scale_parameters[4]
+        + 2 * hl_product * anisotropic_scale_parameters[5]
+        + 2 * kl_product * anisotropic_scale_parameters[6]
+    )
+
+    return anisotropic_scale_parameters[0] * np.exp(exponential_argument)
+
+
+def compute_scale_factors(
+    *,
+    reference_values: rs.DataSeries,
+    values_to_scale: rs.DataSeries,
+    reference_uncertainties: rs.DataSeries | None = None,
+    to_scale_uncertainties: rs.DataSeries | None = None,
+) -> rs.DataSeries:
+    common_miller_indices = reference_values.index.intersection(values_to_scale.index)
+
+    # if we are going to weight the scaling using the uncertainty values, then the weights will be
+    #    inverse_sigma = 1 / sqrt{ sigmaA ** 2 + sigmaB ** 2 }
+    if reference_uncertainties is not None and to_scale_uncertainties is not None:
+        assert reference_uncertainties.index.equals(reference_values.index)
+        assert to_scale_uncertainties.index.equals(values_to_scale.index)
+        uncertainty_weights = np.sqrt(
+            np.square(reference_uncertainties.loc[common_miller_indices])
+            + np.square(to_scale_uncertainties.loc[common_miller_indices])
+        )
+    else:
+        uncertainty_weights = 1.0
+
+    common_reference_values = reference_values.loc[common_miller_indices]
+    common_values_to_scale = values_to_scale.loc[common_miller_indices]
+
+    def compute_residuals(scaling_parameters: ScaleParameters) -> np.ndarray:
+        scale_factors = _compute_anisotropic_scale_factors(
+            common_miller_indices, scaling_parameters
+        )
+        return uncertainty_weights * (
+            scale_factors * common_values_to_scale - common_reference_values
+        )
+
+    initial_scaling_parameters: ScaleParameters = (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    optimization_result = opt.least_squares(compute_residuals, initial_scaling_parameters)
+    optimized_parameters: ScaleParameters = optimization_result.x
+
+    # now be sure to compute the scale factors for all miller indices in `values_to_scale`
+    optimized_scale_factors = _compute_anisotropic_scale_factors(
+        values_to_scale.index, optimized_parameters
+    )
+    assert len(optimized_scale_factors) == len(values_to_scale)
+
+    return optimized_scale_factors
+
+
+def scale_datasets(
+    reference_dataset: rs.DataSet,
+    dataset_to_scale: rs.DataSet,
+    column_to_scale: str = "F",
+    uncertainty_column: str = "SIGF",
+    weight_using_uncertainties: bool = True,
+) -> rs.DataSet:
     """
     Apply an anisotropic scaling so that `dataset_to_scale` is on the same scale as `reference`.
 
-    C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
-                2hk B12 + 2hl  B13 +  2kl B23) }
+        C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
+                    2hk B12 + 2hl  B13 +  2kl B23) }
 
     This is the same procedure implemented by CCP4's SCALEIT.
 
-    Parameters:
-    reference (rs.DataSeries): Single-column DataSeries to use as the reference for scaling.
-    dataset_to_scale (rs.DataSeries): Single-column DataSeries to be scaled.
-    uncertainties (Optional[rs.DataSeries]): Optional uncertainties associated with
-    the dataset to scale.
-    inplace (bool): If `True`, modifies the original DataSeries. If `False`,
-    returns a new scaled DataSeries.
-
-    Returns:
-    None if `inplace` is True, otherwise a scaled rs.DataSeries (and optionally uncertainties).
+    Assumes that the `reference` and `dataset_to_scale` both have a column `column_to_scale`.
     """
 
-    def aniso_scale_objective(
-        scale_params: np.ndarray,
-        reference_data: np.ndarray,
-        data_to_scale: np.ndarray,
-        miller_indices: np.ndarray,
-    ) -> np.ndarray:
-        """
-        Objective function to scale two data arrays using an anisotropic scaling model.
-
-        Parameters:
-        scale_params (np.ndarray): Array of scaling parameters [C, B11, B22, B33, B12, B13, B23].
-        reference_data (np.ndarray): Array of reference data.
-        data_to_scale (np.ndarray): Array of data to scale.
-        miller_indices (np.ndarray): Array of Miller indices, with columns for h, k, l.
-
-        Returns:
-        np.ndarray: Residual between scaled data and reference data.
-        """
-        h, k, l = miller_indices[:, 0], miller_indices[:, 1], miller_indices[:, 2]
-        h_sq, k_sq, l_sq = np.square(h), np.square(k), np.square(l)
-        hk_prod, hl_prod, kl_prod = h * k, h * l, k * l
-
-        # Anisotropic scaling term
-        exponent_term = -(
-            h_sq * scale_params[1]
-            + k_sq * scale_params[2]
-            + l_sq * scale_params[3]
-            + 2 * hk_prod * scale_params[4]
-            + 2 * hl_prod * scale_params[5]
-            + 2 * kl_prod * scale_params[6]
+    if weight_using_uncertainties:
+        scale_factors = compute_scale_factors(
+            reference_values=reference_dataset[column_to_scale],
+            values_to_scale=dataset_to_scale[column_to_scale],
+            reference_uncertainties=reference_dataset[uncertainty_column],
+            to_scale_uncertainties=dataset_to_scale[uncertainty_column],
+        )
+    else:
+        scale_factors = compute_scale_factors(
+            reference_values=reference_dataset[column_to_scale],
+            values_to_scale=dataset_to_scale[column_to_scale],
+            reference_uncertainties=None,
+            to_scale_uncertainties=None,
         )
 
-        scaled_data = scale_params[0] * np.exp(exponent_term) * data_to_scale
+    scaled_dataset = dataset_to_scale.copy()
+    columns_to_scale = [col for col in dataset_to_scale.columns if type(col) in DTYPES_TO_SCALE]
+    for column in columns_to_scale:
+        scaled_dataset[column] *= scale_factors
 
-        # Residual between scaled data and reference data
-        return scaled_data - reference_data
-
-    # Convert DataSeries to numpy arrays
-    reference_data = reference.to_numpy()
-    scale_data = dataset_to_scale.to_numpy()
-    uncertainties_data = uncertainties.to_numpy() if uncertainties is not None else None
-
-    # Miller indices (list casting for multi index)
-    miller_indices_ref = np.array(list(reference.index))
-    miller_indices_scale = np.array(list(dataset_to_scale.index))
-
-    # Ensure Miller indices match between the two datasets
-    assert np.array_equal(
-        miller_indices_ref, miller_indices_scale
-    ), "Miller indices of reference and dataset_to_scale do not match."
-
-    # Initial guess for the scaling parameters: [C, B11, B22, B33, B12, B13, B23]
-    initial_params = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
-
-    # Least-squares optimization to fit scaling parameters
-    result = opt.least_squares(
-        aniso_scale_objective,
-        initial_params,
-        args=(reference_data, scale_data, miller_indices_scale),
-    )
-
-    # Extract optimized scaling parameters
-    optimized_params = result.x
-
-    # Recalculate the scaling factor and apply it to dataset.
-    h, k, l = (
-        miller_indices_scale[:, 0],
-        miller_indices_scale[:, 1],
-        miller_indices_scale[:, 2],
-    )
-    h_sq, k_sq, l_sq = np.square(h), np.square(k), np.square(l)
-    hk_prod, hl_prod, kl_prod = h * k, h * l, k * l
-
-    exponent_term = -(
-        h_sq * optimized_params[1]
-        + k_sq * optimized_params[2]
-        + l_sq * optimized_params[3]
-        + 2 * hk_prod * optimized_params[4]
-        + 2 * hl_prod * optimized_params[5]
-        + 2 * kl_prod * optimized_params[6]
-    )
-
-    scale_factor = optimized_params[0] * np.exp(exponent_term)
-    scaled_data = scale_factor * scale_data
-
-    # Apply scaling to uncertainties if they are provided
-    if uncertainties is not None:
-        scaled_uncertainties = scale_factor * uncertainties_data
-    else:
-        scaled_uncertainties = None
-
-    # Modify the dataset in-place or return a new scaled dataset
-    if inplace:
-        dataset_to_scale[:] = scaled_data
-        if uncertainties is not None:
-            uncertainties[:] = scaled_uncertainties
-        return None
-    else:
-        scaled_dataset = dataset_to_scale.copy()
-        scaled_dataset[:] = scaled_data
-        if uncertainties is not None:
-            scaled_uncertainties_series = uncertainties.copy()
-            scaled_uncertainties_series[:] = scaled_uncertainties
-            return scaled_dataset, scaled_uncertainties_series
-        return scaled_dataset
+    return scaled_dataset

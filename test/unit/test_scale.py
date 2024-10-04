@@ -16,9 +16,7 @@ def generate_mock_dataset(miller_indices, data):
 def identical_datasets():
     miller_indices = [(0, 0, 1), (1, 0, 0), (0, 1, 0), (1, 1, 1)]
     data = np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float32)
-    return generate_mock_dataset(miller_indices, data), generate_mock_dataset(
-        miller_indices, data
-    )
+    return generate_mock_dataset(miller_indices, data), generate_mock_dataset(miller_indices, data)
 
 
 @pytest.fixture
@@ -55,14 +53,10 @@ def test_scale_structure_factors_identical(identical_datasets, inplace):
     result = scale.scale_structure_factors(reference, dataset_to_scale, inplace=inplace)
 
     if inplace:
-        np.testing.assert_array_almost_equal(
-            dataset_to_scale.to_numpy(), original_data.to_numpy()
-        )
+        np.testing.assert_array_almost_equal(dataset_to_scale.to_numpy(), original_data.to_numpy())
         assert result is None
     else:
-        np.testing.assert_array_almost_equal(
-            result.to_numpy(), original_data.to_numpy()
-        )
+        np.testing.assert_array_almost_equal(result.to_numpy(), original_data.to_numpy())
 
 
 @pytest.mark.parametrize("inplace", [True, False])
@@ -71,12 +65,8 @@ def test_scale_structure_factors_different(different_datasets, inplace):
     # should correctly recover from + 5 scale
     if inplace:
         scale.scale_structure_factors(reference, dataset_to_scale, inplace=inplace)
-        np.testing.assert_array_almost_equal(
-            dataset_to_scale.to_numpy(), reference.to_numpy()
-        )
+        np.testing.assert_array_almost_equal(dataset_to_scale.to_numpy(), reference.to_numpy())
     else:
-        result = scale.scale_structure_factors(
-            reference, dataset_to_scale, inplace=inplace
-        )
+        result = scale.scale_structure_factors(reference, dataset_to_scale, inplace=inplace)
         assert result is not None
         np.testing.assert_array_almost_equal(result.to_numpy(), reference.to_numpy())
