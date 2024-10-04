@@ -1,21 +1,21 @@
-from typing import Final, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
 
-DTYPES_TO_SCALE: Final[list[rs.MTZRealDtype]] = [
-    rs.AnomalousDifferenceDtype(),
-    rs.FriedelIntensityDtype(),
-    rs.FriedelStructureFactorAmplitudeDtype(),
-    rs.IntensityDtype(),
-    rs.NormalizedStructureFactorAmplitudeDtype(),
-    rs.StandardDeviationDtype(),
-    rs.StandardDeviationFriedelIDtype(),
-    rs.StandardDeviationFriedelSFDtype(),
-    rs.StructureFactorAmplitudeDtype(),
-]
+DTYPES_TO_SCALE = (
+    rs.AnomalousDifferenceDtype,
+    rs.FriedelIntensityDtype,
+    rs.FriedelStructureFactorAmplitudeDtype,
+    rs.IntensityDtype,
+    rs.NormalizedStructureFactorAmplitudeDtype,
+    rs.StandardDeviationDtype,
+    rs.StandardDeviationFriedelIDtype,
+    rs.StandardDeviationFriedelSFDtype,
+    rs.StructureFactorAmplitudeDtype,
+)
 """ automatically scale these types when they appear in an rs.DataSet """
 
 
@@ -26,9 +26,6 @@ ScaleParameters = Tuple[float, float, float, float, float, float, float]
 def _compute_anisotropic_scale_factors(
     miller_indices: pd.Index, anisotropic_scale_parameters: ScaleParameters
 ) -> np.ndarray:
-    for miller_index in ["H", "K", "L"]:
-        assert miller_index in miller_indices
-
     miller_indices_as_array = np.array(list(miller_indices))
     squared_miller_indices = np.square(miller_indices_as_array)
 
@@ -99,9 +96,10 @@ def compute_scale_factors(
 
 
 def scale_datasets(
+    *,
     reference_dataset: rs.DataSet,
     dataset_to_scale: rs.DataSet,
-    column_to_scale: str = "F",
+    column_to_compare: str = "F",
     uncertainty_column: str = "SIGF",
     weight_using_uncertainties: bool = True,
 ) -> rs.DataSet:
@@ -113,27 +111,37 @@ def scale_datasets(
 
     This is the same procedure implemented by CCP4's SCALEIT.
 
-    Assumes that the `reference` and `dataset_to_scale` both have a column `column_to_scale`.
+    Assumes that the `reference` and `dataset_to_scale` both have a column `column_to_compare`.
     """
 
     if weight_using_uncertainties:
         scale_factors = compute_scale_factors(
-            reference_values=reference_dataset[column_to_scale],
-            values_to_scale=dataset_to_scale[column_to_scale],
+            reference_values=reference_dataset[column_to_compare],
+            values_to_scale=dataset_to_scale[column_to_compare],
             reference_uncertainties=reference_dataset[uncertainty_column],
             to_scale_uncertainties=dataset_to_scale[uncertainty_column],
         )
     else:
         scale_factors = compute_scale_factors(
-            reference_values=reference_dataset[column_to_scale],
-            values_to_scale=dataset_to_scale[column_to_scale],
+            reference_values=reference_dataset[column_to_compare],
+            values_to_scale=dataset_to_scale[column_to_compare],
             reference_uncertainties=None,
             to_scale_uncertainties=None,
         )
 
     scaled_dataset = dataset_to_scale.copy()
-    columns_to_scale = [col for col in dataset_to_scale.columns if type(col) in DTYPES_TO_SCALE]
+    columns_to_scale = [
+        column_name
+        for column_name, column_dtype in dataset_to_scale.dtypes.items()
+        if isinstance(column_dtype, DTYPES_TO_SCALE)
+    ]
+    if column_to_compare not in columns_to_scale:
+        raise TypeError(
+            f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
+        )
+
     for column in columns_to_scale:
+        print(f"Scaling: {column}")
         scaled_dataset[column] *= scale_factors
 
     return scaled_dataset
