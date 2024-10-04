@@ -5,7 +5,7 @@ import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
 
-DTYPES_TO_SCALE: Final[list[rs.MTZFloat32Dtype]] = [
+DTYPES_TO_SCALE: Final[list[rs.MTZRealDtype]] = [
     rs.AnomalousDifferenceDtype(),
     rs.FriedelIntensityDtype(),
     rs.FriedelStructureFactorAmplitudeDtype(),
