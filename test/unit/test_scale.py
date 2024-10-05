@@ -52,7 +52,6 @@ def test_compute_scale_factors_scalar(miller_dataseries: rs.DataSeries) -> None:
 
 
 def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> None:
-
     flat_miller_dataseries = miller_dataseries.copy()
     flat_miller_dataseries[:] = np.ones(len(miller_dataseries))
 

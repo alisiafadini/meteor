@@ -58,9 +58,11 @@ def compute_scale_factors(
     to_scale_uncertainties: rs.DataSeries | None = None,
 ) -> rs.DataSeries:
     """
-    Compute anisotropic scale factors to modify `values_to_scale` to be on the same scale as `reference_values`.
+    Compute anisotropic scale factors to modify `values_to_scale` to be on the same scale as
+    `reference_values`.
 
-    Following SCALEIT, the scaling model is an anisotropic model, applying a transformation of the form:
+    Following SCALEIT, the scaling model is an anisotropic model, applying a transformation of the
+    form:
 
         C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
                     2hk B12 + 2hl  B13 +  2kl B23) }
@@ -87,7 +89,8 @@ def compute_scale_factors(
 
     See Also:
     ---------
-    scale_datasets : higher-level interface that operates on entire DataSets, typically more convienent.
+    scale_datasets : higher-level interface that operates on entire DataSets, typically more
+    convienent.
 
     Citations:
     ----------
@@ -143,25 +146,30 @@ def scale_datasets(
     Scale a dataset to align it with a reference dataset using anisotropic scaling.
 
     This function scales the dataset (`dataset_to_scale`) by comparing it to a reference dataset
-    (`reference_dataset`) based on a specified column. The scaling applies an anisotropic model of the form:
+    (`reference_dataset`) based on a specified column. The scaling applies an anisotropic model of
+    the form:
 
         C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
                     2hk B12 + 2hl  B13 +  2kl B23) }
 
     The parameters Bxy are fit using least squares, optionally with uncertainty weighting.
 
-    NB! All intensity, amplitude, and standard deviation columns in `dataset_to_scale` will be modified (scaled). To access the scale parameters directly, use `meteor.scale.compute_scale_factors`.
+    NB! All intensity, amplitude, and standard deviation columns in `dataset_to_scale` will be
+    modified (scaled). To access the scale parameters directly, use
+    `meteor.scale.compute_scale_factors`.
 
     Parameters:
     -----------
     reference_dataset : rs.DataSet
-        The reference dataset, containing a column with the values to which `dataset_to_scale` is compared.
+        The reference dataset, containing a column with the values to which `dataset_to_scale` is
+        compared.
     dataset_to_scale : rs.DataSet
         The dataset to be scaled. It must contain the same columns as `reference_dataset`.
     column_to_compare : str, optional (default: "F")
         The column in both datasets that is used for the comparison and scaling.
     uncertainty_column : str, optional (default: "SIGF")
-        The column in both datasets containing uncertainty values for weighting. Used only if `weight_using_uncertainties` is True.
+        The column in both datasets containing uncertainty values for weighting. Used only if
+        `weight_using_uncertainties` is True.
     weight_using_uncertainties : bool, optional (default: True)
         Whether or not to weight the scaling by uncertainty values. If True, uncertainty values are
         extracted from the `uncertainty_column` in both datasets.
@@ -169,7 +177,8 @@ def scale_datasets(
     Returns:
     --------
     rs.DataSet
-        A copy of `dataset_to_scale`, with the specified columns scaled to match the reference dataset.
+        A copy of `dataset_to_scale`, with the specified columns scaled to match the reference
+        dataset.
 
     See Also:
     ---------
