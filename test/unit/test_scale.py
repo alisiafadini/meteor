@@ -8,8 +8,8 @@ from meteor import scale
 
 @pytest.fixture
 def miller_dataseries() -> rs.DataSeries:
-    miller_indices = [(0, 0, 1), (1, 0, 0), (0, 1, 0), (1, 1, 1)]
-    data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    miller_indices = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0)]
+    data = np.array([8.0, 4.0, 2.0, 1.0, 1.0], dtype=np.float32)
     return rs.DataSeries(
         data, index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"])
     )
@@ -49,6 +49,18 @@ def test_compute_scale_factors_scalar(miller_dataseries: rs.DataSeries) -> None:
         reference_values=miller_dataseries, values_to_scale=doubled_miller_dataseries
     )
     np.testing.assert_array_almost_equal(scale_factors, multiple)
+
+
+def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> None:
+
+    flat_miller_dataseries = miller_dataseries.copy()
+    flat_miller_dataseries[:] = np.ones(len(miller_dataseries))
+
+    scale_factors = scale.compute_scale_factors(
+        reference_values=miller_dataseries, values_to_scale=flat_miller_dataseries
+    )
+    print("***", scale_factors)
+    np.testing.assert_array_almost_equal(scale_factors, miller_dataseries.values)
 
 
 def test_scale_datasets(random_difference_map: rs.DataSet) -> None:
