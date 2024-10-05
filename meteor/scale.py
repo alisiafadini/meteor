@@ -57,6 +57,42 @@ def compute_scale_factors(
     reference_uncertainties: rs.DataSeries | None = None,
     to_scale_uncertainties: rs.DataSeries | None = None,
 ) -> rs.DataSeries:
+    """
+    Compute anisotropic scale factors to modify `values_to_scale` to be on the same scale as `reference_values`.
+
+    Following SCALEIT, the scaling model is an anisotropic model, applying a transformation of the form:
+
+        C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
+                    2hk B12 + 2hl  B13 +  2kl B23) }
+
+    The parameters Bxy are fit using least squares, optionally with uncertainty weighting.
+
+    Parameters:
+    -----------
+    reference_values : rs.DataSeries
+        The reference dataset against which scaling is performed, indexed by Miller indices.
+    values_to_scale : rs.DataSeries
+        The dataset to be scaled, also Miller indexed.
+    reference_uncertainties : rs.DataSeries, optional
+        Uncertainty values associated with `reference_values`. If provided, they are used in
+        weighting the scaling process. Must have the same index as `reference_values`.
+    to_scale_uncertainties : rs.DataSeries, optional
+        Uncertainty values associated with `values_to_scale`. If provided, they are used in
+        weighting the scaling process. Must have the same index as `values_to_scale`.
+
+    Returns:
+    --------
+    rs.DataSeries
+        The computed anisotropic scale factors for each Miller index in `values_to_scale`.
+
+    See Also:
+    ---------
+    scale_datasets : higher-level interface that operates on entire DataSets, typically more convienent.
+
+    Citations:
+    ----------
+    [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
+    """
     common_miller_indices = reference_values.index.intersection(values_to_scale.index)
 
     # if we are going to weight the scaling using the uncertainty values, then the weights will be
@@ -104,14 +140,44 @@ def scale_datasets(
     weight_using_uncertainties: bool = True,
 ) -> rs.DataSet:
     """
-    Apply an anisotropic scaling so that `dataset_to_scale` is on the same scale as `reference`.
+    Scale a dataset to align it with a reference dataset using anisotropic scaling.
+
+    This function scales the dataset (`dataset_to_scale`) by comparing it to a reference dataset
+    (`reference_dataset`) based on a specified column. The scaling applies an anisotropic model of the form:
 
         C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
                     2hk B12 + 2hl  B13 +  2kl B23) }
 
-    This is the same procedure implemented by CCP4's SCALEIT.
+    The parameters Bxy are fit using least squares, optionally with uncertainty weighting.
 
-    Assumes that the `reference` and `dataset_to_scale` both have a column `column_to_compare`.
+    NB! All intensity, amplitude, and standard deviation columns in `dataset_to_scale` will be modified (scaled). To access the scale parameters directly, use `meteor.scale.compute_scale_factors`.
+
+    Parameters:
+    -----------
+    reference_dataset : rs.DataSet
+        The reference dataset, containing a column with the values to which `dataset_to_scale` is compared.
+    dataset_to_scale : rs.DataSet
+        The dataset to be scaled. It must contain the same columns as `reference_dataset`.
+    column_to_compare : str, optional (default: "F")
+        The column in both datasets that is used for the comparison and scaling.
+    uncertainty_column : str, optional (default: "SIGF")
+        The column in both datasets containing uncertainty values for weighting. Used only if `weight_using_uncertainties` is True.
+    weight_using_uncertainties : bool, optional (default: True)
+        Whether or not to weight the scaling by uncertainty values. If True, uncertainty values are
+        extracted from the `uncertainty_column` in both datasets.
+
+    Returns:
+    --------
+    rs.DataSet
+        A copy of `dataset_to_scale`, with the specified columns scaled to match the reference dataset.
+
+    See Also:
+    ---------
+    compute_scale_factors : function to compute scale factors directly
+
+    Citations:
+    ----------
+    [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
 
     if weight_using_uncertainties:
