@@ -14,6 +14,7 @@ def miller_dataseries() -> rs.DataSeries:
         data, index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"])
     )
 
+
 def test_compute_anisotropic_scale_factors_smoke(miller_dataseries: rs.DataSeries) -> None:
     # test call signature, valid return
     random_params: scale.ScaleParameters = tuple(np.random.randn(7))
