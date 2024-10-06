@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Sequence
 
 import numpy as np
 from scipy.optimize import minimize_scalar
@@ -96,7 +96,7 @@ class ScalarMaximizer:
             self.argument_optimum = argument_test_value
             self.objective_maximum = objective_value
 
-    def optimize_over_explicit_values(self, *, arguments_to_scan: list[float] | np.ndarray):
+    def optimize_over_explicit_values(self, *, arguments_to_scan: Sequence[float] | np.ndarray):
         """
         Scans through a list or array of argument values to find the optimum.
 
