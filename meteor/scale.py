@@ -216,7 +216,6 @@ def scale_datasets(
         )
 
     for column in columns_to_scale:
-        print(f"Scaling: {column}")
         scaled_dataset[column] *= scale_factors
 
     return scaled_dataset
