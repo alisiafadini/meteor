@@ -27,7 +27,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.mypy]
 [[tool.mypy.overrides]]
-module = "reciprocalspaceship.*,gemmi.*,scipy.stats.*,scipy.optimize.*"
+module = "reciprocalspaceship.*,gemmi.*,scipy.*,skimage.*"
 ignore_missing_imports = true
 
 [tool.ruff]
