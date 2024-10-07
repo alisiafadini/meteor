@@ -44,6 +44,6 @@ def test_negentropy_maximizer_explicit() -> None:
 def test_negentropy_maximizer_golden() -> None:
     maximizer = validate.ScalarMaximizer(objective=parabolic_objective)
     maximizer.optimize_with_golden_algorithm(bracket=(-5, 5))
-    assert_almost_equal(maximizer.argument_optimum, 1.0)
-    assert_almost_equal(maximizer.objective_maximum, 0.0)
+    assert_almost_equal(maximizer.argument_optimum, 1.0, decimal=2)
+    assert_almost_equal(maximizer.objective_maximum, 0.0, decimal=2)
     assert len(maximizer.values_evaluated) > 0
