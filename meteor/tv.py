@@ -3,7 +3,6 @@ from typing import Literal, Sequence, overload
 
 import numpy as np
 import reciprocalspaceship as rs
-from scipy.optimize import minimize_scalar
 from skimage.restoration import denoise_tv_chambolle
 
 from .settings import (
@@ -18,7 +17,7 @@ from .utils import (
     numpy_array_to_map,
     resolution_limits,
 )
-from .validate import negentropy
+from .validate import ScalarMaximizer, negentropy
 
 
 @dataclass
@@ -26,7 +25,7 @@ class TvDenoiseResult:
     optimal_lambda: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
-    negetropies_for_lambdas_scanned: list[float] = field(default_factory=list)
+    lambdas_scanned: set[float] = field(default_factory=set)
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
@@ -118,8 +117,7 @@ def tv_denoise_difference_map(
       measure of the map's "randomness."
       Higher negentropy generally corresponds to a more informative and less noisy map.
     - The golden-section search is a robust method for optimizing unimodal functions,
-      particularly suited for scenarios where
-      an explicit list of candidate values is not provided.
+      particularly suited for scenarios where an explicit list of candidate values is not provided.
 
     Example
     -------
@@ -138,35 +136,18 @@ def tv_denoise_difference_map(
 
     def negentropy_objective(tv_lambda: float):
         denoised_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=tv_lambda)
-        return -1.0 * negentropy(denoised_map.flatten())
+        return negentropy(denoised_map.flatten())
 
-    optimal_lambda: float
-    negetropies_for_lambdas_scanned = []
-
-    # scan a specific set of lambda values and find the best one
+    maximizer = ScalarMaximizer(objective=negentropy_objective)
     if lambda_values_to_scan is not None:
-        # use no denoising as the default to beat
-        optimal_lambda = lambda_values_to_scan[0]  # initialization
-        optimal_negentropy = negentropy(difference_map_as_array.flatten())
-
-        for tv_lambda in lambda_values_to_scan:
-            trial_negentropy = -1.0 * negentropy_objective(tv_lambda)
-            negetropies_for_lambdas_scanned.append(trial_negentropy)
-            if trial_negentropy > optimal_negentropy:
-                optimal_lambda = tv_lambda
-                optimal_negentropy = trial_negentropy
-
-    # use golden ratio optimization to pick an optimal lambda
+        maximizer.optimize_over_explicit_values(arguments_to_scan=lambda_values_to_scan)
     else:
-        optimizer_result = minimize_scalar(
-            negentropy_objective, bracket=TV_LAMBDA_RANGE, method="golden"
-        )
-        assert optimizer_result.success, "Golden minimization failed to find optimal TV lambda"
-        optimal_lambda = optimizer_result.x
-        optimal_negentropy = -1.0 * negentropy_objective(optimal_lambda)
+        maximizer.optimize_with_golden_algorithm(bracket=TV_LAMBDA_RANGE)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
-    final_map = _tv_denoise_array(map_as_array=difference_map_as_array, weight=optimal_lambda)
+    final_map = _tv_denoise_array(
+        map_as_array=difference_map_as_array, weight=maximizer.argument_optimum
+    )
     final_map_as_ccp4 = numpy_array_to_map(
         final_map,
         spacegroup=difference_map_coefficients.spacegroup,
@@ -182,10 +163,10 @@ def tv_denoise_difference_map(
 
     if full_output:
         tv_result = TvDenoiseResult(
-            optimal_lambda=optimal_lambda,
-            optimal_negentropy=optimal_negentropy,
+            optimal_lambda=maximizer.argument_optimum,
+            optimal_negentropy=maximizer.objective_maximum,
             map_sampling_used_for_tv=TV_MAP_SAMPLING,
-            negetropies_for_lambdas_scanned=negetropies_for_lambdas_scanned,
+            lambdas_scanned=maximizer.values_evaluated,
         )
         return final_map_coefficients, tv_result
     else:

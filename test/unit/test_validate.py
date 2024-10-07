@@ -1,6 +1,12 @@
 import numpy as np
+from numpy.testing import assert_almost_equal
 
 from meteor import validate
+
+
+def parabolic_objective(x: float) -> float:
+    # has a maximum of y = 0 at x = 1
+    return -(x**2) + 2 * x - 1
 
 
 def test_negentropy_gaussian() -> None:
@@ -24,3 +30,20 @@ def test_negentropy_uniform() -> None:
 def test_negentropy_zero() -> None:
     negentropy = validate.negentropy(np.zeros(100))
     assert negentropy == -np.inf
+
+
+def test_negentropy_maximizer_explicit() -> None:
+    maximizer = validate.ScalarMaximizer(objective=parabolic_objective)
+    test_values = np.linspace(-5, 5, 11)
+    maximizer.optimize_over_explicit_values(arguments_to_scan=test_values)
+    assert_almost_equal(maximizer.argument_optimum, 1.0)
+    assert_almost_equal(maximizer.objective_maximum, 0.0)
+    assert set(test_values) == maximizer.values_evaluated
+
+
+def test_negentropy_maximizer_golden() -> None:
+    maximizer = validate.ScalarMaximizer(objective=parabolic_objective)
+    maximizer.optimize_with_golden_algorithm(bracket=(-5, 5))
+    assert_almost_equal(maximizer.argument_optimum, 1.0, decimal=2)
+    assert_almost_equal(maximizer.objective_maximum, 0.0, decimal=2)
+    assert len(maximizer.values_evaluated) > 0

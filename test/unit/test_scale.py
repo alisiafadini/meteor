@@ -65,7 +65,6 @@ def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> 
     scale_factors = scale.compute_scale_factors(
         reference_values=miller_dataseries, values_to_scale=flat_miller_dataseries
     )
-    print("***", scale_factors)
     np.testing.assert_array_almost_equal(scale_factors, miller_dataseries.values)
 
 
