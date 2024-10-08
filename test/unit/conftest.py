@@ -46,36 +46,52 @@ def generate_single_carbon_density(
     return density_map.grid
 
 
-def displaced_single_atom_difference_map_coefficients(
+def denity_to_noisy_coefficients(
     *,
+    density: gemmi.FloatGrid | np.ndarray,
     noise_sigma: float,
-    d_min: float = DEFAULT_RESOLUTION,
-    cell_size: float = DEFAULT_CELL_SIZE,
-    carbon_position1: tuple[float, float, float] = DEFAULT_CARBON1_POSITION,
-    carbon_position2: tuple[float, float, float] = DEFAULT_CARBON2_POSITION,
+    resolution: float,
+    unit_cell: gemmi.SpaceGroup,
+    space_group: gemmi.UnitCell,
 ) -> rs.DataSet:
-    unit_cell = gemmi.UnitCell(a=cell_size, b=cell_size, c=cell_size, alpha=90, beta=90, gamma=90)
-    space_group = gemmi.find_spacegroup_by_name("P1")
-
-    density1 = generate_single_carbon_density(carbon_position1, space_group, unit_cell, d_min)
-    density2 = generate_single_carbon_density(carbon_position2, space_group, unit_cell, d_min)
-
     ccp4_map = gemmi.Ccp4Map()
-    grid_values = (
-        np.array(density2) - np.array(density1) + noise_sigma * np.random.randn(*density2.shape)
-    )
+    grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
     ccp4_map.grid = gemmi.FloatGrid(grid_values.astype(np.float32), unit_cell, space_group)
     ccp4_map.update_ccp4_header()
 
     difference_map_coefficients = compute_coefficients_from_map(
         ccp4_map=ccp4_map,
-        high_resolution_limit=d_min,
+        high_resolution_limit=resolution,
         amplitude_label="DF",
         phase_label="PHIC",
     )
     assert (difference_map_coefficients.max() > 0.0).any()
 
     return difference_map_coefficients
+
+
+def displaced_single_atom_difference_map_coefficients(
+    *,
+    noise_sigma: float,
+) -> rs.DataSet:
+    unit_cell = gemmi.UnitCell(
+        a=DEFAULT_CELL_SIZE, b=DEFAULT_CELL_SIZE, c=DEFAULT_CELL_SIZE, alpha=90, beta=90, gamma=90
+    )
+    space_group = gemmi.find_spacegroup_by_name("P1")
+    density1 = generate_single_carbon_density(
+        DEFAULT_CARBON1_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
+    )
+    density2 = generate_single_carbon_density(
+        DEFAULT_CARBON2_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
+    )
+    density = np.array(density2) - np.array(density1)
+    return denity_to_noisy_coefficients(
+        density=density,
+        noise_sigma=noise_sigma,
+        resolution=DEFAULT_RESOLUTION,
+        unit_cell=unit_cell,
+        space_group=space_group,
+    )
 
 
 @pytest.fixture
