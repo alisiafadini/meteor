@@ -101,7 +101,9 @@ def tv_denoise_difference_map(
     Returns
     -------
     rs.DataSet | tuple[rs.DataSet, TvDenoiseResult]
-        If `full_output` is `False`, returns a `rs.DataSet`, the denoised map coefficients.
+        If `full_output` is `False`, returns a `rs.DataSet`, which is a new DataSet with the
+          denoised difference map amplitudes and phases in two columns, named
+          `difference_map_amplitude_column` and `difference_map_phase_column` respectively.
         If `full_output` is `True`, returns a tuple containing:
         - `rs.DataSet`: The denoised map coefficients.
         - `TvDenoiseResult`: An object w/ the optimal lambda and the corresponding negentropy.
@@ -173,5 +175,116 @@ def tv_denoise_difference_map(
         return final_map_coefficients
 
 
-def iterative_tv_phase_retrieval():
-    raise NotImplementedError()
+def _dataseries_l1_norm(
+    series1: rs.DataSeries,
+    series2: rs.DataSeries,
+) -> float:
+    difference = (series2 - series1).dropna()
+    num_datapoints = len(difference)
+    return np.abs(difference) / float(num_datapoints)
+
+
+def _phase_of_projection_to_experimental_set(
+    *,
+    difference_amplitudes: rs.DataSeries,
+    difference_phases: rs.DataSeries,
+    native_amplitudes: rs.DataSeries,
+    native_phases: rs.DataSeries,
+) -> rs.DataSeries:
+    complex_difference = difference_amplitudes * np.exp(difference_phases)
+    complex_native = native_amplitudes * np.exp(native_phases)
+    complex_derivative_estimate = complex_difference + complex_native
+    return complex_derivative_estimate.apply(np.angle)
+
+
+def iterative_tv_phase_retrieval(
+    *,
+    input_dataset: rs.DataSet,
+    native_amplitude_column: str = "F",
+    derivative_amplitude_column: str = "FH",
+    calculated_phase_column: str = "PHIC",
+    output_derivative_phase_column: str = "PHICH",
+    convergence_tolerance: float = 0.01,
+):
+    """
+    Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
+    explicitly annotated |*|.
+
+        Input: |F|, |Fh|, phi_c
+        Note: F = |F| * exp{ phi_c } is the native/dark data,
+             |Fh| represents the derivative/triggered/light data
+
+        Initialize:
+         - D_F = ( |Fh| - |F| ) * exp{ phi_c }
+
+        while not converged:
+            D_rho = FT{ D_F }                       Fourier transform
+            D_rho' = TV{ D_rho }                    TV denoise: apply real space prior
+            D_F' = FT-1{ D_rho' }                   back Fourier transform
+            Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]  Fourier space projection onto experimental set
+            D_F = Fh' - F
+
+    Where the TV lambda parameter is determined using golden section optimization. The algorithm
+    iterates until the changes in DF for each iteration drop below a specified per-amplitude
+    threshold.
+    """
+
+    # TODO should these be adjustable input params?
+    difference_amplitude_column: str = "DF"
+    difference_phase_column: str = "DPHIC"
+
+    initial_derivative_phases = (
+        input_dataset[calculated_phase_column].copy().rename(output_derivative_phase_column)
+    )
+
+    initial_difference_amplitudes = (
+        (
+            input_dataset[derivative_amplitude_column].copy()
+            - input_dataset[native_amplitude_column].copy()
+        ).rename(difference_amplitude_column),
+    )
+    initial_difference_phases = (
+        input_dataset[calculated_phase_column].copy().rename(difference_phase_column)
+    )
+
+    # working_ds holds 3x complex numbers: native, derivative, differences
+    working_ds = rs.concat(
+        [
+            input_dataset[
+                [native_amplitude_column, derivative_amplitude_column, calculated_phase_column]
+            ].copy(),
+            initial_derivative_phases,
+            initial_difference_amplitudes,
+            initial_difference_phases,
+        ],
+        axis=1,
+    )
+
+    converged: bool = False
+    while not converged:
+        # TV denoise using golden algorithm, includes forward and backwards FTs
+        # > returned DF_prime is a copy with new `DIFFERENCE_AMPLITUDES` & `calculated_phase_column`
+        DF_prime = tv_denoise_difference_map(  # noqa: N806
+            difference_map_coefficients=working_ds,
+            difference_map_amplitude_column=difference_amplitude_column,
+            difference_map_phase_column=difference_phase_column,
+        )
+
+        change_in_DF = _dataseries_l1_norm(  # noqa: N806
+            working_ds[difference_amplitude_column],  # previous iteration
+            DF_prime[difference_amplitude_column],  # current iteration
+        )
+        converged = change_in_DF < convergence_tolerance
+
+        # update working_ds, NB native and derivative amplitudes & native phases stay the same
+        working_ds[difference_amplitude_column] = DF_prime[difference_amplitude_column]
+        working_ds[difference_phase_column] = DF_prime[difference_phase_column]
+
+        working_ds[output_derivative_phase_column] = _phase_of_projection_to_experimental_set(
+            difference_amplitudes=working_ds[difference_amplitude_column],
+            difference_phases=working_ds[difference_phase_column],
+            native_amplitudes=working_ds[native_amplitude_column],
+            native_phases=working_ds[calculated_phase_column],
+        )
+
+    return working_ds
