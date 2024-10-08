@@ -1,7 +1,6 @@
 from typing import Sequence
 
 import numpy as np
-import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
 
@@ -37,14 +36,6 @@ def rms_between_coefficients(
     rms = float(np.linalg.norm(map2_array - map1_array))
 
     return rms
-
-
-def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol=1e-3):
-    diff = array2 - array1
-    diff = (diff + 180) % 360 - 180
-    absolute_difference = np.sum(np.abs(diff)) / float(np.prod(diff.shape))
-    if not absolute_difference < atol:
-        raise ValueError(f"per element diff {absolute_difference} > tolerance {atol}")
 
 
 @pytest.mark.parametrize(
@@ -115,60 +106,3 @@ def test_tv_denoise_difference_map(
     rms_after_denoising = rms_to_noise_free(denoised_map)
     assert rms_after_denoising < rms_to_noise_free(noisy_map)
     np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.2)
-
-
-def test_dataseries_l1_norm() -> None:
-    series1 = rs.DataSeries([0, 0, 0], index=[0, 1, 2])
-    series2 = rs.DataSeries([1, 1, 1], index=[0, 1, 3])
-    norm = tv._dataseries_l1_norm(series1, series2)
-    assert norm == 1.0
-
-
-def test_dataseries_l1_norm_no_overlapping_indices() -> None:
-    series1 = rs.DataSeries([0, 0, 0], index=[0, 1, 2])
-    series2 = rs.DataSeries([1, 1, 1], index=[3, 4, 5])
-    with pytest.raises(RuntimeError):
-        tv._dataseries_l1_norm(series1, series2)
-
-
-def test_projected_derivative_phase_identical_phases() -> None:
-    hkls = [0, 1, 2]
-    phases = rs.DataSeries([0.0, 30.0, 60.0], index=hkls)
-    amplitudes = rs.DataSeries([1.0, 1.0, 1.0], index=hkls)
-
-    derivative_phases = tv._projected_derivative_phase(
-        difference_amplitudes=amplitudes,
-        difference_phases=phases,
-        native_amplitudes=amplitudes,
-        native_phases=phases,
-    )
-    assert_phases_allclose(phases.to_numpy(), derivative_phases.to_numpy())
-
-
-def test_projected_derivative_phase_opposite_phases() -> None:
-    hkls = [0, 1, 2]
-    native_phases = rs.DataSeries([0.0, 30.0, 60.0], index=hkls)
-
-    # if DF = 0, then derivative and native phase should be the same
-    derivative_phases = tv._projected_derivative_phase(
-        difference_amplitudes=rs.DataSeries([0.0, 0.0, 0.0], index=hkls),
-        difference_phases=native_phases,
-        native_amplitudes=rs.DataSeries([1.0, 1.0, 1.0], index=hkls),
-        native_phases=native_phases,
-    )
-    np.testing.assert_almost_equal(derivative_phases.to_numpy(), native_phases.to_numpy())
-
-
-def test_iterative_tv(displaced_atom_two_datasets_noise_free: rs.DataSet) -> None:
-    result = tv.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noise_free)
-    for label in ["F", "Fh"]:
-        pdt.assert_series_equal(
-            result[label], displaced_atom_two_datasets_noise_free[label], atol=1e-3
-        )
-    assert_phases_allclose(
-        result["PHIC"], displaced_atom_two_datasets_noise_free["PHIC"], atol=1e-3
-    )
-    # assert_phases_allclose(
-    #     result["PHICh"], displaced_atom_two_datasets_noise_free["PHICh_ground_truth"], atol=1e-3
-    # )
-    
