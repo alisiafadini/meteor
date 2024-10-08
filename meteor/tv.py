@@ -175,6 +175,12 @@ def tv_denoise_difference_map(
     else:
         return final_map_coefficients
 
+def _form_complex_sf(amplitudes: rs.DataSeries, phases_in_deg: rs.DataSeries) -> rs.DataSeries:
+    return amplitudes * np.exp(1j * np.deg2rad(phases_in_deg))
+
+def _complex_argument(complex: rs.DataSeries) -> rs.DataSeries:
+    return complex.apply(np.angle).apply(np.rad2deg)
+
 
 def _dataseries_l1_norm(
     series1: rs.DataSeries,
@@ -194,19 +200,19 @@ def _projected_derivative_phase(
     native_amplitudes: rs.DataSeries,
     native_phases: rs.DataSeries,
 ) -> rs.DataSeries:
-    complex_difference = difference_amplitudes * np.exp(difference_phases)
-    complex_native = native_amplitudes * np.exp(native_phases)
+    complex_difference = _form_complex_sf(difference_amplitudes, difference_phases)
+    complex_native = _form_complex_sf(native_amplitudes, native_phases)
     complex_derivative_estimate = complex_difference + complex_native
-    return complex_derivative_estimate.apply(np.angle).apply(np.rad2deg)
+    return _complex_argument(complex_derivative_estimate)
 
 
 def iterative_tv_phase_retrieval(
     *,
     input_dataset: rs.DataSet,
     native_amplitude_column: str = "F",
-    derivative_amplitude_column: str = "FH",
+    derivative_amplitude_column: str = "Fh",
     calculated_phase_column: str = "PHIC",
-    output_derivative_phase_column: str = "PHICH",
+    output_derivative_phase_column: str = "PHICh",
     convergence_tolerance: float = 0.01,
 ) -> rs.DataSet:
     """
@@ -232,7 +238,8 @@ def iterative_tv_phase_retrieval(
     threshold.
     """
 
-    # TODO should these be adjustable input params?
+    # TODO work on below for readability
+    # TODO should these be adjustable input params? not returned?
     difference_amplitude_column: str = "DF"
     difference_phase_column: str = "DPHIC"
 
@@ -290,16 +297,18 @@ def iterative_tv_phase_retrieval(
             native_phases=working_ds[calculated_phase_column],
         )
 
-        current_complex_native = working_ds[native_amplitude_column] * np.exp(
+        # TODO encapsulate block below into function
+        current_complex_native = _form_complex_sf(
+            working_ds[native_amplitude_column],
             working_ds[calculated_phase_column]
         )
-        current_complex_derivative = working_ds[derivative_amplitude_column] * np.exp(
+        current_complex_derivative = _form_complex_sf(
+            working_ds[derivative_amplitude_column],
             working_ds[output_derivative_phase_column]
         )
         current_complex_difference = current_complex_derivative - current_complex_native
-
         working_ds[difference_amplitude_column] = np.abs(current_complex_difference)
-        working_ds[difference_phase_column] = np.rad2deg(np.angle(current_complex_difference))
+        working_ds[difference_phase_column] = _complex_argument(current_complex_difference)
 
     canonicalize_amplitudes(
         working_ds,
