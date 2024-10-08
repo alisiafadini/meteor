@@ -5,9 +5,9 @@ from .tv import tv_denoise_difference_map
 from .utils import canonicalize_amplitudes
 
 
-def _form_complex_sf(amplitudes: rs.DataSeries, phases_in_deg: rs.DataSeries) -> rs.DataSeries:
+def _form_complex_sf(amplitudes: rs.DataSeries, phases_in_deg: rs.DataSeries) -> np.ndarray:
     expi = lambda x: np.exp(1j * np.deg2rad(x))  # noqa: E731
-    return amplitudes * phases_in_deg.apply(expi)
+    return amplitudes.to_numpy().astype(np.complex128) * expi(phases_in_deg.to_numpy().astype(np.float64))
 
 
 def _complex_argument(complex: rs.DataSeries) -> rs.DataSeries:
@@ -35,6 +35,8 @@ def _projected_derivative_phase(
     complex_difference = _form_complex_sf(difference_amplitudes, difference_phases)
     complex_native = _form_complex_sf(native_amplitudes, native_phases)
     complex_derivative_estimate = complex_difference + complex_native
+    complex_derivative_estimate = rs.DataSeries(complex_derivative_estimate, index=native_amplitudes.index)
+    print(complex_derivative_estimate)
     return _complex_argument(complex_derivative_estimate)
 
 
@@ -116,17 +118,17 @@ def iterative_tv_phase_retrieval(
             difference_map_amplitude_column=difference_amplitude_column,
             difference_map_phase_column=difference_phase_column,
             lambda_values_to_scan=[
-                0.001,
+                0.1,
             ],
             full_output=True,
         )
-        print("***", result.optimal_lambda)
 
         change_in_DF = _dataseries_l1_norm(  # noqa: N806
             working_ds[difference_amplitude_column],  # previous iteration
             DF_prime[difference_amplitude_column],  # current iteration
         )
         converged = change_in_DF < convergence_tolerance
+        print("***", result.optimal_negentropy, change_in_DF)
 
         # update working_ds, NB native and derivative amplitudes & native phases stay the same
         working_ds[output_derivative_phase_column] = _projected_derivative_phase(
@@ -143,10 +145,13 @@ def iterative_tv_phase_retrieval(
         current_complex_derivative = _form_complex_sf(
             working_ds[derivative_amplitude_column], working_ds[output_derivative_phase_column]
         )
+
         current_complex_difference = current_complex_derivative - current_complex_native
-        working_ds[difference_amplitude_column] = np.abs(current_complex_difference).astype(
-            rs.StructureFactorAmplitudeDtype()
-        )
+        working_ds[difference_amplitude_column] = rs.DataSeries(
+            np.abs(current_complex_difference),
+            index=working_ds.index,
+            name=difference_amplitude_column
+        ).astype(rs.StructureFactorAmplitudeDtype())
         working_ds[difference_phase_column] = _complex_argument(current_complex_difference)
 
     canonicalize_amplitudes(

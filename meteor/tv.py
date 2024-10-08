@@ -30,6 +30,8 @@ class TvDenoiseResult:
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
+    if weight < 0.0:
+        raise ValueError("TV weight < 0 requested, something went wrong")
     denoised_map = denoise_tv_chambolle(
         map_as_array,
         weight=weight,
@@ -77,7 +79,6 @@ def tv_denoise_difference_map(
       2. Alternatively, an explicit list of lambda values to assess can be provided using
         `lambda_values_to_scan`.
 
-
     Parameters
     ----------
     difference_map_coefficients : rs.DataSet
@@ -124,7 +125,6 @@ def tv_denoise_difference_map(
     >>> coefficients = rs.read_mtz("./path/to/difference_map.mtz")  # load dataset
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
     >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
-
     """
     difference_map = compute_map_from_coefficients(
         map_coefficients=difference_map_coefficients,
@@ -143,10 +143,7 @@ def tv_denoise_difference_map(
         maximizer.optimize_over_explicit_values(arguments_to_scan=lambda_values_to_scan)
     else:
         maximizer.optimize_with_golden_algorithm(bracket=TV_LAMBDA_RANGE)
-
-    if maximizer.argument_optimum < 0.0:
-        raise RuntimeError("optimal TV denoising parameter is negative, something went wrong")
-
+    
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_map = _tv_denoise_array(
         map_as_array=difference_map_as_array, weight=maximizer.argument_optimum

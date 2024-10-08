@@ -49,14 +49,14 @@ def test_projected_derivative_phase_opposite_phases() -> None:
     np.testing.assert_almost_equal(derivative_phases.to_numpy(), native_phases.to_numpy())
 
 
-def test_iterative_tv(displaced_atom_two_datasets_noise_free: rs.DataSet) -> None:
-    result = iterative.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noise_free)
+def test_iterative_tv(displaced_atom_two_datasets_noisy: rs.DataSet) -> None:
+    result = iterative.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noisy)
     for label in ["F", "Fh"]:
         pdt.assert_series_equal(
-            result[label], displaced_atom_two_datasets_noise_free[label], atol=1e-3
+            result[label], displaced_atom_two_datasets_noisy[label], atol=1e-3
         )
     assert_phases_allclose(
-        result["PHIC"], displaced_atom_two_datasets_noise_free["PHIC"], atol=1e-3
+        result["PHIC"], displaced_atom_two_datasets_noisy["PHIC"], atol=1e-3
     )
     # assert_phases_allclose(
     #     result["PHICh"], displaced_atom_two_datasets_noise_free["PHICh_ground_truth"], atol=1e-3
