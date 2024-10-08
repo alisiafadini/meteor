@@ -12,6 +12,7 @@ from .settings import (
     TV_STOP_TOLERANCE,
 )
 from .utils import (
+    canonicalize_amplitudes,
     compute_coefficients_from_map,
     compute_map_from_coefficients,
     numpy_array_to_map,
@@ -181,10 +182,12 @@ def _dataseries_l1_norm(
 ) -> float:
     difference = (series2 - series1).dropna()
     num_datapoints = len(difference)
-    return np.abs(difference) / float(num_datapoints)
+    if num_datapoints == 0:
+        raise RuntimeError("no overlapping indices between `series1` and `series2`")
+    return np.sum(np.abs(difference)) / float(num_datapoints)
 
 
-def _phase_of_projection_to_experimental_set(
+def _projected_derivative_phase(
     *,
     difference_amplitudes: rs.DataSeries,
     difference_phases: rs.DataSeries,
@@ -194,7 +197,7 @@ def _phase_of_projection_to_experimental_set(
     complex_difference = difference_amplitudes * np.exp(difference_phases)
     complex_native = native_amplitudes * np.exp(native_phases)
     complex_derivative_estimate = complex_difference + complex_native
-    return complex_derivative_estimate.apply(np.angle)
+    return complex_derivative_estimate.apply(np.angle).apply(np.rad2deg)
 
 
 def iterative_tv_phase_retrieval(
@@ -205,7 +208,7 @@ def iterative_tv_phase_retrieval(
     calculated_phase_column: str = "PHIC",
     output_derivative_phase_column: str = "PHICH",
     convergence_tolerance: float = 0.01,
-):
+) -> rs.DataSet:
     """
     Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
     explicitly annotated |*|.
@@ -260,9 +263,12 @@ def iterative_tv_phase_retrieval(
         axis=1,
     )
 
+    # begin iterative TV algorithm
     converged: bool = False
+
     while not converged:
         # TV denoise using golden algorithm, includes forward and backwards FTs
+        # this is the un-projected difference amplitude and phase
         # > returned DF_prime is a copy with new `DIFFERENCE_AMPLITUDES` & `calculated_phase_column`
         DF_prime = tv_denoise_difference_map(  # noqa: N806
             difference_map_coefficients=working_ds,
@@ -277,14 +283,35 @@ def iterative_tv_phase_retrieval(
         converged = change_in_DF < convergence_tolerance
 
         # update working_ds, NB native and derivative amplitudes & native phases stay the same
-        working_ds[difference_amplitude_column] = DF_prime[difference_amplitude_column]
-        working_ds[difference_phase_column] = DF_prime[difference_phase_column]
-
-        working_ds[output_derivative_phase_column] = _phase_of_projection_to_experimental_set(
-            difference_amplitudes=working_ds[difference_amplitude_column],
-            difference_phases=working_ds[difference_phase_column],
+        working_ds[output_derivative_phase_column] = _projected_derivative_phase(
+            difference_amplitudes=DF_prime[difference_amplitude_column],
+            difference_phases=DF_prime[difference_phase_column],
             native_amplitudes=working_ds[native_amplitude_column],
             native_phases=working_ds[calculated_phase_column],
         )
+
+        current_complex_native = working_ds[native_amplitude_column] * np.exp(
+            working_ds[calculated_phase_column]
+        )
+        current_complex_derivative = working_ds[derivative_amplitude_column] * np.exp(
+            working_ds[output_derivative_phase_column]
+        )
+        current_complex_difference = current_complex_derivative - current_complex_native
+
+        working_ds[difference_amplitude_column] = np.abs(current_complex_difference)
+        working_ds[difference_phase_column] = np.rad2deg(np.angle(current_complex_difference))
+
+    canonicalize_amplitudes(
+        working_ds,
+        amplitude_label=derivative_amplitude_column,
+        phase_label=output_derivative_phase_column,
+        inplace=True,
+    )
+    canonicalize_amplitudes(
+        working_ds,
+        amplitude_label=difference_amplitude_column,
+        phase_label=difference_phase_column,
+        inplace=True,
+    )
 
     return working_ds

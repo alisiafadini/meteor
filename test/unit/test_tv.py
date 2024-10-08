@@ -106,3 +106,20 @@ def test_tv_denoise_difference_map(
     rms_after_denoising = rms_to_noise_free(denoised_map)
     assert rms_after_denoising < rms_to_noise_free(noisy_map)
     np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.2)
+
+
+def test_dataseries_l1_norm() -> None:
+    series1 = rs.DataSeries([0, 0, 0], index=[0, 1, 2])
+    series2 = rs.DataSeries([1, 1, 1], index=[0, 1, 3])
+    norm = tv._dataseries_l1_norm(series1, series2)
+    assert norm == 1.0
+
+
+def test_dataseries_l1_norm_no_overlapping_indices() -> None:
+    series1 = rs.DataSeries([0, 0, 0], index=[0, 1, 2])
+    series2 = rs.DataSeries([1, 1, 1], index=[3, 4, 5])
+    with pytest.raises(RuntimeError):
+        tv._dataseries_l1_norm(series1, series2)
+
+
+def test_phase_of_projection_to_experimental_set() -> None: ...
