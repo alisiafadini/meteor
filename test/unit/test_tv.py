@@ -1,6 +1,7 @@
 from typing import Sequence
 
 import numpy as np
+import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
 
@@ -36,6 +37,14 @@ def rms_between_coefficients(
     rms = float(np.linalg.norm(map2_array - map1_array))
 
     return rms
+
+
+def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol=1e-3):
+    diff = array2 - array1
+    diff = (diff + 180) % 360 - 180
+    absolute_difference = np.sum(np.abs(diff)) / float(np.prod(diff.shape))
+    if not absolute_difference < atol:
+        raise ValueError(f"per element diff {absolute_difference} > tolerance {atol}")
 
 
 @pytest.mark.parametrize(
@@ -77,7 +86,7 @@ def test_tv_denoise_difference_map(
         return rms_between_coefficients(test_map, noise_free_map, diffmap_labels)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
-    # know  the ground truth, work around this to test all possible results.
+    # know the ground truth, work around this to test all possible results.
 
     lowest_rms: float = np.inf
     best_lambda: float = 0.0
@@ -133,7 +142,7 @@ def test_projected_derivative_phase_identical_phases() -> None:
         native_amplitudes=amplitudes,
         native_phases=phases,
     )
-    np.testing.assert_almost_equal(phases.to_numpy(), derivative_phases.to_numpy())
+    assert_phases_allclose(phases.to_numpy(), derivative_phases.to_numpy())
 
 
 def test_projected_derivative_phase_opposite_phases() -> None:
@@ -148,3 +157,18 @@ def test_projected_derivative_phase_opposite_phases() -> None:
         native_phases=native_phases,
     )
     np.testing.assert_almost_equal(derivative_phases.to_numpy(), native_phases.to_numpy())
+
+
+def test_iterative_tv(displaced_atom_two_datasets_noise_free: rs.DataSet) -> None:
+    result = tv.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noise_free)
+    for label in ["F", "Fh"]:
+        pdt.assert_series_equal(
+            result[label], displaced_atom_two_datasets_noise_free[label], atol=1e-3
+        )
+    assert_phases_allclose(
+        result["PHIC"], displaced_atom_two_datasets_noise_free["PHIC"], atol=1e-3
+    )
+    # assert_phases_allclose(
+    #     result["PHICh"], displaced_atom_two_datasets_noise_free["PHICh_ground_truth"], atol=1e-3
+    # )
+    

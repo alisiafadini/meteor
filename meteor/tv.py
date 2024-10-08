@@ -145,6 +145,9 @@ def tv_denoise_difference_map(
     else:
         maximizer.optimize_with_golden_algorithm(bracket=TV_LAMBDA_RANGE)
 
+    if maximizer.argument_optimum < 0.0:
+        raise RuntimeError("optimal TV denoising parameter is negative, something went wrong")
+
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_map = _tv_denoise_array(
         map_as_array=difference_map_as_array, weight=maximizer.argument_optimum
@@ -175,11 +178,12 @@ def tv_denoise_difference_map(
 
 
 def _form_complex_sf(amplitudes: rs.DataSeries, phases_in_deg: rs.DataSeries) -> rs.DataSeries:
-    return amplitudes * np.exp(1j * np.deg2rad(phases_in_deg))
+    expi = lambda x: np.exp(1j * np.deg2rad(x))
+    return amplitudes * phases_in_deg.apply(expi)
 
 
 def _complex_argument(complex: rs.DataSeries) -> rs.DataSeries:
-    return complex.apply(np.angle).apply(np.rad2deg)
+    return complex.apply(np.angle).apply(np.rad2deg).astype(rs.PhaseDtype())
 
 
 def _dataseries_l1_norm(
@@ -207,8 +211,8 @@ def _projected_derivative_phase(
 
 
 def iterative_tv_phase_retrieval(
-    *,
     input_dataset: rs.DataSet,
+    *,
     native_amplitude_column: str = "F",
     derivative_amplitude_column: str = "Fh",
     calculated_phase_column: str = "PHIC",
@@ -243,32 +247,34 @@ def iterative_tv_phase_retrieval(
     difference_amplitude_column: str = "DF"
     difference_phase_column: str = "DPHIC"
 
-    initial_derivative_phases = (
-        input_dataset[calculated_phase_column].copy().rename(output_derivative_phase_column)
-    )
+    # input_dataset = input_dataset.copy()
 
-    initial_difference_amplitudes = (
-        (
-            input_dataset[derivative_amplitude_column].copy()
-            - input_dataset[native_amplitude_column].copy()
-        ).rename(difference_amplitude_column),
+    initial_derivative_phases = input_dataset[calculated_phase_column].rename(
+        output_derivative_phase_column
     )
-    initial_difference_phases = (
-        input_dataset[calculated_phase_column].copy().rename(difference_phase_column)
+    initial_difference_amplitudes = (
+        input_dataset[derivative_amplitude_column] - input_dataset[native_amplitude_column]
+    ).rename(difference_amplitude_column)
+
+    initial_difference_phases = input_dataset[calculated_phase_column].rename(
+        difference_phase_column
     )
 
     # working_ds holds 3x complex numbers: native, derivative, differences
-    working_ds = rs.concat(
+    working_ds: rs.DataSet = rs.concat(
         [
-            input_dataset[
-                [native_amplitude_column, derivative_amplitude_column, calculated_phase_column]
-            ].copy(),
+            input_dataset[native_amplitude_column],
+            input_dataset[derivative_amplitude_column],
+            input_dataset[calculated_phase_column],
             initial_derivative_phases,
             initial_difference_amplitudes,
             initial_difference_phases,
         ],
         axis=1,
+        check_isomorphous=False,
     )
+    working_ds.spacegroup = input_dataset.spacegroup
+    working_ds.cell = input_dataset.cell
 
     # begin iterative TV algorithm
     converged: bool = False
@@ -277,11 +283,14 @@ def iterative_tv_phase_retrieval(
         # TV denoise using golden algorithm, includes forward and backwards FTs
         # this is the un-projected difference amplitude and phase
         # > returned DF_prime is a copy with new `DIFFERENCE_AMPLITUDES` & `calculated_phase_column`
-        DF_prime = tv_denoise_difference_map(  # noqa: N806
+        DF_prime, result = tv_denoise_difference_map(  # noqa: N806
             difference_map_coefficients=working_ds,
             difference_map_amplitude_column=difference_amplitude_column,
             difference_map_phase_column=difference_phase_column,
+            lambda_values_to_scan=[0.001,],
+            full_output=True
         )
+        print("***", result.optimal_lambda)
 
         change_in_DF = _dataseries_l1_norm(  # noqa: N806
             working_ds[difference_amplitude_column],  # previous iteration
@@ -305,7 +314,7 @@ def iterative_tv_phase_retrieval(
             working_ds[derivative_amplitude_column], working_ds[output_derivative_phase_column]
         )
         current_complex_difference = current_complex_derivative - current_complex_native
-        working_ds[difference_amplitude_column] = np.abs(current_complex_difference)
+        working_ds[difference_amplitude_column] = np.abs(current_complex_difference).astype(rs.StructureFactorAmplitudeDtype())
         working_ds[difference_phase_column] = _complex_argument(current_complex_difference)
 
     canonicalize_amplitudes(
