@@ -76,7 +76,7 @@ def _complex_derivative_from_iterative_tv(
     native: np.ndarray,
     initial_derivative: np.ndarray,
     tv_denoise_function: Callable[[np.ndarray], np.ndarray],
-    convergence_tolerance: float = 0.01,
+    convergence_tolerance: float = 1e-4,
     max_iterations: int = 1000,
 ) -> np.ndarray:
     """
@@ -127,6 +127,7 @@ def _complex_derivative_from_iterative_tv(
         converged = change < convergence_tolerance
 
         num_iterations += 1
+        print(num_iterations, change)
         if num_iterations > max_iterations:
             break
 
@@ -140,8 +141,9 @@ def iterative_tv_phase_retrieval(
     derivative_amplitude_column: str = "Fh",
     calculated_phase_column: str = "PHIC",
     output_derivative_phase_column: str = "PHICh",
-    convergence_tolerance: float = 0.01,
+    convergence_tolerance: float = 1e-4,
     max_iterations: int = 1000,
+    tv_weights_to_scan: list[float] = [0.001]
 ) -> rs.DataSet:
     """
     Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -188,10 +190,12 @@ def iterative_tv_phase_retrieval(
         diffmap.cell = input_dataset.cell
         diffmap.spacegroup = input_dataset.spacegroup
 
-        denoised_map_coefficients = tv_denoise_difference_map(
+        denoised_map_coefficients, details = tv_denoise_difference_map(
             diffmap,
-            lambda_values_to_scan=[0.0001, 0.001, 0.01, 0.1],  # TODO
+            lambda_values_to_scan=tv_weights_to_scan,
+            full_output=True
         )
+        print(details.optimal_lambda, details.optimal_negentropy)
 
         denoised_difference = _rs_dataseies_to_complex_array(
             denoised_map_coefficients["DF"], denoised_map_coefficients["PHIC"]

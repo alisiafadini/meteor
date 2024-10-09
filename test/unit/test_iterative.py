@@ -16,6 +16,12 @@ def simple_tv_function(fourier_array: np.ndarray) -> np.ndarray:
     return np.fft.fftn(denoised)
 
 
+def normalized_rms(x: np.ndarray, y: np.ndarray) -> float:
+    normalized_x = x / x.mean()
+    normalized_y = y / y.mean()
+    return float(np.linalg.norm(normalized_x - normalized_y))
+
+
 def test_l1_norm() -> None:
     n = 5
     x = np.arange(n)
@@ -100,40 +106,41 @@ def test_complex_derivative_from_iterative_tv() -> None:
 
     denoised_test_image = np.fft.ifftn(denoised_derivative).real
 
-    test_image = test_image / np.mean(test_image)
-    test_image_noisy = test_image_noisy / np.mean(test_image_noisy)
-    denoised_test_image = denoised_test_image / denoised_test_image.mean()
-
-    noisy_error = np.linalg.norm(denoised_test_image - test_image)
-    denoised_error = np.linalg.norm(test_image_noisy - test_image)
-    assert noisy_error < denoised_error
+    noisy_error = normalized_rms(denoised_test_image, test_image)
+    denoised_error = normalized_rms(test_image_noisy, test_image)
+    assert 1.05 * noisy_error < denoised_error
 
 
 def test_iterative_tv(
-    noisy_displaced_atom_datasets: rs.DataSet, carbon_difference_density: np.ndarray
+    atom_minus_noisy_atom: rs.DataSet, carbon_difference_density: np.ndarray
 ) -> None:
-    noisy_displaced_atom_datasets["DF"] = (
-        noisy_displaced_atom_datasets["Fh"] - noisy_displaced_atom_datasets["F"]
+    
+    # get the initial diffmap
+    atom_minus_noisy_atom["DF"] = (
+        atom_minus_noisy_atom["Fh"] - atom_minus_noisy_atom["F"]
     )
     noisy_density = compute_map_from_coefficients(
-        map_coefficients=noisy_displaced_atom_datasets,
+        map_coefficients=atom_minus_noisy_atom,
         amplitude_label="DF",
         phase_label="PHIC",
         map_sampling=3,
     )
 
-    result = iterative.iterative_tv_phase_retrieval(noisy_displaced_atom_datasets)
+    # run it-TV
+    result = iterative.iterative_tv_phase_retrieval(atom_minus_noisy_atom)
 
-    assert_phases_allclose(result["PHIC"], noisy_displaced_atom_datasets["PHIC"], atol=1e-3)
+    # make sure output columns that should not be altered are in fact the same
+    assert_phases_allclose(result["PHIC"], atom_minus_noisy_atom["PHIC"], atol=1e-3)
     for label in ["F", "Fh"]:
-        pdt.assert_series_equal(result[label], noisy_displaced_atom_datasets[label], atol=1e-3)
+        pdt.assert_series_equal(result[label], atom_minus_noisy_atom[label], atol=1e-3)
 
     denoised_density = compute_map_from_coefficients(
         map_coefficients=result, amplitude_label="DF", phase_label="DPHI", map_sampling=3
     )
 
-    noisy_error = np.linalg.norm(np.array(noisy_density.grid) - carbon_difference_density)
-    denoised_error = np.linalg.norm(np.array(denoised_density.grid) - carbon_difference_density)
-    print(noisy_error, denoised_error)
+    noisy_error = normalized_rms(np.array(noisy_density.grid), carbon_difference_density)
+    denoised_error = normalized_rms(np.array(denoised_density.grid), carbon_difference_density)
+    #assert 1.01 * denoised_error < noisy_error
 
-    denoised_density.write_ccp4_map("denoised.map")
+    # noisy_density.write_ccp4_map("noised.map")
+    # denoised_density.write_ccp4_map("denoised.map")

@@ -76,32 +76,6 @@ def displaced_single_atom_difference_map_coefficients(
     return difference_map_coefficients
 
 
-def two_datasets_atom_displacement(
-    *,
-    noise_sigma: float,
-) -> rs.DataSet:
-    c1_map = gemmi.Ccp4Map()
-    c1_map.grid = carbon1_density()
-
-    c2_map = gemmi.Ccp4Map()
-    c2_map.grid = carbon2_density()
-
-    coefficents1 = compute_coefficients_from_map(
-        ccp4_map=c1_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F",
-        phase_label="PHIC",
-    )
-    coefficents2 = compute_coefficients_from_map(
-        ccp4_map=c2_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="Fh",
-        phase_label="PHICh",
-    )
-
-    return rs.concat([coefficents1, coefficents2], axis=1)
-
-
 @pytest.fixture
 def carbon_difference_density() -> np.ndarray:
     difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
@@ -119,5 +93,26 @@ def noisy_map() -> rs.DataSet:
 
 
 @pytest.fixture
-def noisy_displaced_atom_datasets() -> rs.DataSet:
-    return two_datasets_atom_displacement(noise_sigma=0.0)
+def atom_minus_noisy_atom() -> rs.DataSet:
+    noise_sigma = 0.0
+
+    map = gemmi.Ccp4Map()
+    map.grid = carbon1_density()
+
+    noisy_array = np.array(carbon2_density()) + noise_sigma * np.random.randn(*map.grid.shape)
+    noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
+
+    coefficents1 = compute_coefficients_from_map(
+        ccp4_map=map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="F",
+        phase_label="PHIC",
+    )
+    coefficents2 = compute_coefficients_from_map(
+        ccp4_map=noisy_map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="Fh",
+        phase_label="PHICh",
+    )
+
+    return rs.concat([coefficents1, coefficents2], axis=1)
