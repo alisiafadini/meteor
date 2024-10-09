@@ -38,13 +38,37 @@ def _l1_norm(
 def _project_derivative_on_experimental_set(
     *,
     native: np.ndarray,
-    derivative: np.ndarray,
+    derivative_amplitudes: np.ndarray,
     difference: np.ndarray,
 ) -> np.ndarray:
-    # TODO docstring
-    proj_derivative = difference + native
-    proj_derivative /= np.abs(derivative) / np.abs(proj_derivative)
-    return proj_derivative
+    """
+    Project `derivative` onto the set of experimentally observed amplitudes,
+
+        Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]
+
+    In English, the output is a complex-valued array that changes the derivative phase to ensure:
+
+        difference = derivative - native
+
+    Parameters
+    ----------
+    native: np.ndarray
+        The experimentally observed native amplitudes and computed phases, as a complex array.
+    derivative_amplitudes: np.ndarray
+        An array of the experimentally observed derivative amplitudes. Typically real-valued, but
+        a complex-valued array with arbitrary phase can be passed (phases discarded).
+    difference: np.ndarray
+        The estimated complex structure factor difference, derivative-minus-native.
+
+    Returns
+    -------
+    projected_derivative : np.ndarray
+        The complex-valued derivative structure factors, with experimental amplitude and phase
+        adjusted to ensure that difference = derivative - native.
+    """
+    projected_derivative = difference + native
+    projected_derivative *= np.abs(derivative_amplitudes) / np.abs(projected_derivative)
+    return projected_derivative
 
 
 def _complex_derivative_from_iterative_tv(
@@ -67,7 +91,7 @@ def _complex_derivative_from_iterative_tv(
         complex_difference_tvd = tv_denoise_closure(complex_difference)
         updated_complex_derivative = _project_derivative_on_experimental_set(
             native=complex_native,
-            derivative=complex_derivative,
+            derivative_amplitudes=np.abs(complex_derivative),
             difference=complex_difference_tvd,
         )
 
