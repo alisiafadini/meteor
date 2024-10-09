@@ -51,8 +51,8 @@ def denity_to_noisy_coefficients(
     density: gemmi.FloatGrid | np.ndarray,
     noise_sigma: float,
     resolution: float,
-    unit_cell: gemmi.SpaceGroup,
-    space_group: gemmi.UnitCell,
+    unit_cell: gemmi.UnitCell,
+    space_group: gemmi.SpaceGroup,
 ) -> rs.DataSet:
     ccp4_map = gemmi.Ccp4Map()
     grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
@@ -74,10 +74,10 @@ def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,
 ) -> rs.DataSet:
+    space_group = gemmi.find_spacegroup_by_name("P1")
     unit_cell = gemmi.UnitCell(
         a=DEFAULT_CELL_SIZE, b=DEFAULT_CELL_SIZE, c=DEFAULT_CELL_SIZE, alpha=90, beta=90, gamma=90
     )
-    space_group = gemmi.find_spacegroup_by_name("P1")
 
     density1 = single_carbon_density(
         DEFAULT_CARBON1_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
