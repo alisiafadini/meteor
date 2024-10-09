@@ -82,6 +82,8 @@ def _complex_derivative_from_iterative_tv(
     """
     Estimate the derivative phases using the iterative TV algorithm.
 
+    This function contains the algorithm logic.
+
     Parameters
     ----------
     complex_native: np.ndarray
@@ -164,6 +166,8 @@ def iterative_tv_phase_retrieval(
     threshold.
     """
 
+    # TODO scale inputs?
+
     complex_native = _rs_dataseies_to_complex_array(
         input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
@@ -175,17 +179,26 @@ def iterative_tv_phase_retrieval(
         delta_amp, delta_phase = _complex_array_to_rs_dataseries(
             complex_difference, index=input_dataset.index
         )
+
+        # these names are the defaults expected by `tv_denoise_difference_map`
         delta_amp.name = "DF"
         delta_phase.name = "PHIC"
-        diffmap = rs.concat([delta_amp, delta_phase])
+
+        diffmap = rs.concat([delta_amp, delta_phase], axis=1)
         diffmap.cell = input_dataset.cell
         diffmap.spacegroup = input_dataset.spacegroup
-        return tv_denoise_difference_map(
+
+        denoised_map_coefficients = tv_denoise_difference_map(
             diffmap,
-            lambda_values_to_scan=[
-                0.01,
-            ],  # TODO
+            lambda_values_to_scan=[0.0001, 0.001, 0.01, 0.1],  # TODO
         )
+
+        denoised_complex_difference = _rs_dataseies_to_complex_array(
+            denoised_map_coefficients["DF"],
+            denoised_map_coefficients["PHIC"]
+        )
+
+        return denoised_complex_difference
 
     updated_initial_complex_derivative = _complex_derivative_from_iterative_tv(
         complex_native=complex_native,
@@ -204,7 +217,7 @@ def iterative_tv_phase_retrieval(
 
     # TODO, probably not needed
     pd.testing.assert_series_equal(
-        input_dataset[derivative_amplitude_column], derivative_amplitudes
+        input_dataset[derivative_amplitude_column], derivative_amplitudes.rename("Fh")
     )
 
     canonicalize_amplitudes(

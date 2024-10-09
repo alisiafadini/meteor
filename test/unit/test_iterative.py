@@ -7,6 +7,7 @@ from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
 from meteor import iterative
+from meteor.utils import assert_phases_allclose
 
 
 def simple_tv_function(fourier_array: np.ndarray) -> np.ndarray:
@@ -108,15 +109,15 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert noisy_error < denoised_error
 
 
-# def test_iterative_tv(displaced_atom_two_datasets_noisy: rs.DataSet) -> None:
-#     result = iterative.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noisy)
-#     for label in ["F", "Fh"]:
-#         pdt.assert_series_equal(
-#             result[label], displaced_atom_two_datasets_noisy[label], atol=1e-3
-#         )
-#     assert_phases_allclose(
-#         result["PHIC"], displaced_atom_two_datasets_noisy["PHIC"], atol=1e-3
-#     )
-#     assert_phases_allclose(
-#         result["PHICh"], displaced_atom_two_datasets_noisy["PHICh_ground_truth"], atol=1e-3
-#     )
+def test_iterative_tv(displaced_atom_two_datasets_noisy: rs.DataSet) -> None:
+    result = iterative.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noisy)
+    for label in ["F", "Fh"]:
+        pdt.assert_series_equal(
+            result[label], displaced_atom_two_datasets_noisy[label], atol=1e-3
+        )
+    assert_phases_allclose(
+        result["PHIC"], displaced_atom_two_datasets_noisy["PHIC"], atol=1e-3
+    )
+    # assert_phases_allclose(
+    #     result["PHICh"], displaced_atom_two_datasets_noisy["PHICh_ground_truth"], atol=1e-3
+    # )
