@@ -143,7 +143,7 @@ def tv_denoise_difference_map(
         maximizer.optimize_over_explicit_values(arguments_to_scan=lambda_values_to_scan)
     else:
         maximizer.optimize_with_golden_algorithm(bracket=TV_LAMBDA_RANGE)
-    
+
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_map = _tv_denoise_array(
         map_as_array=difference_map_as_array, weight=maximizer.argument_optimum

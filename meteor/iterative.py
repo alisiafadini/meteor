@@ -1,43 +1,83 @@
+from typing import Callable
+
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 
 from .tv import tv_denoise_difference_map
 from .utils import canonicalize_amplitudes
 
 
-def _form_complex_sf(amplitudes: rs.DataSeries, phases_in_deg: rs.DataSeries) -> np.ndarray:
-    expi = lambda x: np.exp(1j * np.deg2rad(x))  # noqa: E731
-    return amplitudes.to_numpy().astype(np.complex128) * expi(phases_in_deg.to_numpy().astype(np.float64))
+def _rs_dataseies_to_complex_array(
+    amplitudes: rs.DataSeries,
+    phases: rs.DataSeries,
+) -> np.ndarray:
+    pd.testing.assert_index_equal(amplitudes.index, phases.index)
+    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
 
 
-def _complex_argument(complex: rs.DataSeries) -> rs.DataSeries:
-    return complex.apply(np.angle).apply(np.rad2deg).astype(rs.PhaseDtype())
+def _complex_array_to_rs_dataseries(
+    complex_array: np.ndarray,
+    index: pd.Index,
+) -> tuple[rs.DataSeries, rs.DataSeries]:
+    amplitudes = rs.DataSeries(np.abs(complex_array), index=index)
+    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())
+    phases = rs.DataSeries(np.rad2deg(np.angle(complex_array)), index=index)
+    phases = phases.astype(rs.PhaseDtype())
+    return amplitudes, phases
 
 
-def _dataseries_l1_norm(
-    series1: rs.DataSeries,
-    series2: rs.DataSeries,
+def _l1_norm(
+    array1: np.ndarray,
+    array2: np.ndarray,
 ) -> float:
-    difference = (series2 - series1).dropna()
-    num_datapoints = len(difference)
-    if num_datapoints == 0:
-        raise RuntimeError("no overlapping indices between `series1` and `series2`")
-    return np.sum(np.abs(difference)) / float(num_datapoints)
+    assert array1.shape == array2.shape
+    return np.sum(np.abs(array1 - array2)) / float(np.prod(array1.shape))
 
 
-def _projected_derivative_phase(
+def _project_derivative_on_experimental_set(
     *,
-    difference_amplitudes: rs.DataSeries,
-    difference_phases: rs.DataSeries,
-    native_amplitudes: rs.DataSeries,
-    native_phases: rs.DataSeries,
-) -> rs.DataSeries:
-    complex_difference = _form_complex_sf(difference_amplitudes, difference_phases)
-    complex_native = _form_complex_sf(native_amplitudes, native_phases)
-    complex_derivative_estimate = complex_difference + complex_native
-    complex_derivative_estimate = rs.DataSeries(complex_derivative_estimate, index=native_amplitudes.index)
-    print(complex_derivative_estimate)
-    return _complex_argument(complex_derivative_estimate)
+    native: np.ndarray,
+    derivative: np.ndarray,
+    difference: np.ndarray,
+) -> np.ndarray:
+    # TODO docstring
+    proj_derivative = difference + native
+    proj_derivative /= np.abs(derivative) / np.abs(proj_derivative)
+    return proj_derivative
+
+
+def _complex_derivative_from_iterative_tv(
+    *,
+    complex_native: np.ndarray,
+    initial_complex_derivative: np.ndarray,
+    tv_denoise_closure: Callable[[np.ndarray], np.ndarray],  # TODO callable
+    convergence_tolerance: float = 0.01,
+) -> np.ndarray:
+    # TODO docstring
+
+    for input_array in [complex_native, initial_complex_derivative]:
+        assert input_array.dtype is np.complex128
+
+    complex_difference = initial_complex_derivative - complex_native
+    converged: bool = False
+    complex_derivative = np.copy(initial_complex_derivative)
+
+    while not converged:
+        complex_difference_tvd = tv_denoise_closure(complex_difference)
+        updated_complex_derivative = _project_derivative_on_experimental_set(
+            native=complex_native,
+            derivative=complex_derivative,
+            difference=complex_difference_tvd,
+        )
+
+        change = _l1_norm(complex_derivative, updated_complex_derivative)
+        complex_derivative = updated_complex_derivative
+        complex_difference = complex_derivative - complex_native
+
+        converged = change < convergence_tolerance
+
+    return complex_derivative
 
 
 def iterative_tv_phase_retrieval(
@@ -72,99 +112,53 @@ def iterative_tv_phase_retrieval(
     threshold.
     """
 
-    # TODO work on below for readability
-    # TODO should these be adjustable input params? not returned?
-    difference_amplitude_column: str = "DF"
-    difference_phase_column: str = "DPHIC"
-
-    # input_dataset = input_dataset.copy()
-
-    initial_derivative_phases = input_dataset[calculated_phase_column].rename(
-        output_derivative_phase_column
+    complex_native = _rs_dataseies_to_complex_array(
+        input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
-    initial_difference_amplitudes = (
-        input_dataset[derivative_amplitude_column] - input_dataset[native_amplitude_column]
-    ).rename(difference_amplitude_column)
-
-    initial_difference_phases = input_dataset[calculated_phase_column].rename(
-        difference_phase_column
+    initial_complex_derivative = _rs_dataseies_to_complex_array(
+        input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
     )
 
-    # working_ds holds 3x complex numbers: native, derivative, differences
-    working_ds: rs.DataSet = rs.concat(
-        [
-            input_dataset[native_amplitude_column],
-            input_dataset[derivative_amplitude_column],
-            input_dataset[calculated_phase_column],
-            initial_derivative_phases,
-            initial_difference_amplitudes,
-            initial_difference_phases,
-        ],
-        axis=1,
-        check_isomorphous=False,
-    )
-    working_ds.spacegroup = input_dataset.spacegroup
-    working_ds.cell = input_dataset.cell
-
-    # begin iterative TV algorithm
-    converged: bool = False
-
-    while not converged:
-        # TV denoise using golden algorithm, includes forward and backwards FTs
-        # this is the un-projected difference amplitude and phase
-        # > returned DF_prime is a copy with new `DIFFERENCE_AMPLITUDES` & `calculated_phase_column`
-        DF_prime, result = tv_denoise_difference_map(  # noqa: N806
-            difference_map_coefficients=working_ds,
-            difference_map_amplitude_column=difference_amplitude_column,
-            difference_map_phase_column=difference_phase_column,
+    def tv_denoise_closure(complex_difference: np.ndarray) -> np.ndarray:
+        delta_amp, delta_phase = _complex_array_to_rs_dataseries(
+            complex_difference, index=input_dataset.index
+        )
+        delta_amp.name = "DF"
+        delta_phase.name = "PHIC"
+        diffmap = rs.concat([delta_amp, delta_phase])
+        diffmap.cell = input_dataset.cell
+        diffmap.spacegroup = input_dataset.spacegroup
+        return tv_denoise_difference_map(
+            diffmap,
             lambda_values_to_scan=[
-                0.1,
-            ],
-            full_output=True,
+                0.01,
+            ],  # TODO
         )
 
-        change_in_DF = _dataseries_l1_norm(  # noqa: N806
-            working_ds[difference_amplitude_column],  # previous iteration
-            DF_prime[difference_amplitude_column],  # current iteration
-        )
-        converged = change_in_DF < convergence_tolerance
-        print("***", result.optimal_negentropy, change_in_DF)
+    updated_initial_complex_derivative = _complex_derivative_from_iterative_tv(
+        complex_native=complex_native,
+        initial_complex_derivative=initial_complex_derivative,
+        tv_denoise_closure=tv_denoise_closure,
+        convergence_tolerance=convergence_tolerance,
+    )
 
-        # update working_ds, NB native and derivative amplitudes & native phases stay the same
-        working_ds[output_derivative_phase_column] = _projected_derivative_phase(
-            difference_amplitudes=DF_prime[difference_amplitude_column],
-            difference_phases=DF_prime[difference_phase_column],
-            native_amplitudes=working_ds[native_amplitude_column],
-            native_phases=working_ds[calculated_phase_column],
-        )
+    derivative_amplitudes, derivative_phases = _complex_array_to_rs_dataseries(
+        updated_initial_complex_derivative, input_dataset.index
+    )
 
-        # TODO encapsulate block below into function
-        current_complex_native = _form_complex_sf(
-            working_ds[native_amplitude_column], working_ds[calculated_phase_column]
-        )
-        current_complex_derivative = _form_complex_sf(
-            working_ds[derivative_amplitude_column], working_ds[output_derivative_phase_column]
-        )
+    output_dataset = input_dataset.copy()
+    output_dataset[output_derivative_phase_column] = derivative_phases
 
-        current_complex_difference = current_complex_derivative - current_complex_native
-        working_ds[difference_amplitude_column] = rs.DataSeries(
-            np.abs(current_complex_difference),
-            index=working_ds.index,
-            name=difference_amplitude_column
-        ).astype(rs.StructureFactorAmplitudeDtype())
-        working_ds[difference_phase_column] = _complex_argument(current_complex_difference)
+    # TODO, probably not needed
+    pd.testing.assert_series_equal(
+        input_dataset[derivative_amplitude_column], derivative_amplitudes
+    )
 
     canonicalize_amplitudes(
-        working_ds,
+        output_dataset,
         amplitude_label=derivative_amplitude_column,
         phase_label=output_derivative_phase_column,
         inplace=True,
     )
-    canonicalize_amplitudes(
-        working_ds,
-        amplitude_label=difference_amplitude_column,
-        phase_label=difference_phase_column,
-        inplace=True,
-    )
 
-    return working_ds
+    return output_dataset
