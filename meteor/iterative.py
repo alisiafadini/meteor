@@ -73,8 +73,8 @@ def _project_derivative_on_experimental_set(
 
 def _complex_derivative_from_iterative_tv(
     *,
-    complex_native: np.ndarray,
-    initial_complex_derivative: np.ndarray,
+    native: np.ndarray,
+    initial_derivative: np.ndarray,
     tv_denoise_function: Callable[[np.ndarray], np.ndarray],
     convergence_tolerance: float = 0.01,
     max_iterations: int = 1000,
@@ -107,22 +107,22 @@ def _complex_derivative_from_iterative_tv(
         The derivative SFs, with the same amplitudes but phases altered to minimize the TV.
     """
 
-    complex_difference = initial_complex_derivative - complex_native
+    difference = initial_derivative - native
     converged: bool = False
     num_iterations: int = 0
-    complex_derivative = np.copy(initial_complex_derivative)
+    derivative = np.copy(initial_derivative)
 
     while not converged:
-        complex_difference_tvd = tv_denoise_function(complex_difference)
-        updated_complex_derivative = _project_derivative_on_experimental_set(
-            native=complex_native,
-            derivative_amplitudes=np.abs(complex_derivative),
-            difference=complex_difference_tvd,
+        difference_tvd = tv_denoise_function(difference)
+        updated_derivative = _project_derivative_on_experimental_set(
+            native=native,
+            derivative_amplitudes=np.abs(derivative),
+            difference=difference_tvd,
         )
 
-        change = _l1_norm(complex_derivative, updated_complex_derivative)
-        complex_derivative = updated_complex_derivative
-        complex_difference = complex_derivative - complex_native
+        change = _l1_norm(derivative, updated_derivative)
+        derivative = updated_derivative
+        difference = derivative - native
 
         converged = change < convergence_tolerance
 
@@ -130,7 +130,7 @@ def _complex_derivative_from_iterative_tv(
         if num_iterations > max_iterations:
             break
 
-    return complex_derivative
+    return derivative
 
 
 def iterative_tv_phase_retrieval(
@@ -166,18 +166,18 @@ def iterative_tv_phase_retrieval(
     threshold.
     """
 
-    # TODO scale inputs?
+    # TODO scale inputs here? or before they are passed here?
 
-    complex_native = _rs_dataseies_to_complex_array(
+    native = _rs_dataseies_to_complex_array(
         input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
-    initial_complex_derivative = _rs_dataseies_to_complex_array(
+    initial_derivative = _rs_dataseies_to_complex_array(
         input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
     )
 
-    def tv_denoise_closure(complex_difference: np.ndarray) -> np.ndarray:
+    def tv_denoise_closure(difference: np.ndarray) -> np.ndarray:
         delta_amp, delta_phase = _complex_array_to_rs_dataseries(
-            complex_difference, index=input_dataset.index
+            difference, index=input_dataset.index
         )
 
         # these names are the defaults expected by `tv_denoise_difference_map`
@@ -193,31 +193,33 @@ def iterative_tv_phase_retrieval(
             lambda_values_to_scan=[0.0001, 0.001, 0.01, 0.1],  # TODO
         )
 
-        denoised_complex_difference = _rs_dataseies_to_complex_array(
+        denoised_difference = _rs_dataseies_to_complex_array(
             denoised_map_coefficients["DF"], denoised_map_coefficients["PHIC"]
         )
 
-        return denoised_complex_difference
+        return denoised_difference
 
-    updated_initial_complex_derivative = _complex_derivative_from_iterative_tv(
-        complex_native=complex_native,
-        initial_complex_derivative=initial_complex_derivative,
+    it_tv_complex_derivative = _complex_derivative_from_iterative_tv(
+        native=native,
+        initial_derivative=initial_derivative,
         tv_denoise_function=tv_denoise_closure,
         convergence_tolerance=convergence_tolerance,
         max_iterations=max_iterations,
     )
 
-    derivative_amplitudes, derivative_phases = _complex_array_to_rs_dataseries(
-        updated_initial_complex_derivative, input_dataset.index
+    _, derivative_phases = _complex_array_to_rs_dataseries(
+        it_tv_complex_derivative, input_dataset.index
+    )
+
+    difference_amplitudes, difference_phases = _complex_array_to_rs_dataseries(
+        it_tv_complex_derivative - native, input_dataset.index
     )
 
     output_dataset = input_dataset.copy()
     output_dataset[output_derivative_phase_column] = derivative_phases
 
-    # TODO, probably not needed
-    pd.testing.assert_series_equal(
-        input_dataset[derivative_amplitude_column], derivative_amplitudes.rename("Fh")
-    )
+    output_dataset["DF"] = difference_amplitudes
+    output_dataset["DPHI"] = difference_phases
 
     canonicalize_amplitudes(
         output_dataset,

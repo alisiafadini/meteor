@@ -3,12 +3,13 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.utils import compute_coefficients_from_map
+from meteor.utils import compute_coefficients_from_map, numpy_array_to_map
 
-DEFAULT_RESOLUTION = 1.0
-DEFAULT_CELL_SIZE = 10.0
-DEFAULT_CARBON1_POSITION = (5.0, 5.0, 5.0)
-DEFAULT_CARBON2_POSITION = (5.0, 5.2, 5.0)
+RESOLUTION = 1.0
+UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
+SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
+CARBON1_POSITION = (5.0, 5.0, 5.0)
+CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 
 def single_carbon_density(
@@ -46,90 +47,65 @@ def single_carbon_density(
     return density_map.grid
 
 
-def denity_to_noisy_coefficients(
-    *,
-    density: gemmi.FloatGrid | np.ndarray,
-    noise_sigma: float,
-    resolution: float,
-    unit_cell: gemmi.UnitCell,
-    space_group: gemmi.SpaceGroup,
-) -> rs.DataSet:
-    ccp4_map = gemmi.Ccp4Map()
-    grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
-    ccp4_map.grid = gemmi.FloatGrid(grid_values.astype(np.float32), unit_cell, space_group)
-    ccp4_map.update_ccp4_header()
+def carbon1_density() -> gemmi.FloatGrid:
+    return single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
-    difference_map_coefficients = compute_coefficients_from_map(
-        ccp4_map=ccp4_map,
-        high_resolution_limit=resolution,
-        amplitude_label="DF",
-        phase_label="PHIC",
-    )
-    assert (difference_map_coefficients.max() > 0.0).any()
 
-    return difference_map_coefficients
+def carbon2_density() -> gemmi.FloatGrid:
+    return single_carbon_density(CARBON2_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
 
 def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,
 ) -> rs.DataSet:
-    space_group = gemmi.find_spacegroup_by_name("P1")
-    unit_cell = gemmi.UnitCell(
-        a=DEFAULT_CELL_SIZE, b=DEFAULT_CELL_SIZE, c=DEFAULT_CELL_SIZE, alpha=90, beta=90, gamma=90
+    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
+    grid_values = np.array(difference_density) + noise_sigma * np.random.randn(
+        *difference_density.shape
     )
 
-    density1 = single_carbon_density(
-        DEFAULT_CARBON1_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
-    )
-    density2 = single_carbon_density(
-        DEFAULT_CARBON2_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
+    ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
+
+    difference_map_coefficients = compute_coefficients_from_map(
+        ccp4_map=ccp4_map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="DF",
+        phase_label="PHIC",
     )
 
-    density = np.array(density2) - np.array(density1)
-
-    return denity_to_noisy_coefficients(
-        density=density,
-        noise_sigma=noise_sigma,
-        resolution=DEFAULT_RESOLUTION,
-        unit_cell=unit_cell,
-        space_group=space_group,
-    )
+    return difference_map_coefficients
 
 
 def two_datasets_atom_displacement(
     *,
     noise_sigma: float,
 ) -> rs.DataSet:
-    unit_cell = gemmi.UnitCell(
-        a=DEFAULT_CELL_SIZE, b=DEFAULT_CELL_SIZE, c=DEFAULT_CELL_SIZE, alpha=90, beta=90, gamma=90
-    )
-    space_group = gemmi.find_spacegroup_by_name("P1")
+    c1_map = gemmi.Ccp4Map()
+    c1_map.grid = carbon1_density()
 
-    density1 = single_carbon_density(
-        DEFAULT_CARBON1_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
-    )
-    density2 = single_carbon_density(
-        DEFAULT_CARBON2_POSITION, space_group, unit_cell, DEFAULT_RESOLUTION
-    )
+    c2_map = gemmi.Ccp4Map()
+    c2_map.grid = carbon2_density()
 
-    coefficents1 = denity_to_noisy_coefficients(
-        density=density1,
-        noise_sigma=noise_sigma,
-        resolution=DEFAULT_RESOLUTION,
-        unit_cell=unit_cell,
-        space_group=space_group,
-    ).rename(columns={"DF": "F"})
-
-    coefficents2 = denity_to_noisy_coefficients(
-        density=density2,
-        noise_sigma=noise_sigma,
-        resolution=DEFAULT_RESOLUTION,
-        unit_cell=unit_cell,
-        space_group=space_group,
-    ).rename(columns={"DF": "Fh", "PHIC": "PHICh_ground_truth"})
+    coefficents1 = compute_coefficients_from_map(
+        ccp4_map=c1_map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="F",
+        phase_label="PHIC",
+    )
+    coefficents2 = compute_coefficients_from_map(
+        ccp4_map=c2_map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="Fh",
+        phase_label="PHICh",
+    )
 
     return rs.concat([coefficents1, coefficents2], axis=1)
+
+
+@pytest.fixture
+def carbon_difference_density() -> np.ndarray:
+    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
+    return difference_density
 
 
 @pytest.fixture
@@ -143,10 +119,5 @@ def noisy_map() -> rs.DataSet:
 
 
 @pytest.fixture
-def displaced_atom_two_datasets_noise_free() -> rs.DataSet:
+def noisy_displaced_atom_datasets() -> rs.DataSet:
     return two_datasets_atom_displacement(noise_sigma=0.0)
-
-
-@pytest.fixture
-def displaced_atom_two_datasets_noisy() -> rs.DataSet:
-    return two_datasets_atom_displacement(noise_sigma=0.03)
