@@ -2,6 +2,8 @@ import numpy as np
 import reciprocalspaceship as rs
 
 from .validate import ScalarMaximizer, negentropy
+from .utils import compute_map_from_coefficients
+from .settings import TV_MAP_SAMPLING
 
 
 def compute_deltafofo(
@@ -143,12 +145,27 @@ def compute_kweighted_deltafofo(
     if optimize_kweight:
 
         def negentropy_objective(kweight_value: float) -> float:
+            # Apply k-weighting to DeltaFoFo
             weights = compute_kweights(
                 delta_amplitudes, sigdelta_amplitudes, kweight_value
             )
             weighted_delta_fofo = delta_amplitudes * weights
-            return negentropy(weighted_delta_fofo)
+            dataset["DeltaFoFoKWeighted"] = weighted_delta_fofo
 
+            # Convert weighted amplitudes and phases to a map
+            delta_map = compute_map_from_coefficients(
+                map_coefficients=dataset,
+                amplitude_label="DeltaFoFoKWeighted",
+                phase_label=native_phases,
+                map_sampling=TV_MAP_SAMPLING,
+            )
+
+            delta_map_as_array = np.array(delta_map.grid)
+
+            # Compute negentropy of the map
+            return negentropy(delta_map_as_array.flatten())
+
+        # Optimize kweight using negentropy objective
         maximizer = ScalarMaximizer(objective=negentropy_objective)
         maximizer.optimize_with_golden_algorithm(bracket=(0.1, 10.0))
         kweight = maximizer.argument_optimum
