@@ -3,8 +3,16 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
+from skimage.data import binary_blobs
+from skimage.restoration import denoise_tv_chambolle
 
 from meteor import iterative
+
+
+def simple_tv_function(fourier_array: np.ndarray) -> np.ndarray:
+    real_space = np.fft.ifftn(fourier_array).real
+    denoised = denoise_tv_chambolle(real_space, weight=0.001)
+    return np.fft.fftn(denoised)
 
 
 def test_l1_norm() -> None:
@@ -74,6 +82,32 @@ def test_projected_derivative(scalar: float) -> None:
     np.testing.assert_allclose(proj_derivative, derivative)
 
 
+def test_complex_derivative_from_iterative_tv() -> None:
+    test_image = binary_blobs(length=64)
+
+    constant_image = np.ones_like(test_image) / 2.0
+    constant_image_ft = np.fft.fftn(constant_image)
+
+    test_image_noisy = test_image + 0.2 * np.random.randn(*test_image.shape)
+    test_image_noisy_ft = np.fft.fftn(test_image_noisy)
+
+    denoised_derivative = iterative._complex_derivative_from_iterative_tv(
+        complex_native=constant_image_ft,
+        initial_complex_derivative=test_image_noisy_ft,
+        tv_denoise_function=simple_tv_function,
+    )
+
+    denoised_test_image = np.fft.ifftn(denoised_derivative).real
+
+    test_image = test_image / np.mean(test_image)
+    test_image_noisy = test_image_noisy / np.mean(test_image_noisy)
+    denoised_test_image = denoised_test_image / denoised_test_image.mean()
+
+    noisy_error = np.linalg.norm(denoised_test_image - test_image)
+    denoised_error = np.linalg.norm(test_image_noisy - test_image)
+    assert noisy_error < denoised_error
+
+
 # def test_iterative_tv(displaced_atom_two_datasets_noisy: rs.DataSet) -> None:
 #     result = iterative.iterative_tv_phase_retrieval(displaced_atom_two_datasets_noisy)
 #     for label in ["F", "Fh"]:
@@ -83,6 +117,6 @@ def test_projected_derivative(scalar: float) -> None:
 #     assert_phases_allclose(
 #         result["PHIC"], displaced_atom_two_datasets_noisy["PHIC"], atol=1e-3
 #     )
-#     # assert_phases_allclose(
-#     #     result["PHICh"], displaced_atom_two_datasets_noise_free["PHICh_ground_truth"], atol=1e-3
-#     # )
+#     assert_phases_allclose(
+#         result["PHICh"], displaced_atom_two_datasets_noisy["PHICh_ground_truth"], atol=1e-3
+#     )

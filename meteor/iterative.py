@@ -62,7 +62,7 @@ def _project_derivative_on_experimental_set(
 
     Returns
     -------
-    projected_derivative : np.ndarray
+    projected_derivative: np.ndarray
         The complex-valued derivative structure factors, with experimental amplitude and phase
         adjusted to ensure that difference = derivative - native.
     """
@@ -75,20 +75,43 @@ def _complex_derivative_from_iterative_tv(
     *,
     complex_native: np.ndarray,
     initial_complex_derivative: np.ndarray,
-    tv_denoise_closure: Callable[[np.ndarray], np.ndarray],  # TODO callable
+    tv_denoise_function: Callable[[np.ndarray], np.ndarray],
     convergence_tolerance: float = 0.01,
+    max_iterations: int = 1000,
 ) -> np.ndarray:
-    # TODO docstring
+    """
+    Estimate the derivative phases using the iterative TV algorithm.
 
-    for input_array in [complex_native, initial_complex_derivative]:
-        assert input_array.dtype is np.complex128
+    Parameters
+    ----------
+    complex_native: np.ndarray
+        The complex native structure factors, usually experimental amplitudes and calculated phases
+    initial_complex_derivative : np.ndarray
+        The complex derivative structure factors, usually with experimental amplitudes and esimated
+        phases (often calculated from the native structure)
+    tv_denoise_function: Callable
+        A function capable of applying the TV denoising operation to *Fourier space* objects. This
+        function should therefore map one complex np.ndarray to a denoised complex np.ndarray, with
+        no additional parameters.
+    convergance_tolerance: float
+        If the change in the estimated derivative SFs drops below this value (L1, per-component)
+        then return
+    max_iterations: int
+        If this number of iterations is reached, stop early.
+
+    Returns
+    -------
+    estimated_complex_derivative: np.ndarray
+        The derivative SFs, with the same amplitudes but phases altered to minimize the TV.
+    """
 
     complex_difference = initial_complex_derivative - complex_native
     converged: bool = False
+    num_iterations: int = 0
     complex_derivative = np.copy(initial_complex_derivative)
 
     while not converged:
-        complex_difference_tvd = tv_denoise_closure(complex_difference)
+        complex_difference_tvd = tv_denoise_function(complex_difference)
         updated_complex_derivative = _project_derivative_on_experimental_set(
             native=complex_native,
             derivative_amplitudes=np.abs(complex_derivative),
@@ -101,6 +124,10 @@ def _complex_derivative_from_iterative_tv(
 
         converged = change < convergence_tolerance
 
+        num_iterations += 1
+        if num_iterations > max_iterations:
+            break
+
     return complex_derivative
 
 
@@ -112,6 +139,7 @@ def iterative_tv_phase_retrieval(
     calculated_phase_column: str = "PHIC",
     output_derivative_phase_column: str = "PHICh",
     convergence_tolerance: float = 0.01,
+    max_iterations: int = 1000,
 ) -> rs.DataSet:
     """
     Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -162,8 +190,9 @@ def iterative_tv_phase_retrieval(
     updated_initial_complex_derivative = _complex_derivative_from_iterative_tv(
         complex_native=complex_native,
         initial_complex_derivative=initial_complex_derivative,
-        tv_denoise_closure=tv_denoise_closure,
+        tv_denoise_function=tv_denoise_closure,
         convergence_tolerance=convergence_tolerance,
+        max_iterations=max_iterations,
     )
 
     derivative_amplitudes, derivative_phases = _complex_array_to_rs_dataseries(
