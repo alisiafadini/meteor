@@ -194,8 +194,7 @@ def iterative_tv_phase_retrieval(
         )
 
         denoised_complex_difference = _rs_dataseies_to_complex_array(
-            denoised_map_coefficients["DF"],
-            denoised_map_coefficients["PHIC"]
+            denoised_map_coefficients["DF"], denoised_map_coefficients["PHIC"]
         )
 
         return denoised_complex_difference

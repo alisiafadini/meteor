@@ -42,9 +42,7 @@ def rms_between_coefficients(
     "lambda_values_to_scan",
     [
         None,
-        [
-            0.01,
-        ],
+        [0.01],
     ],
 )
 @pytest.mark.parametrize("full_output", [False, True])
