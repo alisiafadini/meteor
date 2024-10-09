@@ -6,10 +6,9 @@ import reciprocalspaceship as rs
 from meteor.diffmaps import compute_fofo_differences, compute_kweighted_deltafofo
 
 
-# Test fixture to generate a sample rs.DataSet
 @pytest.fixture
 def sample_dataset() -> rs.DataSet:
-    # Generate some mock data for testing
+    # Mock data for testing
     miller_indices = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0)]
     data = np.array([10.0, 8.0, 6.0, 4.0, 2.0], dtype=np.float32)
     uncertainties_nat = np.ones(len(data)) * 0.1  # Uncertainties for native amplitudes
@@ -47,7 +46,7 @@ def sample_dataset() -> rs.DataSet:
     return dataset
 
 
-# Smoke test to verify the function runs without errors
+# Smoke tests
 def test_compute_kweighted_deltafofo_smoke(sample_dataset: rs.DataSet) -> None:
     result_dataset = compute_kweighted_deltafofo(
         dataset=sample_dataset,
@@ -62,7 +61,6 @@ def test_compute_kweighted_deltafofo_smoke(sample_dataset: rs.DataSet) -> None:
     assert "DeltaFoFoKWeighted" in result_dataset.columns
 
 
-# Smoke test to verify the function runs without errors
 def test_compute_fofo_differences_smoke(sample_dataset: rs.DataSet) -> None:
     result_dataset = compute_fofo_differences(
         dataset=sample_dataset,
@@ -86,6 +84,8 @@ def test_compute_fofo_differences_output(sample_dataset: rs.DataSet) -> None:
         sigf_native="SIGF_nat",
         sigf_deriv="SIGF_deriv",
     )
+
+    assert result_dataset is not None, "Function returned None when it shouldn't have."
 
     # Test if the DeltaFoFo was correctly computed
     delta_fofo = result_dataset["DeltaFoFo"]
@@ -156,5 +156,7 @@ def test_compute_fofo_differences_scaling(sample_dataset: rs.DataSet) -> None:
 
     # DeltaFoFo should be approximately equal to the
     # difference between derivative and native amplitudes
+    assert result_dataset is not None, "Function returned None when it shouldn't have."
+
     delta_fofo = result_dataset["DeltaFoFo"]
     assert delta_fofo.max() > delta_fofo.min()  # Ensure non-zero range
