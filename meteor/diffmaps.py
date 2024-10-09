@@ -11,39 +11,29 @@ def compute_fofo_differences(
     native_amplitudes: str,
     derivative_amplitudes: str,
     calc_amplitudes: str,
-    uncertainty_column: str = "SIGF",
-    weight_using_uncertainties: bool = True,
+    sigf_native: str,
+    sigf_deriv: str,
     inplace: bool = False
 ) -> rs.DataSet | None:
     """
-    Compute FoFo difference:
-    DeltaF = derivative_amplitudes_scaled - native_amplitudes_scaled
-    and return a new dataset with the DeltaFoFo column,
-    or modify the dataset in place if `inplace` is True.
+    Compute FoFo difference: DeltaF = derivative_amplitudes_scaled - native_amplitudes_scaled
+    with separate uncertainty columns for native and derivative amplitudes.
 
     Parameters:
     -----------
     dataset : rs.DataSet
         The input dataset containing columns for native amplitudes, derivative amplitudes,
-        calculated amplitudes, and calculated phases.
+        calculated amplitudes, and uncertainties.
     native_amplitudes : str
-        The column label for native amplitudes in the dataset.
+        Column label for native amplitudes in the dataset.
     derivative_amplitudes : str
-        The column label for derivative amplitudes in the dataset.
+        Column label for derivative amplitudes in the dataset.
     calc_amplitudes : str
-        The column label for calculated amplitudes in the dataset.
-    uncertainty_column : str, optional (default: "SIGF")
-        The column containing uncertainty values. Used for scaling.
-    weight_using_uncertainties : bool, optional (default: True)
-        Whether or not to weight the scaling by uncertainty values.
-    inplace : bool, optional (default: False)
-        Whether to modify the dataset in place or return a new copy.
-
-    Returns:
-    --------
-    rs.DataSet | None
-        Returns a new dataset with an additional DeltaFoFo column if `inplace` is False, or modifies
-        the original dataset in place if `inplace` is True.
+        Column label for calculated amplitudes in the dataset.
+    sigf_native : str
+        Column label for uncertainties of native amplitudes.
+    sigf_deriv : str
+        Column label for uncertainties of derivative amplitudes.
     """
 
     # Optionally copy dataset
@@ -55,8 +45,7 @@ def compute_fofo_differences(
         reference_dataset=dataset,
         dataset_to_scale=dataset,
         column_to_compare=calc_amplitudes,
-        uncertainty_column=uncertainty_column,
-        weight_using_uncertainties=weight_using_uncertainties,
+        uncertainty_column=sigf_native,
     )[native_amplitudes]
 
     # Scale the derivative amplitudes to the calculated amplitudes
@@ -64,21 +53,20 @@ def compute_fofo_differences(
         reference_dataset=dataset,
         dataset_to_scale=dataset,
         column_to_compare=calc_amplitudes,
-        uncertainty_column=uncertainty_column,
-        weight_using_uncertainties=weight_using_uncertainties,
+        uncertainty_column=sigf_deriv,
     )[derivative_amplitudes]
 
     # Compute DeltaF: derivative_amplitudes_scaled - native_amplitudes_scaled
     delta_fofo = scaled_derivative - scaled_native
 
-    # Add DeltaF to the dataset
+    # Add DeltaFoFo to the dataset
     dataset["DeltaFoFo"] = delta_fofo
 
-    # If inplace, return None (as dataset is modified in place), otherwise return dataset
-    if not inplace:
-        return dataset
-    else:
+    # Return None if inplace=True, else return modified dataset
+    if inplace:
         return None
+    else:
+        return dataset
 
 
 def compute_kweights(
@@ -97,16 +85,15 @@ def compute_kweighted_deltafofo(
     native_amplitudes: str,
     derivative_amplitudes: str,
     calc_amplitudes: str,
-    uncertainty_column: str = "SIGF",
+    sigf_native: str,
+    sigf_deriv: str,
     kweight: float | None = None,
     weight_using_uncertainties: bool = True,
     optimize_kweight: bool = False,
     inplace: bool = False
 ) -> rs.DataSet | None:
     """
-    Compute k-weighted FoFo difference:
-    DeltaF = derivative_amplitudes_scaled - native_amplitudes_scaled
-    Apply weighting based on uncertainties and optionally optimize kweight.
+    Compute k-weighted FoFo difference with separate uncertainty columns for native and derivative.
 
     Parameters:
     -----------
@@ -114,27 +101,15 @@ def compute_kweighted_deltafofo(
         The input dataset containing columns for native amplitudes, derivative amplitudes,
         calculated amplitudes, and uncertainties.
     native_amplitudes : str
-        The column label for native amplitudes in the dataset.
+        Column label for native amplitudes in the dataset.
     derivative_amplitudes : str
-        The column label for derivative amplitudes in the dataset.
+        Column label for derivative amplitudes in the dataset.
     calc_amplitudes : str
-        The column label for calculated amplitudes in the dataset.
-    uncertainty_column : str, optional (default: "SIGF")
-        The column containing uncertainty values. Used for scaling.
-    kweight : float, optional
-        A fixed value of kweight to apply. If None, it will be optimized if `optimize_kweight` is True.
-    weight_using_uncertainties : bool, optional (default: True)
-        Whether or not to weight the scaling by uncertainty values.
-    optimize_kweight : bool, optional (default: False)
-        Whether to optimize the kweight value to maximize negentropy.
-    inplace : bool, optional (default: False)
-        Whether to modify the dataset in place or return a new copy.
-
-    Returns:
-    --------
-    rs.DataSet | None
-        Returns a new dataset with an additional DeltaFoFoKWeighted column if `inplace` is False,
-        or modifies the original dataset in place if `inplace` is True.
+        Column label for calculated amplitudes in the dataset.
+    sigf_native : str
+        Column label for uncertainties of native amplitudes.
+    sigf_deriv : str
+        Column label for uncertainties of derivative amplitudes.
     """
 
     # Optionally copy dataset
@@ -146,7 +121,7 @@ def compute_kweighted_deltafofo(
         reference_dataset=dataset,
         dataset_to_scale=dataset,
         column_to_compare=calc_amplitudes,
-        uncertainty_column=uncertainty_column,
+        uncertainty_column=sigf_native,
         weight_using_uncertainties=weight_using_uncertainties,
     )[native_amplitudes]
 
@@ -155,46 +130,38 @@ def compute_kweighted_deltafofo(
         reference_dataset=dataset,
         dataset_to_scale=dataset,
         column_to_compare=calc_amplitudes,
-        uncertainty_column=uncertainty_column,
+        uncertainty_column=sigf_deriv,
         weight_using_uncertainties=weight_using_uncertainties,
     )[derivative_amplitudes]
 
     # Compute DeltaF: derivative_amplitudes_scaled - native_amplitudes_scaled
     delta_fofo = scaled_derivative - scaled_native
 
-    # Get uncertainties for DeltaF
-    sigdelta_fofo = np.sqrt(
-        dataset[uncertainty_column][derivative_amplitudes] ** 2
-        + dataset[uncertainty_column][native_amplitudes] ** 2
-    )
+    # Calculate uncertainties for DeltaF
+    sigdelta_fofo = np.sqrt(dataset[sigf_deriv] ** 2 + dataset[sigf_native] ** 2)
 
-    # Define negentropy objective for kweight optimization
-    def negentropy_objective(kweight_value: float) -> float:
-        weights = compute_kweights(delta_fofo, sigdelta_fofo, kweight_value)
-        weighted_delta_fofo = delta_fofo * weights
-        return negentropy(weighted_delta_fofo)
-
-    # Optimize kweight if requested
+    # Handle kweight optimization
     if optimize_kweight:
+
+        def negentropy_objective(kweight_value: float) -> float:
+            weights = compute_kweights(delta_fofo, sigdelta_fofo, kweight_value)
+            weighted_delta_fofo = delta_fofo * weights
+            return negentropy(weighted_delta_fofo)
+
         maximizer = ScalarMaximizer(objective=negentropy_objective)
-        # For this example, we use a reasonable bracket for kweight; it may need adjustment
         maximizer.optimize_with_golden_algorithm(bracket=(0.1, 10.0))
         kweight = maximizer.argument_optimum
 
-    # Compute kweights with the given or optimized kweight
-    if kweight is None:
-        raise ValueError("kweight must be provided or optimized")
-
+    # Compute weights based on DeltaF and uncertainties
     weights = compute_kweights(delta_fofo, sigdelta_fofo, kweight)
 
-    # Compute weighted DeltaFoFo
+    # Apply the weights to DeltaFoFo
     delta_fofo_weighted = delta_fofo * weights
 
-    # Add weighted DeltaF to the dataset
     dataset["DeltaFoFoKWeighted"] = delta_fofo_weighted
 
-    # If inplace, return None (as dataset is modified in place), otherwise return dataset
-    if not inplace:
-        return dataset
-    else:
+    # If inplace is True, return None
+    if inplace:
         return None
+    else:
+        return dataset
