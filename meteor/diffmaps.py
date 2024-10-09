@@ -1,68 +1,67 @@
 import numpy as np
 import reciprocalspaceship as rs
 
-from .scale import scale_datasets
 from .validate import ScalarMaximizer, negentropy
 
 
-def compute_fofo_differences(
+def compute_deltafofo(
     dataset: rs.DataSet,
     *,
     native_amplitudes: str,
     derivative_amplitudes: str,
-    calc_amplitudes: str,
-    sigf_native: str,
-    sigf_deriv: str,
-    inplace: bool = False
+    native_phases: str,
+    derivative_phases: str = None,
+    inplace: bool = False,
 ) -> rs.DataSet | None:
     """
-    Compute FoFo difference: DeltaF = derivative_amplitudes_scaled - native_amplitudes_scaled
-    with separate uncertainty columns for native and derivative amplitudes.
+    Compute amplitude and phase differences between native and derivative datasets.
+
+    Assumes that scaling has already been applied to the amplitudes before calling this function.
 
     Parameters:
     -----------
     dataset : rs.DataSet
-        The input dataset containing columns for native amplitudes, derivative amplitudes,
-        calculated amplitudes, and uncertainties.
+        The input dataset containing columns for native and derivative amplitudes/phases.
     native_amplitudes : str
         Column label for native amplitudes in the dataset.
     derivative_amplitudes : str
         Column label for derivative amplitudes in the dataset.
-    calc_amplitudes : str
-        Column label for calculated amplitudes in the dataset.
-    sigf_native : str
-        Column label for uncertainties of native amplitudes.
-    sigf_deriv : str
-        Column label for uncertainties of derivative amplitudes.
-    """
+    native_phases : str, optional
+        Column label for native phases.
+    derivative_phases : str, optional
+        Column label for derivative phases. Defaults to None, in which case native phases are used.
+    inplace : bool, optional
+        Whether to modify the dataset in place. Default is False.
 
-    # Optionally copy dataset
+    Returns:
+    --------
+    rs.DataSet | None
+        The modified dataset with differences if inplace=False, otherwise None.
+    """
     if not inplace:
         dataset = dataset.copy()
 
-    # Scale the native amplitudes to the calculated amplitudes
-    scaled_native = scale_datasets(
-        reference_dataset=dataset,
-        dataset_to_scale=dataset,
-        column_to_compare=calc_amplitudes,
-        uncertainty_column=sigf_native,
-    )[native_amplitudes]
+    # Compute amplitude differences (no scaling assumed here)
+    delta_amplitudes = dataset[derivative_amplitudes] - dataset[native_amplitudes]
+    dataset["DeltaFoFo"] = delta_amplitudes
 
-    # Scale the derivative amplitudes to the calculated amplitudes
-    scaled_derivative = scale_datasets(
-        reference_dataset=dataset,
-        dataset_to_scale=dataset,
-        column_to_compare=calc_amplitudes,
-        uncertainty_column=sigf_deriv,
-    )[derivative_amplitudes]
+    # Handle phase differences
+    if native_phases is not None and derivative_phases is not None:
+        native_phase = dataset[native_phases].to_numpy(
+            dtype=np.float32
+        )  # Convert PhaseArray to float32 for phase difference below
+        derivative_phase = dataset[derivative_phases].to_numpy(dtype=np.float32)
+    elif native_phases is not None:
+        native_phase = dataset[native_phases].to_numpy(dtype=np.float32)
+        derivative_phase = native_phase
+    else:
+        raise ValueError("At least native_phases must be provided.")
 
-    # Compute DeltaF: derivative_amplitudes_scaled - native_amplitudes_scaled
-    delta_fofo = scaled_derivative - scaled_native
+    # Compute phase differences (angle normalization between -pi and pi)
+    delta_phases = np.angle(np.exp(1j * (derivative_phase - native_phase)))
 
-    # Add DeltaFoFo to the dataset
-    dataset["DeltaFoFo"] = delta_fofo
+    dataset["DeltaPhases"] = delta_phases
 
-    # Return None if inplace=True, else return modified dataset
     if inplace:
         return None
     else:
@@ -84,83 +83,80 @@ def compute_kweighted_deltafofo(
     *,
     native_amplitudes: str,
     derivative_amplitudes: str,
-    calc_amplitudes: str,
+    native_phases: str,
+    derivative_phases: str = None,
     sigf_native: str,
     sigf_deriv: str,
     kweight: float | None = None,
-    weight_using_uncertainties: bool = True,
     optimize_kweight: bool = False,
-    inplace: bool = False
+    inplace: bool = False,
 ) -> rs.DataSet | None:
     """
-    Compute k-weighted FoFo difference with separate uncertainty columns for native and derivative.
+    Compute k-weighted differences between native and derivative amplitudes and phases.
+
+    Assumes that scaling has already been applied to the amplitudes before calling this function.
 
     Parameters:
     -----------
     dataset : rs.DataSet
-        The input dataset containing columns for native amplitudes, derivative amplitudes,
-        calculated amplitudes, and uncertainties.
+        The input dataset containing columns for native and derivative amplitudes/phases.
     native_amplitudes : str
         Column label for native amplitudes in the dataset.
     derivative_amplitudes : str
         Column label for derivative amplitudes in the dataset.
-    calc_amplitudes : str
-        Column label for calculated amplitudes in the dataset.
+    native_phases : str, optional
+        Column label for native phases.
+    derivative_phases : str, optional
+        Column label for derivative phases, by default None.
     sigf_native : str
         Column label for uncertainties of native amplitudes.
     sigf_deriv : str
         Column label for uncertainties of derivative amplitudes.
-    """
+    kweight : float, optional
+        Optional weight factor, by default None.
+    optimize_kweight : bool, optional
+        Whether to optimize the kweight using negentropy, by default False.
+    inplace : bool, optional
+        Whether to modify the dataset in place. Default is False.
 
-    # Optionally copy dataset
+    Returns:
+    --------
+    rs.DataSet | None
+        The modified dataset with k-weighted differences, if inplace=False, otherwise None.
+    """
     if not inplace:
         dataset = dataset.copy()
 
-    # Scale the native amplitudes to the calculated amplitudes
-    scaled_native = scale_datasets(
-        reference_dataset=dataset,
-        dataset_to_scale=dataset,
-        column_to_compare=calc_amplitudes,
-        uncertainty_column=sigf_native,
-        weight_using_uncertainties=weight_using_uncertainties,
-    )[native_amplitudes]
+    # Compute differences between native and derivative amplitudes and phases
+    dataset = compute_deltafofo(
+        dataset=dataset,
+        native_amplitudes=native_amplitudes,
+        derivative_amplitudes=derivative_amplitudes,
+        native_phases=native_phases,
+        derivative_phases=derivative_phases,
+        inplace=inplace,
+    )
 
-    # Scale the derivative amplitudes to the calculated amplitudes
-    scaled_derivative = scale_datasets(
-        reference_dataset=dataset,
-        dataset_to_scale=dataset,
-        column_to_compare=calc_amplitudes,
-        uncertainty_column=sigf_deriv,
-        weight_using_uncertainties=weight_using_uncertainties,
-    )[derivative_amplitudes]
+    delta_amplitudes = dataset["DeltaFoFo"]
+    sigdelta_amplitudes = np.sqrt(dataset[sigf_deriv] ** 2 + dataset[sigf_native] ** 2)
 
-    # Compute DeltaF: derivative_amplitudes_scaled - native_amplitudes_scaled
-    delta_fofo = scaled_derivative - scaled_native
-
-    # Calculate uncertainties for DeltaF
-    sigdelta_fofo = np.sqrt(dataset[sigf_deriv] ** 2 + dataset[sigf_native] ** 2)
-
-    # Handle kweight optimization
     if optimize_kweight:
 
         def negentropy_objective(kweight_value: float) -> float:
-            weights = compute_kweights(delta_fofo, sigdelta_fofo, kweight_value)
-            weighted_delta_fofo = delta_fofo * weights
+            weights = compute_kweights(
+                delta_amplitudes, sigdelta_amplitudes, kweight_value
+            )
+            weighted_delta_fofo = delta_amplitudes * weights
             return negentropy(weighted_delta_fofo)
 
         maximizer = ScalarMaximizer(objective=negentropy_objective)
         maximizer.optimize_with_golden_algorithm(bracket=(0.1, 10.0))
         kweight = maximizer.argument_optimum
 
-    # Compute weights based on DeltaF and uncertainties
-    weights = compute_kweights(delta_fofo, sigdelta_fofo, kweight)
+    # Compute weights and apply to DeltaFoFo
+    weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
+    dataset["DeltaFoFoKWeighted"] = delta_amplitudes * weights
 
-    # Apply the weights to DeltaFoFo
-    delta_fofo_weighted = delta_fofo * weights
-
-    dataset["DeltaFoFoKWeighted"] = delta_fofo_weighted
-
-    # If inplace is True, return None
     if inplace:
         return None
     else:

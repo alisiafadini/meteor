@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.diffmaps import compute_fofo_differences, compute_kweighted_deltafofo
+from meteor.diffmaps import compute_deltafofo, compute_kweighted_deltafofo
 
 
 @pytest.fixture
@@ -15,6 +15,8 @@ def sample_dataset() -> rs.DataSet:
     uncertainties_deriv = (
         np.ones(len(data)) * 0.2
     )  # Uncertainties for derivative amplitudes
+    phases_native = np.array([0.0, 0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+    phases_derivative = np.array([0.1, 0.2, 0.3, 0.4, 0.5], dtype=np.float32)
 
     dataset = rs.DataSet(
         {
@@ -28,17 +30,24 @@ def sample_dataset() -> rs.DataSet:
                 dtype=rs.StructureFactorAmplitudeDtype(),
                 index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
             ),
-            "F_calc": rs.DataSeries(
-                data * 1.05,
-                dtype=rs.StructureFactorAmplitudeDtype(),
-                index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
-            ),
             "SIGF_nat": rs.DataSeries(
                 uncertainties_nat,
+                dtype=np.float32,  # Ensure uncertainties are float32
                 index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
             ),
             "SIGF_deriv": rs.DataSeries(
                 uncertainties_deriv,
+                dtype=np.float32,  # Ensure uncertainties are float32
+                index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
+            ),
+            "PHI_nat": rs.DataSeries(
+                phases_native,
+                dtype=rs.PhaseDtype(),
+                index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
+            ),
+            "PHI_deriv": rs.DataSeries(
+                phases_derivative,
+                dtype=rs.PhaseDtype(),
                 index=pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"]),
             ),
         }
@@ -52,111 +61,145 @@ def test_compute_kweighted_deltafofo_smoke(sample_dataset: rs.DataSet) -> None:
         dataset=sample_dataset,
         native_amplitudes="F_nat",
         derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
         sigf_native="SIGF_nat",
         sigf_deriv="SIGF_deriv",
         kweight=1.0,
     )
     assert isinstance(result_dataset, rs.DataSet)
     assert "DeltaFoFoKWeighted" in result_dataset.columns
+    assert "DeltaPhases" in result_dataset.columns
 
 
-def test_compute_fofo_differences_smoke(sample_dataset: rs.DataSet) -> None:
-    result_dataset = compute_fofo_differences(
+def test_compute_deltafofo_smoke(sample_dataset: rs.DataSet) -> None:
+    result_dataset = compute_deltafofo(
         dataset=sample_dataset,
         native_amplitudes="F_nat",
         derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
-        sigf_native="SIGF_nat",
-        sigf_deriv="SIGF_deriv",
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
     )
     assert isinstance(result_dataset, rs.DataSet)
     assert "DeltaFoFo" in result_dataset.columns
+    assert "DeltaPhases" in result_dataset.columns
 
 
 # Test the correct output when DeltaFoFo is computed
-def test_compute_fofo_differences_output(sample_dataset: rs.DataSet) -> None:
-    result_dataset = compute_fofo_differences(
+def test_compute_deltafofo_output(sample_dataset: rs.DataSet) -> None:
+    result_dataset = compute_deltafofo(
         dataset=sample_dataset,
         native_amplitudes="F_nat",
         derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
-        sigf_native="SIGF_nat",
-        sigf_deriv="SIGF_deriv",
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
     )
 
     assert result_dataset is not None, "Function returned None when it shouldn't have."
 
     # Test if the DeltaFoFo was correctly computed
-    delta_fofo = result_dataset["DeltaFoFo"]
-    expected_delta_fofo = sample_dataset["F_deriv"] - sample_dataset["F_nat"]
+    delta_fofo = result_dataset["DeltaFoFo"].to_numpy()
+    expected_delta_fofo = (
+        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
+    ).to_numpy()
 
     np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo)
 
+    # Test if the DeltaPhases were correctly computed
+    delta_phases = result_dataset["DeltaPhases"].to_numpy(dtype=np.float32)
+    expected_delta_phases = np.angle(
+        np.exp(
+            1j
+            * (
+                sample_dataset["PHI_deriv"].to_numpy(dtype=np.float32)
+                - sample_dataset["PHI_nat"].to_numpy(dtype=np.float32)
+            )
+        )
+    )
 
-# Test in-place modification of the dataset
-def test_compute_fofo_differences_inplace(sample_dataset: rs.DataSet) -> None:
-    compute_fofo_differences(
+    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases)
+
+
+# Test in-place modification
+def test_compute_deltafofo_inplace(sample_dataset: rs.DataSet) -> None:
+    compute_deltafofo(
         dataset=sample_dataset,
         native_amplitudes="F_nat",
         derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
-        sigf_native="SIGF_nat",
-        sigf_deriv="SIGF_deriv",
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
         inplace=True,
     )
 
-    # Ensure the DeltaFoFo column exists in the modified dataset
+    # Ensure the DeltaFoFo and DeltaPhases columns exist in the modified dataset
     assert "DeltaFoFo" in sample_dataset.columns
+    assert "DeltaPhases" in sample_dataset.columns
 
-    # Check that the DeltaFoFo values are correct
-    expected_delta_fofo = sample_dataset["F_deriv"] - sample_dataset["F_nat"]
-    np.testing.assert_array_almost_equal(
-        sample_dataset["DeltaFoFo"], expected_delta_fofo
-    )
+    expected_delta_fofo = (
+        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
+    ).to_numpy()
+    delta_fofo = sample_dataset["DeltaFoFo"].to_numpy()
+
+    np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo)
+
+    # Convert PhaseArray to numpy array for complex number operation
+    native_phases = sample_dataset["PHI_nat"].to_numpy(dtype=np.float32)
+    derivative_phases = sample_dataset["PHI_deriv"].to_numpy(dtype=np.float32)
+
+    expected_delta_phases = np.angle(np.exp(1j * (derivative_phases - native_phases)))
+    delta_phases = sample_dataset["DeltaPhases"].to_numpy(dtype=np.float32)
+
+    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases)
 
 
 # Test that no dataset is returned when inplace=True
-def test_compute_fofo_differences_inplace_return(sample_dataset: rs.DataSet) -> None:
-    result = compute_fofo_differences(
+def test_compute_deltafofo_inplace_return(sample_dataset: rs.DataSet) -> None:
+    result = compute_deltafofo(
         dataset=sample_dataset,
         native_amplitudes="F_nat",
-        derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
-        sigf_native="SIGF_nat",
-        sigf_deriv="SIGF_deriv",
+        derivative_amplitudes="F_deriv",  # Fixed typo here
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
         inplace=True,
     )
     assert result is None  # Should return None when inplace=True
 
 
-# Test handling missing columns (e.g., missing native amplitude column)
-def test_compute_fofo_differences_missing_column(sample_dataset: rs.DataSet) -> None:
+# Test handling missing columns (e.g. missing native amplitude column)
+def test_compute_deltafofo_missing_column(sample_dataset: rs.DataSet) -> None:
     with pytest.raises(KeyError):
-        compute_fofo_differences(
+        compute_deltafofo(
             dataset=sample_dataset.drop(columns=["F_nat"]),
             native_amplitudes="F_nat",
             derivative_amplitudes="F_deriv",
-            calc_amplitudes="F_calc",
-            sigf_native="SIGF_nat",
-            sigf_deriv="SIGF_deriv",
+            native_phases="PHI_nat",
+            derivative_phases="PHI_deriv",
         )
 
 
-# Test if the function scales properly by checking the range of DeltaFoFo values
-def test_compute_fofo_differences_scaling(sample_dataset: rs.DataSet) -> None:
-    result_dataset = compute_fofo_differences(
+def test_compute_deltafofo_range(sample_dataset: rs.DataSet) -> None:
+    result_dataset = compute_deltafofo(
         dataset=sample_dataset,
         native_amplitudes="F_nat",
         derivative_amplitudes="F_deriv",
-        calc_amplitudes="F_calc",
-        sigf_native="SIGF_nat",
-        sigf_deriv="SIGF_deriv",
+        native_phases="PHI_nat",
+        derivative_phases="PHI_deriv",
     )
 
-    # DeltaFoFo should be approximately equal to the
-    # difference between derivative and native amplitudes
+    # Ensure the function returns a dataset
     assert result_dataset is not None, "Function returned None when it shouldn't have."
 
-    delta_fofo = result_dataset["DeltaFoFo"]
-    assert delta_fofo.max() > delta_fofo.min()  # Ensure non-zero range
+    delta_fofo = result_dataset["DeltaFoFo"].to_numpy()
+
+    # Ensure that the DeltaFoFo values are not all the same (i.e. there's a range)
+    assert (
+        delta_fofo.max() > delta_fofo.min()
+    ), "DeltaFoFo values should have a non-zero range."
+
+    # Compute expected DeltaFoFo values for comparison
+    expected_delta_fofo = (
+        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
+    ).to_numpy()
+
+    # Assert that the DeltaFoFo values match expected values within tolerance
+    np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo, decimal=5)
