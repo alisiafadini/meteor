@@ -1,9 +1,9 @@
 import numpy as np
 import reciprocalspaceship as rs
 
-from .validate import ScalarMaximizer, negentropy
-from .utils import compute_map_from_coefficients
 from .settings import TV_MAP_SAMPLING
+from .utils import compute_map_from_coefficients
+from .validate import ScalarMaximizer, negentropy
 
 
 def compute_deltafofo(
@@ -89,7 +89,7 @@ def compute_kweighted_deltafofo(
     derivative_phases: str = None,
     sigf_native: str,
     sigf_deriv: str,
-    kweight: float | None = None,
+    kweight: float = 1.0,
     optimize_kweight: bool = False,
     inplace: bool = False,
 ) -> rs.DataSet | None:
@@ -115,7 +115,7 @@ def compute_kweighted_deltafofo(
     sigf_deriv : str
         Column label for uncertainties of derivative amplitudes.
     kweight : float, optional
-        Optional weight factor, by default None.
+        k-weight factor, by default 1.0.
     optimize_kweight : bool, optional
         Whether to optimize the kweight using negentropy, by default False.
     inplace : bool, optional
