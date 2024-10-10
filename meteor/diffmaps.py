@@ -12,7 +12,7 @@ def compute_deltafofo(
     native_amplitudes: str,
     derivative_amplitudes: str,
     native_phases: str,
-    derivative_phases: str = None,
+    derivative_phases: str | None = None,
     inplace: bool = False,
 ) -> rs.DataSet | None:
     """
@@ -86,7 +86,7 @@ def compute_kweighted_deltafofo(
     native_amplitudes: str,
     derivative_amplitudes: str,
     native_phases: str,
-    derivative_phases: str = None,
+    derivative_phases: str | None = None,
     sigf_native: str,
     sigf_deriv: str,
     kweight: float = 1.0,
