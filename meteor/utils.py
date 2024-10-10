@@ -104,8 +104,10 @@ def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeri
     try:
         assert_index_equal(amplitudes.index, phases.index)
     except AssertionError as exptn:
-        ShapeMismatchError(
+        raise ShapeMismatchError(
             f"indices for `amplitudes` and `phases` don't match: {amplitudes.index} {phases.index}",
+            " To safely cast to a single complex array, pass DataSeries with a common set of",
+            " indices. One possible way: Series.align(other, join='inner', axis=0).",
             exptn,
         )
     complex_structure_factors = amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
