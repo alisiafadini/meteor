@@ -42,9 +42,7 @@ def rms_between_coefficients(
     "lambda_values_to_scan",
     [
         None,
-        [
-            0.01,
-        ],
+        [0.01],
     ],
 )
 @pytest.mark.parametrize("full_output", [False, True])
@@ -77,7 +75,7 @@ def test_tv_denoise_difference_map(
         return rms_between_coefficients(test_map, noise_free_map, diffmap_labels)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
-    # know  the ground truth, work around this to test all possible results.
+    # know the ground truth, work around this to test all possible results.
 
     lowest_rms: float = np.inf
     best_lambda: float = 0.0

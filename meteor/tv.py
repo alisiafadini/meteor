@@ -77,7 +77,6 @@ def tv_denoise_difference_map(
       2. Alternatively, an explicit list of lambda values to assess can be provided using
         `lambda_values_to_scan`.
 
-
     Parameters
     ----------
     difference_map_coefficients : rs.DataSet
@@ -124,7 +123,6 @@ def tv_denoise_difference_map(
     >>> coefficients = rs.read_mtz("./path/to/difference_map.mtz")  # load dataset
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
     >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
-
     """
     difference_map = compute_map_from_coefficients(
         map_coefficients=difference_map_coefficients,
@@ -171,7 +169,3 @@ def tv_denoise_difference_map(
         return final_map_coefficients, tv_result
     else:
         return final_map_coefficients
-
-
-def iterative_tv_phase_retrieval():
-    raise NotImplementedError()
