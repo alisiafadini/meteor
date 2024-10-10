@@ -77,12 +77,6 @@ def displaced_single_atom_difference_map_coefficients(
 
 
 @pytest.fixture
-def carbon_difference_density() -> np.ndarray:
-    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
-    return difference_density
-
-
-@pytest.fixture
 def noise_free_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
 
@@ -93,8 +87,8 @@ def noisy_map() -> rs.DataSet:
 
 
 @pytest.fixture
-def atom_minus_noisy_atom() -> rs.DataSet:
-    noise_sigma = 0.0
+def atom_and_noisy_atom() -> rs.DataSet:
+    noise_sigma = 1.0
 
     map = gemmi.Ccp4Map()
     map.grid = carbon1_density()

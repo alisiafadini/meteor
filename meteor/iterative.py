@@ -4,8 +4,13 @@ import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
 
-from .tv import tv_denoise_difference_map
-from .utils import canonicalize_amplitudes
+from .tv import TvDenoiseResult, tv_denoise_difference_map
+from .utils import (
+    canonicalize_amplitudes,
+    compute_coefficients_from_map,
+    compute_map_from_coefficients,
+    resolution_limits,
+)
 
 
 def _rs_dataseies_to_complex_array(
@@ -75,10 +80,10 @@ def _complex_derivative_from_iterative_tv(
     *,
     native: np.ndarray,
     initial_derivative: np.ndarray,
-    tv_denoise_function: Callable[[np.ndarray], np.ndarray],
+    tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]],
     convergence_tolerance: float = 1e-4,
     max_iterations: int = 1000,
-) -> np.ndarray:
+) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Estimate the derivative phases using the iterative TV algorithm.
 
@@ -107,13 +112,15 @@ def _complex_derivative_from_iterative_tv(
         The derivative SFs, with the same amplitudes but phases altered to minimize the TV.
     """
 
+    derivative = np.copy(initial_derivative)
     difference = initial_derivative - native
+
     converged: bool = False
     num_iterations: int = 0
-    derivative = np.copy(initial_derivative)
+    metadata: list[dict[str, float]] = []
 
     while not converged:
-        difference_tvd = tv_denoise_function(difference)
+        difference_tvd, tv_metadata = tv_denoise_function(difference)
         updated_derivative = _project_derivative_on_experimental_set(
             native=native,
             derivative_amplitudes=np.abs(derivative),
@@ -125,13 +132,24 @@ def _complex_derivative_from_iterative_tv(
         difference = derivative - native
 
         converged = change < convergence_tolerance
-
         num_iterations += 1
-        print(num_iterations, change)
+
+        metadata.append(
+            {
+                "iteration": num_iterations,
+                "tv_weight": tv_metadata.optimal_lambda,
+                "negentropy": tv_metadata.optimal_negentropy,
+                "change": change,
+            }
+        )
+
+        # TODO remove
+        print(num_iterations, tv_metadata.optimal_lambda, tv_metadata.optimal_negentropy, change)
+
         if num_iterations > max_iterations:
             break
 
-    return derivative
+    return derivative, pd.DataFrame(metadata)
 
 
 def iterative_tv_phase_retrieval(
@@ -141,9 +159,9 @@ def iterative_tv_phase_retrieval(
     derivative_amplitude_column: str = "Fh",
     calculated_phase_column: str = "PHIC",
     output_derivative_phase_column: str = "PHICh",
-    convergence_tolerance: float = 1e-4,
-    max_iterations: int = 1000,
-    tv_weights_to_scan: list[float] = [0.001]
+    convergence_tolerance: float = 1e-3,
+    max_iterations: int = 100,
+    tv_weights_to_scan: list[float] = [0.001, 0.01, 0.1, 1.0],
 ) -> rs.DataSet:
     """
     Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -168,8 +186,70 @@ def iterative_tv_phase_retrieval(
     threshold.
     """
 
-    # TODO scale inputs here? or before they are passed here?
+    # TODO think about this -- better way to enumerate?
+    # fills in missing reflections
 
+    m = compute_map_from_coefficients(
+        map_coefficients=input_dataset,
+        amplitude_label=native_amplitude_column,
+        phase_label=calculated_phase_column,
+        map_sampling=3,
+    )
+    _, hrl = resolution_limits(input_dataset)
+    d = compute_coefficients_from_map(
+        ccp4_map=m,
+        high_resolution_limit=hrl,
+        amplitude_label=native_amplitude_column,
+        phase_label=calculated_phase_column,
+    )
+
+    missing_indices = d.index.difference(input_dataset.index)
+    df_missing = rs.DataSet(0.0, index=missing_indices, columns=input_dataset.columns)
+    df_missing.spacegroup = input_dataset.spacegroup
+    df_missing.cell = input_dataset.cell
+    input_dataset = rs.concat([input_dataset, df_missing])
+
+    input_dataset[native_amplitude_column] = input_dataset[native_amplitude_column].astype(
+        rs.StructureFactorAmplitudeDtype()
+    )
+    input_dataset[derivative_amplitude_column] = input_dataset[derivative_amplitude_column].astype(
+        rs.StructureFactorAmplitudeDtype()
+    )
+    input_dataset[calculated_phase_column] = input_dataset[calculated_phase_column].astype(
+        rs.PhaseDtype()
+    )
+
+    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    # TODO we could swap from this closure to a class
+    def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
+        delta_amp, delta_phase = _complex_array_to_rs_dataseries(
+            difference, index=input_dataset.index
+        )
+
+        # these two names are only used inside this closure
+        delta_amp.name = "DF_for_tv_closure"
+        delta_phase.name = "DPHI_for_tv_closure"
+
+        diffmap = rs.concat([delta_amp, delta_phase], axis=1)
+        diffmap.cell = input_dataset.cell
+        diffmap.spacegroup = input_dataset.spacegroup
+
+        denoised_map_coefficients, tv_metadata = tv_denoise_difference_map(
+            diffmap,
+            difference_map_amplitude_column=delta_amp.name,
+            difference_map_phase_column=delta_phase.name,
+            lambda_values_to_scan=tv_weights_to_scan,
+            full_output=True,
+        )
+
+        denoised_difference = _rs_dataseies_to_complex_array(
+            denoised_map_coefficients[delta_amp.name], denoised_map_coefficients[delta_phase.name]
+        )
+
+        return denoised_difference, tv_metadata
+
+    # convert the native and derivative datasets to complex arrays
     native = _rs_dataseies_to_complex_array(
         input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
@@ -177,33 +257,7 @@ def iterative_tv_phase_retrieval(
         input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
     )
 
-    def tv_denoise_closure(difference: np.ndarray) -> np.ndarray:
-        delta_amp, delta_phase = _complex_array_to_rs_dataseries(
-            difference, index=input_dataset.index
-        )
-
-        # these names are the defaults expected by `tv_denoise_difference_map`
-        delta_amp.name = "DF"
-        delta_phase.name = "PHIC"
-
-        diffmap = rs.concat([delta_amp, delta_phase], axis=1)
-        diffmap.cell = input_dataset.cell
-        diffmap.spacegroup = input_dataset.spacegroup
-
-        denoised_map_coefficients, details = tv_denoise_difference_map(
-            diffmap,
-            lambda_values_to_scan=tv_weights_to_scan,
-            full_output=True
-        )
-        print(details.optimal_lambda, details.optimal_negentropy)
-
-        denoised_difference = _rs_dataseies_to_complex_array(
-            denoised_map_coefficients["DF"], denoised_map_coefficients["PHIC"]
-        )
-
-        return denoised_difference
-
-    it_tv_complex_derivative = _complex_derivative_from_iterative_tv(
+    it_tv_complex_derivative, metadata = _complex_derivative_from_iterative_tv(
         native=native,
         initial_derivative=initial_derivative,
         tv_denoise_function=tv_denoise_closure,
@@ -215,15 +269,16 @@ def iterative_tv_phase_retrieval(
         it_tv_complex_derivative, input_dataset.index
     )
 
+    output_dataset = input_dataset.copy()
+    output_dataset[output_derivative_phase_column] = derivative_phases.astype(rs.PhaseDtype())
+
+    # TODO remove block below
     difference_amplitudes, difference_phases = _complex_array_to_rs_dataseries(
         it_tv_complex_derivative - native, input_dataset.index
     )
-
-    output_dataset = input_dataset.copy()
-    output_dataset[output_derivative_phase_column] = derivative_phases
-
-    output_dataset["DF"] = difference_amplitudes
-    output_dataset["DPHI"] = difference_phases
+    output_dataset["DF"] = difference_amplitudes.astype(rs.StructureFactorAmplitudeDtype())
+    output_dataset["DPHI"] = difference_phases.astype(rs.PhaseDtype())
+    # ^^^^^^^^^^^^^^^^^^^^^^^
 
     canonicalize_amplitudes(
         output_dataset,
@@ -232,4 +287,4 @@ def iterative_tv_phase_retrieval(
         inplace=True,
     )
 
-    return output_dataset
+    return output_dataset, metadata

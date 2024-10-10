@@ -5,7 +5,7 @@ import gemmi
 import numpy as np
 import reciprocalspaceship as rs
 
-GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+GEMMI_HIGH_RESOLUTION_BUFFER = 1e-8
 
 
 @dataclass
