@@ -97,27 +97,30 @@ def test_compute_deltafofo_output(sample_dataset: rs.DataSet) -> None:
 
     assert result_dataset is not None, "Function returned None when it shouldn't have."
 
-    # Test if the DeltaFoFo was correctly computed
+    # Test if the DeltaFoFo (amplitude difference) was correctly computed
     delta_fofo = result_dataset["DeltaFoFo"].to_numpy()
-    expected_delta_fofo = (
-        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
-    ).to_numpy()
 
-    np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo)
+    # Compute expected DeltaFoFo using the updated approach (complex arithmetic)
+    native_complex = sample_dataset["F_nat"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_nat"].to_numpy())
+    )
+    derivative_complex = sample_dataset["F_deriv"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_deriv"].to_numpy())
+    )
+    expected_delta_complex = derivative_complex - native_complex
+    expected_delta_fofo = np.abs(expected_delta_complex)  # Amplitude differences
+
+    np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo, decimal=5)
 
     # Test if the DeltaPhases were correctly computed
     delta_phases = result_dataset["DeltaPhases"].to_numpy(dtype=np.float32)
-    expected_delta_phases = np.angle(
-        np.exp(
-            1j
-            * (
-                sample_dataset["PHI_deriv"].to_numpy(dtype=np.float32)
-                - sample_dataset["PHI_nat"].to_numpy(dtype=np.float32)
-            )
-        )
-    )
 
-    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases)
+    # The expected phase difference must be based on the complex difference
+    expected_delta_phases = np.angle(
+        expected_delta_complex, deg=True
+    )  # Convert back to degrees
+
+    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases, decimal=5)
 
 
 # Test in-place modification
@@ -135,21 +138,25 @@ def test_compute_deltafofo_inplace(sample_dataset: rs.DataSet) -> None:
     assert "DeltaFoFo" in sample_dataset.columns
     assert "DeltaPhases" in sample_dataset.columns
 
-    expected_delta_fofo = (
-        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
-    ).to_numpy()
-    delta_fofo = sample_dataset["DeltaFoFo"].to_numpy()
+    # Compute expected DeltaFoFo and DeltaPhases using the new complex approach
+    native_complex = sample_dataset["F_nat"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_nat"].to_numpy())
+    )
+    derivative_complex = sample_dataset["F_deriv"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_deriv"].to_numpy())
+    )
+    expected_delta_complex = derivative_complex - native_complex
 
+    expected_delta_fofo = np.abs(expected_delta_complex)
+    expected_delta_phases = np.angle(expected_delta_complex, deg=True)
+
+    # Assert DeltaFoFo values
+    delta_fofo = sample_dataset["DeltaFoFo"].to_numpy()
     np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo)
 
-    # Convert PhaseArray to numpy array for complex number operation
-    native_phases = sample_dataset["PHI_nat"].to_numpy(dtype=np.float32)
-    derivative_phases = sample_dataset["PHI_deriv"].to_numpy(dtype=np.float32)
-
-    expected_delta_phases = np.angle(np.exp(1j * (derivative_phases - native_phases)))
+    # Assert DeltaPhases values
     delta_phases = sample_dataset["DeltaPhases"].to_numpy(dtype=np.float32)
-
-    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases)
+    np.testing.assert_array_almost_equal(delta_phases, expected_delta_phases, decimal=5)
 
 
 # Test that no dataset is returned when inplace=True
@@ -196,10 +203,15 @@ def test_compute_deltafofo_range(sample_dataset: rs.DataSet) -> None:
         delta_fofo.max() > delta_fofo.min()
     ), "DeltaFoFo values should have a non-zero range."
 
-    # Compute expected DeltaFoFo values for comparison
-    expected_delta_fofo = (
-        sample_dataset["F_deriv"] - sample_dataset["F_nat"]
-    ).to_numpy()
+    # Compute expected DeltaFoFo using complex numbers
+    native_complex = sample_dataset["F_nat"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_nat"].to_numpy())
+    )
+    derivative_complex = sample_dataset["F_deriv"].to_numpy() * np.exp(
+        1j * np.deg2rad(sample_dataset["PHI_deriv"].to_numpy())
+    )
+    expected_delta_complex = derivative_complex - native_complex
+    expected_delta_fofo = np.abs(expected_delta_complex)
 
     # Assert that the DeltaFoFo values match expected values within tolerance
     np.testing.assert_array_almost_equal(delta_fofo, expected_delta_fofo, decimal=5)

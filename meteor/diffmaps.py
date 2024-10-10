@@ -1,9 +1,36 @@
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 
 from .settings import TV_MAP_SAMPLING
 from .utils import compute_map_from_coefficients
 from .validate import ScalarMaximizer, negentropy
+
+
+def _rs_dataseries_to_complex_array(
+    amplitudes: rs.DataSeries,
+    phases: rs.DataSeries,
+) -> np.ndarray:
+    pd.testing.assert_index_equal(
+        amplitudes.index, phases.index
+    )  # Ensure indices match
+    # Convert amplitudes and phases to complex representation
+    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
+
+
+def _complex_array_to_rs_dataseries(
+    complex_array: np.ndarray,
+    index: pd.Index,
+) -> tuple[rs.DataSeries, rs.DataSeries]:
+    # Extract amplitude from the complex array (magnitude)
+    amplitudes = rs.DataSeries(np.abs(complex_array), index=index)
+    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())  # Convert dtype
+
+    # Extract phase from the complex array (angle, in degrees)
+    phases = rs.DataSeries(np.rad2deg(np.angle(complex_array)), index=index)
+    phases = phases.astype(rs.PhaseDtype())  # Convert dtype
+
+    return amplitudes, phases
 
 
 def compute_deltafofo(
@@ -17,51 +44,36 @@ def compute_deltafofo(
 ) -> rs.DataSet | None:
     """
     Compute amplitude and phase differences between native and derivative datasets.
-
-    Assumes that scaling has already been applied to the amplitudes before calling this function.
-
-    Parameters:
-    -----------
-    dataset : rs.DataSet
-        The input dataset containing columns for native and derivative amplitudes/phases.
-    native_amplitudes : str
-        Column label for native amplitudes in the dataset.
-    derivative_amplitudes : str
-        Column label for derivative amplitudes in the dataset.
-    native_phases : str, optional
-        Column label for native phases.
-    derivative_phases : str, optional
-        Column label for derivative phases. Defaults to None, in which case native phases are used.
-    inplace : bool, optional
-        Whether to modify the dataset in place. Default is False.
-
-    Returns:
-    --------
-    rs.DataSet | None
-        The modified dataset with differences if inplace=False, otherwise None.
     """
+
     if not inplace:
         dataset = dataset.copy()
 
-    # Compute amplitude differences (no scaling assumed here)
-    delta_amplitudes = dataset[derivative_amplitudes] - dataset[native_amplitudes]
-    dataset["DeltaFoFo"] = delta_amplitudes
+    # Convert native and derivative amplitude/phase pairs to complex arrays
+    native_complex = _rs_dataseries_to_complex_array(
+        dataset[native_amplitudes], dataset[native_phases]
+    )
 
-    # Handle phase differences
-    if native_phases is not None and derivative_phases is not None:
-        native_phase = dataset[native_phases].to_numpy(
-            dtype=np.float32
-        )  # Convert PhaseArray to float32 for phase difference below
-        derivative_phase = dataset[derivative_phases].to_numpy(dtype=np.float32)
-    elif native_phases is not None:
-        native_phase = dataset[native_phases].to_numpy(dtype=np.float32)
-        derivative_phase = native_phase
+    if derivative_phases is not None:
+        derivative_complex = _rs_dataseries_to_complex_array(
+            dataset[derivative_amplitudes], dataset[derivative_phases]
+        )
     else:
-        raise ValueError("At least native_phases must be provided.")
+        # If no derivative phases are provided, assume they are the same as native phases
+        derivative_complex = _rs_dataseries_to_complex_array(
+            dataset[derivative_amplitudes], dataset[native_phases]
+        )
 
-    # Compute phase differences (angle normalization between -pi and pi)
-    delta_phases = np.angle(np.exp(1j * (derivative_phase - native_phase)))
+    # Compute complex differences
+    delta_complex = derivative_complex - native_complex
 
+    # Convert back to amplitude and phase DataSeries
+    delta_amplitudes, delta_phases = _complex_array_to_rs_dataseries(
+        delta_complex, dataset.index
+    )
+
+    # Add results to dataset
+    dataset["DeltaFoFo"] = delta_amplitudes
     dataset["DeltaPhases"] = delta_phases
 
     if inplace:
