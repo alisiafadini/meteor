@@ -30,9 +30,6 @@ class TvDenoiseResult:
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
-    # it seems the Golden method may search negative values here, and that might be OK...
-    # if weight < 0.0:
-    #     raise ValueError("TV weight < 0 requested, something went wrong")
     denoised_map = denoise_tv_chambolle(
         map_as_array,
         weight=weight,
