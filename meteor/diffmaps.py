@@ -76,6 +76,9 @@ def compute_deltafofo(
     dataset["DeltaFoFo"] = delta_amplitudes
     dataset["DeltaPhases"] = delta_phases
 
+    # Reset to Phase dtype
+    dataset["DeltaPhases"] = dataset["DeltaPhases"].astype("Phase")
+
     if inplace:
         return None
     else:
@@ -179,7 +182,7 @@ def compute_kweighted_deltafofo(
 
         # Optimize kweight using negentropy objective
         maximizer = ScalarMaximizer(objective=negentropy_objective)
-        maximizer.optimize_with_golden_algorithm(bracket=(0.1, 10.0))
+        maximizer.optimize_over_explicit_values(arguments_to_scan=(0.0, 1.0))
         kweight = maximizer.argument_optimum
 
     # Compute weights and apply to DeltaFoFo
