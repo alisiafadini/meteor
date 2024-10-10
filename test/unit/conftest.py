@@ -3,15 +3,16 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.utils import compute_coefficients_from_map
+from meteor.utils import compute_coefficients_from_map, numpy_array_to_map
 
-DEFAULT_RESOLUTION = 1.0
-DEFAULT_CELL_SIZE = 10.0
-DEFAULT_CARBON1_POSITION = (5.0, 5.0, 5.0)
-DEFAULT_CARBON2_POSITION = (5.0, 5.2, 5.0)
+RESOLUTION = 1.0
+UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
+SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
+CARBON1_POSITION = (5.0, 5.0, 5.0)
+CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 
-def generate_single_carbon_density(
+def single_carbon_density(
     carbon_position: tuple[float, float, float],
     space_group: gemmi.SpaceGroup,
     unit_cell: gemmi.UnitCell,
@@ -46,36 +47,39 @@ def generate_single_carbon_density(
     return density_map.grid
 
 
+def carbon1_density() -> gemmi.FloatGrid:
+    return single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
+
+
+def carbon2_density() -> gemmi.FloatGrid:
+    return single_carbon_density(CARBON2_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
+
+
 def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,
-    d_min: float = DEFAULT_RESOLUTION,
-    cell_size: float = DEFAULT_CELL_SIZE,
-    carbon_position1: tuple[float, float, float] = DEFAULT_CARBON1_POSITION,
-    carbon_position2: tuple[float, float, float] = DEFAULT_CARBON2_POSITION,
 ) -> rs.DataSet:
-    unit_cell = gemmi.UnitCell(a=cell_size, b=cell_size, c=cell_size, alpha=90, beta=90, gamma=90)
-    space_group = gemmi.find_spacegroup_by_name("P1")
-
-    density1 = generate_single_carbon_density(carbon_position1, space_group, unit_cell, d_min)
-    density2 = generate_single_carbon_density(carbon_position2, space_group, unit_cell, d_min)
-
-    ccp4_map = gemmi.Ccp4Map()
-    grid_values = (
-        np.array(density2) - np.array(density1) + noise_sigma * np.random.randn(*density2.shape)
+    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
+    grid_values = np.array(difference_density) + noise_sigma * np.random.randn(
+        *difference_density.shape
     )
-    ccp4_map.grid = gemmi.FloatGrid(grid_values.astype(np.float32), unit_cell, space_group)
-    ccp4_map.update_ccp4_header()
+
+    ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
     difference_map_coefficients = compute_coefficients_from_map(
         ccp4_map=ccp4_map,
-        high_resolution_limit=d_min,
+        high_resolution_limit=RESOLUTION,
         amplitude_label="DF",
         phase_label="PHIC",
     )
-    assert (difference_map_coefficients.max() > 0.0).any()
 
     return difference_map_coefficients
+
+
+@pytest.fixture
+def carbon_difference_density() -> np.ndarray:
+    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
+    return difference_density
 
 
 @pytest.fixture
