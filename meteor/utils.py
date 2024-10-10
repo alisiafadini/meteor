@@ -3,9 +3,14 @@ from typing import Literal, overload
 
 import gemmi
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
+from pandas.testing import assert_index_equal
 
 GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+
+
+class ShapeMismatchError(Exception): ...
 
 
 @dataclass
@@ -73,6 +78,80 @@ def canonicalize_amplitudes(
         return dataset
     else:
         return None
+
+
+def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
+    """
+    Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
+
+    Parameters
+    ----------
+    amplitudes: DataSeries
+        with StructureFactorAmplitudeDtype
+    phases: DataSeries
+        with PhaseDtype
+
+    Returns
+    -------
+    complex_structure_factors: np.ndarray
+        with dtype complex128
+
+    Raises
+    ------
+    ValueError
+        if the indices of `amplitudes` and `phases` do not match
+    """
+    try:
+        assert_index_equal(amplitudes.index, phases.index)
+    except AssertionError as exptn:
+        ShapeMismatchError(
+            f"indices for `amplitudes` and `phases` don't match: {amplitudes.index} {phases.index}",
+            exptn,
+        )
+    complex_structure_factors = amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
+    return complex_structure_factors
+
+
+def complex_array_to_rs_dataseries(
+    complex_structure_factors: np.ndarray,
+    index: pd.Index,
+) -> tuple[rs.DataSeries, rs.DataSeries]:
+    """
+    Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one
+    representing the structure factor amplitudes and one for the phases.
+
+    Parameters
+    ----------
+    complex_structure_factors: np.ndarray
+        the complex-valued structure factors, as a numpy array
+    index: pandas.Index
+        the indices (HKL) for each structure factor in `complex_structure_factors`
+
+    Returns
+    -------
+    amplitudes: DataSeries
+        with StructureFactorAmplitudeDtype
+    phases: DataSeries
+        with PhaseDtype
+
+    Raises
+    ------
+    ValueError
+        if `complex_structure_factors and `index` do not have the same shape
+    """
+    if not complex_structure_factors.shape == index.shape:
+        raise ShapeMismatchError(
+            f"shape of `complex_structure_factors` ({complex_structure_factors.shape}) does not "
+            f"match shape of `index` ({index.shape})"
+        )
+
+    amplitudes = rs.DataSeries(np.abs(complex_structure_factors), index=index)
+    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())
+
+    phases = rs.DataSeries(np.rad2deg(np.angle(complex_structure_factors)), index=index)
+    phases = phases.astype(rs.PhaseDtype())
+
+    return amplitudes, phases
 
 
 def numpy_array_to_map(
