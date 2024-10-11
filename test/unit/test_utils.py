@@ -80,6 +80,21 @@ def test_canonicalize_amplitudes(
     )
 
 
+def test_average_phase_diff_in_degrees() -> None:
+    arr1 = np.array([0.0, 1.0, 1.0, 1.0])
+    arr2 = np.array([0.0, 1.0, 1.0, 1.0]) + 1j * np.array([0.0, 0.0, 1.0, 1.0])
+    excepted_average_phase_difference = (45.0 * 2) / 4.0
+    computed_average_phase_difference = utils.average_phase_diff_in_degrees(arr1, arr2)
+    assert np.allclose(computed_average_phase_difference, excepted_average_phase_difference)
+
+
+def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
+    arr1 = np.ones(2)
+    arr2 = np.ones(3)
+    with pytest.raises(utils.ShapeMismatchError):
+        utils.average_phase_diff_in_degrees(arr1, arr2)
+
+
 def test_rs_dataseies_to_complex_array() -> None:
     index = pd.Index(np.arange(4))
     amp = rs.DataSeries(np.ones(4), index=index)

@@ -159,6 +159,13 @@ def tv_denoise_difference_map(
         phase_label=difference_map_phase_column,
     )
 
+    # sometimes `compute_coefficients_from_map` adds reflections -- systematic absences or
+    # reflections just beyond the resolution limt; remove those
+    extra_indices = final_map_coefficients.index.difference(difference_map_coefficients.index)
+    final_map_coefficients = final_map_coefficients.drop(extra_indices)
+    sym_diff = difference_map_coefficients.index.symmetric_difference(final_map_coefficients.index)
+    assert len(sym_diff) == 0
+
     if full_output:
         tv_result = TvDenoiseResult(
             optimal_lambda=maximizer.argument_optimum,

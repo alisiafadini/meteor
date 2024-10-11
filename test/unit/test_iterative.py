@@ -4,11 +4,19 @@ import pytest
 import reciprocalspaceship as rs
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
+from gemmi import Ccp4Map
+import pandas as pd
 
 from meteor import iterative
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
 from meteor.utils import compute_map_from_coefficients
+
+
+def normalized_map_std(map: Ccp4Map) -> float:
+    map_array = np.array(map.grid)
+    map_array /= map_array.mean()
+    return np.std(map_array)
 
 
 def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
@@ -28,14 +36,6 @@ def normalized_rms(x: np.ndarray, y: np.ndarray) -> float:
     normalized_x = x / x.mean()
     normalized_y = y / y.mean()
     return float(np.linalg.norm(normalized_x - normalized_y))
-
-
-def test_l1_norm() -> None:
-    n = 5
-    x = np.arange(n)
-    y = np.arange(n) + 1
-    assert iterative._l1_norm(x, x) == 0.0
-    assert iterative._l1_norm(x, y) == 1.0
 
 
 @pytest.mark.parametrize("scalar", [0.01, 1.0, 2.0, 100.0])
@@ -79,23 +79,12 @@ def test_complex_derivative_from_iterative_tv() -> None:
 
 
 def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
-    # the difference between a noisy map and itself should be zero
-
-    # get the initial diffmap
-    atom_and_noisy_atom["DF"] = atom_and_noisy_atom["Fh"] - atom_and_noisy_atom["F"]
-    noisy_density = compute_map_from_coefficients(
-        map_coefficients=atom_and_noisy_atom,
-        amplitude_label="DF",
-        phase_label="PHIC",
-        map_sampling=3,
-    )
-
-    # run it-TV
+    # TODO this test is still shit
     result, metadata = iterative.iterative_tv_phase_retrieval(
         atom_and_noisy_atom,
-        tv_weights_to_scan=[0.01],
-        max_iterations=1000,
-        convergence_tolerance=1e-3,
+        tv_weights_to_scan=[0.001, 0.01, 0.1],
+        max_iterations=100,
+        convergence_tolerance=0.05,
     )
 
     # make sure output columns that should not be altered are in fact the same
@@ -103,16 +92,14 @@ def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
     for label in ["F", "Fh"]:
         pdt.assert_series_equal(result[label], atom_and_noisy_atom[label], atol=1e-3)
 
-    denoised_density = compute_map_from_coefficients(
-        map_coefficients=result, amplitude_label="DF", phase_label="DPHI", map_sampling=3
+    # make sure metadata exists
+    assert isinstance(metadata, pd.DataFrame)
+
+    noisy_density = compute_map_from_coefficients(
+        map_coefficients=atom_and_noisy_atom, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
     )
-
-    # make sure the result has less variance
-    noisy_density_array: np.ndarray = np.array(noisy_density.grid)
-    noisy_density_array /= noisy_density_array.sum()
-    denoised_density_array: np.ndarray = np.array(denoised_density.grid)
-    denoised_density_array /= denoised_density_array.sum()
-
-    # TODO remove prints
+    denoised_density = compute_map_from_coefficients(
+        map_coefficients=result, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
+    )
     print(metadata)
-    assert noisy_density_array.std() > denoised_density_array.std()
+    assert normalized_map_std(denoised_density) < normalized_map_std(noisy_density)
