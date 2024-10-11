@@ -1,9 +1,9 @@
+import gemmi
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
-from gemmi import Ccp4Map
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
@@ -13,10 +13,9 @@ from meteor.tv import TvDenoiseResult
 from meteor.utils import compute_map_from_coefficients
 
 
-def normalized_map_std(map: Ccp4Map) -> float:
-    map_array = np.array(map.grid)
-    map_array /= map_array.mean()
-    return np.std(map_array)
+def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
+    diff = np.array(map1.grid) - np.array(map2.grid)
+    return float(np.linalg.norm(diff))
 
 
 def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
@@ -79,30 +78,41 @@ def test_complex_derivative_from_iterative_tv() -> None:
 
 
 def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
-    # TODO this test is still shit
+    # the test case is the denoising of a difference: between a noisy map and its noise-free origin
+    # such a diffmap is ideally totally flat, so should have very low TV
     result, metadata = iterative.iterative_tv_phase_retrieval(
         atom_and_noisy_atom,
-        tv_weights_to_scan=[0.001, 0.01, 0.1],
+        tv_weights_to_scan=[1.0],
         max_iterations=100,
-        convergence_tolerance=0.05,
+        convergence_tolerance=0.01,
     )
 
     # make sure output columns that should not be altered are in fact the same
-    assert_phases_allclose(result["PHIC"], atom_and_noisy_atom["PHIC"], atol=1e-3)
+    assert_phases_allclose(result["PHIC"], atom_and_noisy_atom["PHIC"])
     for label in ["F", "Fh"]:
-        pdt.assert_series_equal(result[label], atom_and_noisy_atom[label], atol=1e-3)
+        pdt.assert_series_equal(result[label], atom_and_noisy_atom[label])
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
 
+    # test correctness by comparing denoised dataset to noise-free
+    noise_free_density = compute_map_from_coefficients(
+        map_coefficients=atom_and_noisy_atom,
+        amplitude_label="F",
+        phase_label="PHIC",
+        map_sampling=3,
+    )
     noisy_density = compute_map_from_coefficients(
         map_coefficients=atom_and_noisy_atom,
         amplitude_label="Fh",
-        phase_label="PHICh",
+        phase_label="PHICh_initial",
         map_sampling=3,
     )
     denoised_density = compute_map_from_coefficients(
         map_coefficients=result, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
     )
-    print(metadata)
-    assert normalized_map_std(denoised_density) < normalized_map_std(noisy_density)
+    noisy_error = map_norm(noisy_density, noise_free_density)
+    denoised_error = map_norm(denoised_density, noise_free_density)
+
+    # insist on 1% or better improvement
+    assert 1.01 * denoised_error < noisy_error

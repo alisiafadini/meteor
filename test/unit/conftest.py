@@ -112,7 +112,7 @@ def atom_and_noisy_atom() -> rs.DataSet:
         ccp4_map=noisy_map,
         high_resolution_limit=RESOLUTION,
         amplitude_label="Fh",
-        phase_label="PHICh",
+        phase_label="PHICh_initial",
     )
 
     return rs.concat([coefficents1, coefficents2], axis=1)
