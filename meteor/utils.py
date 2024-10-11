@@ -17,6 +17,7 @@ class ShapeMismatchError(Exception): ...
 class MapLabels:
     amplitude: str
     phase: str
+    uncertainty: str | None = None
 
 
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:

@@ -5,6 +5,7 @@ import pytest
 import reciprocalspaceship as rs
 from pandas import testing as pdt
 
+from meteor import testing as mt
 from meteor import utils
 
 
@@ -174,4 +175,13 @@ def test_map_to_coefficients_round_trip(
         phase_label=diffmap_labels.phase,
         inplace=True,
     )
-    pd.testing.assert_frame_equal(left=random_difference_map, right=output_coefficients, atol=0.5)
+
+    pd.testing.assert_series_equal(
+        random_difference_map[diffmap_labels.amplitude],
+        output_coefficients[diffmap_labels.amplitude],
+        atol=1e-3,
+    )
+    mt.assert_phases_allclose(
+        random_difference_map[diffmap_labels.phase].to_numpy(),
+        output_coefficients[diffmap_labels.phase].to_numpy(),
+    )
