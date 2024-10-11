@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import pytest
 import reciprocalspaceship as rs
+from pandas import testing as pdt
 
+from meteor import testing as mt
 from meteor import utils
 
 
@@ -78,6 +80,63 @@ def test_canonicalize_amplitudes(
     )
 
 
+def test_rs_dataseies_to_complex_array() -> None:
+    index = pd.Index(np.arange(4))
+    amp = rs.DataSeries(np.ones(4), index=index)
+    phase = rs.DataSeries(np.arange(4) * 90.0, index=index)
+
+    carray = utils.rs_dataseies_to_complex_array(amp, phase)
+    expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+
+    np.testing.assert_almost_equal(carray, expected)
+
+
+def test_rs_dataseies_to_complex_array_index_mismatch() -> None:
+    amp = rs.DataSeries(np.ones(4), index=[0, 1, 2, 3])
+    phase = rs.DataSeries(np.arange(4) * 90.0, index=[1, 2, 3, 4])
+    with pytest.raises(utils.ShapeMismatchError):
+        utils.rs_dataseies_to_complex_array(amp, phase)
+
+
+def test_complex_array_to_rs_dataseries() -> None:
+    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+    index = pd.Index(np.arange(4))
+
+    expected_amp = rs.DataSeries(np.ones(4), index=index).astype(rs.StructureFactorAmplitudeDtype())
+    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index).astype(rs.PhaseDtype())
+
+    amp, phase = utils.complex_array_to_rs_dataseries(carray, index)
+    pdt.assert_series_equal(amp, expected_amp)
+    pdt.assert_series_equal(phase, expected_phase)
+
+
+def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
+    carray = np.array([1.0]) + 1j * np.array([1.0])
+    index = pd.Index(np.arange(2))
+    with pytest.raises(utils.ShapeMismatchError):
+        utils.complex_array_to_rs_dataseries(carray, index)
+
+
+def test_complex_array_dataseries_roundtrip() -> None:
+    n = 5
+    carray = np.random.randn(n) + 1j * np.random.randn(n)
+    indices = pd.Index(np.arange(n))
+
+    ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, indices)
+
+    assert isinstance(ds_amplitudes, rs.DataSeries)
+    assert isinstance(ds_phases, rs.DataSeries)
+
+    assert ds_amplitudes.dtype == rs.StructureFactorAmplitudeDtype()
+    assert ds_phases.dtype == rs.PhaseDtype()
+
+    pdt.assert_index_equal(ds_amplitudes.index, indices)
+    pdt.assert_index_equal(ds_phases.index, indices)
+
+    carray2 = utils.rs_dataseies_to_complex_array(ds_amplitudes, ds_phases)
+    np.testing.assert_almost_equal(carray, carray2, decimal=5)
+
+
 def test_compute_map_from_coefficients(
     random_difference_map: rs.DataSet, diffmap_labels: utils.MapLabels
 ) -> None:
@@ -116,4 +175,13 @@ def test_map_to_coefficients_round_trip(
         phase_label=diffmap_labels.phase,
         inplace=True,
     )
-    pd.testing.assert_frame_equal(left=random_difference_map, right=output_coefficients, atol=0.5)
+
+    pd.testing.assert_series_equal(
+        random_difference_map[diffmap_labels.amplitude],
+        output_coefficients[diffmap_labels.amplitude],
+        atol=1e-3,
+    )
+    mt.assert_phases_allclose(
+        random_difference_map[diffmap_labels.phase].to_numpy(),
+        output_coefficients[diffmap_labels.phase].to_numpy(),
+    )

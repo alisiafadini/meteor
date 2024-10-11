@@ -77,6 +77,12 @@ def displaced_single_atom_difference_map_coefficients(
 
 
 @pytest.fixture
+def carbon_difference_density() -> np.ndarray:
+    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
+    return difference_density
+
+
+@pytest.fixture
 def noise_free_map() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
 
