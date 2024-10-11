@@ -6,10 +6,10 @@ import reciprocalspaceship as rs
 
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
+    average_phase_diff_in_degrees,
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
     rs_dataseies_to_complex_array,
-    average_phase_diff_in_degrees,
 )
 
 
@@ -73,7 +73,7 @@ def _complex_derivative_from_iterative_tv(
 
     tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]]
         A function capable of applying the TV denoising operation to *Fourier space* objects. This
-        function should therefore map one complex np.ndarray to a denoised complex np.ndarray and 
+        function should therefore map one complex np.ndarray to a denoised complex np.ndarray and
         the TvDenoiseResult for that TV run.
 
     convergance_tolerance: float
@@ -90,7 +90,7 @@ def _complex_derivative_from_iterative_tv(
 
     metadata: pd.DataFrame
         Information about the algorithm run as a function of iteration. For each step, includes:
-        the tv_weight used, the negentropy (after the TV step), and the average phase change in 
+        the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
 
@@ -167,21 +167,21 @@ def iterative_tv_phase_retrieval(
     Parameters
     ----------
     input_dataset : rs.DataSet
-        The input dataset containing the native and derivative amplitude columns, as well as 
+        The input dataset containing the native and derivative amplitude columns, as well as
         the calculated phase column.
 
     native_amplitude_column : str, optional
         Column name in `input_dataset` representing the amplitudes of the native (dark) structure
         factors, by default "F".
-    
+
     derivative_amplitude_column : str, optional
         Column name in `input_dataset` representing the amplitudes of the derivative (light)
         structure factors, by default "Fh".
-    
+
     calculated_phase_column : str, optional
-        Column name in `input_dataset` representing the phases of the native (dark) structure 
+        Column name in `input_dataset` representing the phases of the native (dark) structure
         factors, by default "PHIC".
-    
+
     output_derivative_phase_column : str, optional
         Column name where the estimated derivative phases will be stored in the output dataset,
         by default "PHICh".
@@ -194,7 +194,7 @@ def iterative_tv_phase_retrieval(
         If this number of iterations is reached, stop early.
 
     tv_weights_to_scan : list[float], optional
-        A list of TV regularization weights (λ values) to be scanned for optimal results, 
+        A list of TV regularization weights (λ values) to be scanned for optimal results,
         by default [0.001, 0.01, 0.1, 1.0].
 
     Returns
@@ -204,9 +204,10 @@ def iterative_tv_phase_retrieval(
 
     metadata: pd.DataFrame
         Information about the algorithm run as a function of iteration. For each step, includes:
-        the tv_weight used, the negentropy (after the TV step), and the average phase change in 
+        the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
+
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:

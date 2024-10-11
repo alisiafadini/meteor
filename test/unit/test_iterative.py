@@ -1,11 +1,11 @@
 import numpy as np
+import pandas as pd
 import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
+from gemmi import Ccp4Map
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
-from gemmi import Ccp4Map
-import pandas as pd
 
 from meteor import iterative
 from meteor.testing import assert_phases_allclose
@@ -96,7 +96,10 @@ def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
     assert isinstance(metadata, pd.DataFrame)
 
     noisy_density = compute_map_from_coefficients(
-        map_coefficients=atom_and_noisy_atom, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
+        map_coefficients=atom_and_noisy_atom,
+        amplitude_label="Fh",
+        phase_label="PHICh",
+        map_sampling=3,
     )
     denoised_density = compute_map_from_coefficients(
         map_coefficients=result, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
