@@ -108,11 +108,11 @@ def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
     )
 
     # make sure the result has less variance
-    noisy_density = np.array(noisy_density.grid)
-    noisy_density /= noisy_density.sum()
-    denoised_density = np.array(denoised_density.grid)
-    denoised_density /= denoised_density.sum()
+    noisy_density_array: np.ndarray = np.array(noisy_density.grid)
+    noisy_density_array /= noisy_density_array.sum()
+    denoised_density_array: np.ndarray = np.array(denoised_density.grid)
+    denoised_density_array /= denoised_density_array.sum()
 
     # TODO remove prints
     print(metadata)
-    assert noisy_density.std() > denoised_density.std()
+    assert noisy_density_array.std() > denoised_density_array.std()
