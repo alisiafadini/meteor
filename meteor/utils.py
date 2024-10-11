@@ -7,7 +7,7 @@ import pandas as pd
 import reciprocalspaceship as rs
 from pandas.testing import assert_index_equal
 
-GEMMI_HIGH_RESOLUTION_BUFFER = 1e-8
+GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
 
 
 class ShapeMismatchError(Exception): ...
