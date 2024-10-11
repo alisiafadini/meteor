@@ -7,29 +7,12 @@ import reciprocalspaceship as rs
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     canonicalize_amplitudes,
+    complex_array_to_rs_dataseries,
     compute_coefficients_from_map,
     compute_map_from_coefficients,
     resolution_limits,
+    rs_dataseies_to_complex_array,
 )
-
-
-def _rs_dataseies_to_complex_array(
-    amplitudes: rs.DataSeries,
-    phases: rs.DataSeries,
-) -> np.ndarray:
-    pd.testing.assert_index_equal(amplitudes.index, phases.index)
-    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
-
-
-def _complex_array_to_rs_dataseries(
-    complex_array: np.ndarray,
-    index: pd.Index,
-) -> tuple[rs.DataSeries, rs.DataSeries]:
-    amplitudes = rs.DataSeries(np.abs(complex_array), index=index)
-    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())
-    phases = rs.DataSeries(np.rad2deg(np.angle(complex_array)), index=index)
-    phases = phases.astype(rs.PhaseDtype())
-    return amplitudes, phases
 
 
 def _l1_norm(
@@ -223,7 +206,7 @@ def iterative_tv_phase_retrieval(
 
     # TODO we could swap from this closure to a class
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
-        delta_amp, delta_phase = _complex_array_to_rs_dataseries(
+        delta_amp, delta_phase = complex_array_to_rs_dataseries(
             difference, index=input_dataset.index
         )
 
@@ -243,17 +226,17 @@ def iterative_tv_phase_retrieval(
             full_output=True,
         )
 
-        denoised_difference = _rs_dataseies_to_complex_array(
+        denoised_difference = rs_dataseies_to_complex_array(
             denoised_map_coefficients[delta_amp.name], denoised_map_coefficients[delta_phase.name]
         )
 
         return denoised_difference, tv_metadata
 
     # convert the native and derivative datasets to complex arrays
-    native = _rs_dataseies_to_complex_array(
+    native = rs_dataseies_to_complex_array(
         input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
-    initial_derivative = _rs_dataseies_to_complex_array(
+    initial_derivative = rs_dataseies_to_complex_array(
         input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
     )
 
@@ -265,7 +248,7 @@ def iterative_tv_phase_retrieval(
         max_iterations=max_iterations,
     )
 
-    _, derivative_phases = _complex_array_to_rs_dataseries(
+    _, derivative_phases = complex_array_to_rs_dataseries(
         it_tv_complex_derivative, input_dataset.index
     )
 
@@ -273,7 +256,7 @@ def iterative_tv_phase_retrieval(
     output_dataset[output_derivative_phase_column] = derivative_phases.astype(rs.PhaseDtype())
 
     # TODO remove block below
-    difference_amplitudes, difference_phases = _complex_array_to_rs_dataseries(
+    difference_amplitudes, difference_phases = complex_array_to_rs_dataseries(
         it_tv_complex_derivative - native, input_dataset.index
     )
     output_dataset["DF"] = difference_amplitudes.astype(rs.StructureFactorAmplitudeDtype())

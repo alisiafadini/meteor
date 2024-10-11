@@ -80,7 +80,7 @@ def canonicalize_amplitudes(
     else:
         return None
 
-        
+
 def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
     """
     Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
@@ -155,7 +155,6 @@ def complex_array_to_rs_dataseries(
     phases = phases.astype(rs.PhaseDtype())
 
     return amplitudes, phases
-
 
 
 def numpy_array_to_map(

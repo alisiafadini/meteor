@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pandas.testing as pdt
 import pytest
 import reciprocalspaceship as rs
@@ -7,8 +6,9 @@ from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
 from meteor import iterative
+from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
-from meteor.utils import assert_phases_allclose, compute_map_from_coefficients
+from meteor.utils import compute_map_from_coefficients
 
 
 def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
@@ -36,49 +36,6 @@ def test_l1_norm() -> None:
     y = np.arange(n) + 1
     assert iterative._l1_norm(x, x) == 0.0
     assert iterative._l1_norm(x, y) == 1.0
-
-
-def test_rs_dataseies_to_complex_array() -> None:
-    index = pd.Index(np.arange(4))
-    amp = rs.DataSeries(np.ones(4), index=index)
-    phase = rs.DataSeries(np.arange(4) * 90.0, index=index)
-
-    carray = iterative._rs_dataseies_to_complex_array(amp, phase)
-    expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
-
-    np.testing.assert_almost_equal(carray, expected)
-
-
-def test_complex_array_to_rs_dataseries() -> None:
-    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
-    index = pd.Index(np.arange(4))
-
-    expected_amp = rs.DataSeries(np.ones(4), index=index).astype(rs.StructureFactorAmplitudeDtype())
-    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index).astype(rs.PhaseDtype())
-
-    amp, phase = iterative._complex_array_to_rs_dataseries(carray, index)
-    pdt.assert_series_equal(amp, expected_amp)
-    pdt.assert_series_equal(phase, expected_phase)
-
-
-def test_complex_array_dataseries_roundtrip() -> None:
-    n = 5
-    carray = np.random.randn(n) + 1j * np.random.randn(n)
-    indices = pd.Index(np.arange(n))
-
-    ds_amplitudes, ds_phases = iterative._complex_array_to_rs_dataseries(carray, indices)
-
-    assert isinstance(ds_amplitudes, rs.DataSeries)
-    assert isinstance(ds_phases, rs.DataSeries)
-
-    assert ds_amplitudes.dtype == rs.StructureFactorAmplitudeDtype()
-    assert ds_phases.dtype == rs.PhaseDtype()
-
-    pdt.assert_index_equal(ds_amplitudes.index, indices)
-    pdt.assert_index_equal(ds_phases.index, indices)
-
-    carray2 = iterative._rs_dataseies_to_complex_array(ds_amplitudes, ds_phases)
-    np.testing.assert_almost_equal(carray, carray2, decimal=5)
 
 
 @pytest.mark.parametrize("scalar", [0.01, 1.0, 2.0, 100.0])
