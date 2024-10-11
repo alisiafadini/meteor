@@ -3,108 +3,125 @@ import pandas as pd
 import reciprocalspaceship as rs
 
 from .settings import TV_MAP_SAMPLING
-from .utils import compute_map_from_coefficients
+from .utils import (
+    complex_array_to_rs_dataseries,
+    compute_map_from_coefficients,
+    rs_dataseries_to_complex_array,
+)
 from .validate import ScalarMaximizer, negentropy
 
 
-def _rs_dataseries_to_complex_array(
-    amplitudes: rs.DataSeries,
-    phases: rs.DataSeries,
-) -> np.ndarray:
-    pd.testing.assert_index_equal(
-        amplitudes.index, phases.index
-    )  # Ensure indices match
-    # Convert amplitudes and phases to complex representation
-    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
-
-
-def _complex_array_to_rs_dataseries(
-    complex_array: np.ndarray,
-    index: pd.Index,
-) -> tuple[rs.DataSeries, rs.DataSeries]:
-    # Extract amplitude from the complex array (magnitude)
-    amplitudes = rs.DataSeries(np.abs(complex_array), index=index)
-    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())  # Convert dtype
-
-    # Extract phase from the complex array (angle, in degrees)
-    phases = rs.DataSeries(np.rad2deg(np.angle(complex_array)), index=index)
-    phases = phases.astype(rs.PhaseDtype())  # Convert dtype
-
-    return amplitudes, phases
-
-
-def compute_deltafofo(
+def compute_fofo_difference_map(
     dataset: rs.DataSet,
     *,
-    native_amplitudes: str,
-    derivative_amplitudes: str,
-    native_phases: str,
-    derivative_phases: str | None = None,
+    native_amplitudes_column: str,
+    derivative_amplitudes_column: str,
+    native_phases_column: str,
+    derivative_phases_column: str | None = None,
+    output_amplitudes_column: str = "DeltaFoFo",
+    output_phases_column: str = "DeltaPhases",
     inplace: bool = False,
 ) -> rs.DataSet | None:
     """
-    Compute amplitude and phase differences between native and derivative datasets.
+    Computes amplitude and phase differences between native and derivative structure factor sets.
+
+    This function calculates the complex differences between native and derivative
+    datasets using their respective amplitude and phase columns. The results are either
+    modified in-place or returned as a new dataset depending on the value of `inplace`.
+
+    Args:
+        dataset (rs.DataSet): The input dataset containing native and derivative amplitudes
+            and phases.
+        native_amplitudes_column (str): The name of the column containing native amplitudes.
+        derivative_amplitudes_column (str): The name of the column containing derivative amplitudes.
+        native_phases_column (str): The name of the column containing native phases.
+        derivative_phases_column (str | None, optional): The name of the column containing
+            derivative phases. If `None`, the native phases are used for the derivative.
+            Defaults to None.
+        output_amplitudes_column (str, optional): The name of the output column where
+            amplitude differences (DeltaFoFo) will be stored. Defaults to "DeltaFoFo".
+        output_phases_column (str, optional): The name of the output column where phase
+            differences (DeltaPhases) will be stored. Defaults to "DeltaPhases".
+        inplace (bool, optional): If True, modifies the dataset in place. Otherwise,
+            returns a copy with the differences. Defaults to False.
+
+    Returns:
+        rs.DataSet | None: The modified dataset with amplitude and phase differences if
+            `inplace=False`, otherwise returns None.
     """
 
     if not inplace:
         dataset = dataset.copy()
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
-    native_complex = _rs_dataseries_to_complex_array(
-        dataset[native_amplitudes], dataset[native_phases]
+    native_complex = rs_dataseries_to_complex_array(
+        dataset[native_amplitudes_column], dataset[native_phases_column]
     )
 
-    if derivative_phases is not None:
-        derivative_complex = _rs_dataseries_to_complex_array(
-            dataset[derivative_amplitudes], dataset[derivative_phases]
+    if derivative_phases_column is not None:
+        derivative_complex = rs_dataseries_to_complex_array(
+            dataset[derivative_amplitudes_column], dataset[derivative_phases_column]
         )
     else:
         # If no derivative phases are provided, assume they are the same as native phases
-        derivative_complex = _rs_dataseries_to_complex_array(
-            dataset[derivative_amplitudes], dataset[native_phases]
+        derivative_complex = rs_dataseries_to_complex_array(
+            dataset[derivative_amplitudes_column], dataset[native_phases_column]
         )
 
     # Compute complex differences
     delta_complex = derivative_complex - native_complex
 
     # Convert back to amplitude and phase DataSeries
-    delta_amplitudes, delta_phases = _complex_array_to_rs_dataseries(
+    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(
         delta_complex, dataset.index
     )
 
     # Add results to dataset
-    dataset["DeltaFoFo"] = delta_amplitudes
-    dataset["DeltaPhases"] = delta_phases
+    dataset[output_amplitudes_column] = delta_amplitudes
+    dataset[output_phases_column] = delta_phases
 
-    # Reset to Phase dtype
-    dataset["DeltaPhases"] = dataset["DeltaPhases"].astype("Phase")
-
-    if inplace:
-        return None
-    else:
+    if not inplace:
         return dataset
 
 
 def compute_kweights(
-    df: rs.DataSeries, sigdf: rs.DataSeries, kweight: float
+    deltaf: rs.DataSeries, sigdeltaf: rs.DataSeries, kweight: float
 ) -> rs.DataSeries:
     """
     Compute weights for each structure factor based on DeltaF and its uncertainty.
+
+    Args:
+        deltaf (rs.DataSeries): The series representing the structure factor differences (DeltaF).
+        sigdeltaf (rs.DataSeries):Representing the uncertainties (sigma)
+                                of the structure factor differences.
+        kweight (float): A scaling factor applied to the squared `df` values
+                        in the weight calculation.
+
+    Returns:
+        rs.DataSeries: A series of computed weights,
+                       where higher uncertainties and larger differences
+                       lead to lower weights.
     """
-    w = 1 + (sigdf**2 / (sigdf**2).mean()) + kweight * (df**2 / (df**2).mean())
+    w = (
+        1
+        + (sigdeltaf**2 / (sigdeltaf**2).mean())
+        + kweight * (deltaf**2 / (deltaf**2).mean())
+    )
     return w**-1
 
 
-def compute_kweighted_deltafofo(
+def compute_kweighted_difference_map(
     dataset: rs.DataSet,
     *,
-    native_amplitudes: str,
-    derivative_amplitudes: str,
-    native_phases: str,
-    derivative_phases: str | None = None,
-    sigf_native: str,
-    sigf_deriv: str,
-    kweight: float = 1.0,
+    native_amplitudes_column: str,
+    derivative_amplitudes_column: str,
+    native_phases_column: str,
+    derivative_phases_column: str | None = None,
+    sigf_native_column: str,
+    sigf_deriv_column: str,
+    output_unweighted_amplitudes_column: str = "DeltaFoFo",
+    output_weighted_amplitudes_column: str = "DeltaFoFoKWeighted",
+    kweight: float = None,
     optimize_kweight: bool = False,
     inplace: bool = False,
 ) -> rs.DataSet | None:
@@ -113,24 +130,26 @@ def compute_kweighted_deltafofo(
 
     Assumes that scaling has already been applied to the amplitudes before calling this function.
 
+    Need to either specify k-weight or enable optimization
+
     Parameters:
     -----------
     dataset : rs.DataSet
         The input dataset containing columns for native and derivative amplitudes/phases.
-    native_amplitudes : str
+    native_amplitudes_column : str
         Column label for native amplitudes in the dataset.
-    derivative_amplitudes : str
+    derivative_amplitudes_column : str
         Column label for derivative amplitudes in the dataset.
-    native_phases : str, optional
+    native_phases_column : str, optional
         Column label for native phases.
-    derivative_phases : str, optional
+    derivative_phases_column : str, optional
         Column label for derivative phases, by default None.
-    sigf_native : str
+    sigf_native_column : str
         Column label for uncertainties of native amplitudes.
-    sigf_deriv : str
+    sigf_deriv_column : str
         Column label for uncertainties of derivative amplitudes.
     kweight : float, optional
-        k-weight factor, by default 1.0.
+        k-weight factor, optional.
     optimize_kweight : bool, optional
         Whether to optimize the kweight using negentropy, by default False.
     inplace : bool, optional
@@ -145,33 +164,37 @@ def compute_kweighted_deltafofo(
         dataset = dataset.copy()
 
     # Compute differences between native and derivative amplitudes and phases
-    dataset = compute_deltafofo(
+    dataset = compute_fofo_difference_map(
         dataset=dataset,
-        native_amplitudes=native_amplitudes,
-        derivative_amplitudes=derivative_amplitudes,
-        native_phases=native_phases,
-        derivative_phases=derivative_phases,
+        native_amplitudes_column=native_amplitudes_column,
+        derivative_amplitudes_column=derivative_amplitudes_column,
+        native_phases_column=native_phases_column,
+        derivative_phases_column=derivative_phases_column,
+        output_amplitudes_column=output_unweighted_amplitudes_column,
         inplace=inplace,
     )
 
-    delta_amplitudes = dataset["DeltaFoFo"]
-    sigdelta_amplitudes = np.sqrt(dataset[sigf_deriv] ** 2 + dataset[sigf_native] ** 2)
+    delta_amplitudes = dataset[output_unweighted_amplitudes_column]
+    sigdelta_amplitudes = np.sqrt(
+        dataset[sigf_deriv_column] ** 2 + dataset[sigf_native_column] ** 2
+    )
 
+    # Handle kweight or optimize it
     if optimize_kweight:
 
         def negentropy_objective(kweight_value: float) -> float:
-            # Apply k-weighting to DeltaFoFo
+            # Apply k-weighting to FoFo differences
             weights = compute_kweights(
                 delta_amplitudes, sigdelta_amplitudes, kweight_value
             )
             weighted_delta_fofo = delta_amplitudes * weights
-            dataset["DeltaFoFoKWeighted"] = weighted_delta_fofo
+            dataset[output_weighted_amplitudes_column] = weighted_delta_fofo
 
             # Convert weighted amplitudes and phases to a map
             delta_map = compute_map_from_coefficients(
                 map_coefficients=dataset,
-                amplitude_label="DeltaFoFoKWeighted",
-                phase_label=native_phases,
+                amplitude_label=output_weighted_amplitudes_column,
+                phase_label=native_phases_column,
                 map_sampling=TV_MAP_SAMPLING,
             )
 
@@ -182,14 +205,22 @@ def compute_kweighted_deltafofo(
 
         # Optimize kweight using negentropy objective
         maximizer = ScalarMaximizer(objective=negentropy_objective)
-        maximizer.optimize_over_explicit_values(arguments_to_scan=(0.0, 1.0))
+        maximizer.optimize_over_explicit_values(
+            arguments_to_scan=np.linspace(0.0, 1.0, 101)
+        )
         kweight = maximizer.argument_optimum
+        print(f"Optimized kweight: {kweight}")
 
-    # Compute weights and apply to DeltaFoFo
-    weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
-    dataset["DeltaFoFoKWeighted"] = delta_amplitudes * weights
-
-    if inplace:
-        return None
+    elif kweight is not None:
+        print(f"Using specified kweight: {kweight}")
     else:
+        raise ValueError(
+            "Either kweight must be specified or optimization must be enabled."
+        )
+
+    # Compute weights and apply to FoFo differences
+    weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
+    dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
+
+    if not inplace:
         return dataset

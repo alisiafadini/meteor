@@ -81,7 +81,9 @@ def canonicalize_amplitudes(
         return None
 
 
-def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
+def rs_dataseries_to_complex_array(
+    amplitudes: rs.DataSeries, phases: rs.DataSeries
+) -> np.ndarray:
     """
     Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
 
@@ -111,7 +113,9 @@ def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeri
             " indices. One possible way: Series.align(other, join='inner', axis=0).",
             exptn,
         )
-    complex_structure_factors = amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
+    complex_structure_factors = amplitudes.to_numpy() * np.exp(
+        1j * np.deg2rad(phases.to_numpy())
+    )
     return complex_structure_factors
 
 
