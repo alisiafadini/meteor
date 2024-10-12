@@ -129,6 +129,7 @@ def random_difference_map(diffmap_labels: MapLabels) -> rs.DataSet:
 
     return ds
 
+
 @pytest.fixture
 def noise_free_map() -> rs.DataSet:
     return single_atom_map_coefficients(noise_sigma=0.0)

@@ -74,7 +74,6 @@ def test_tv_denoise_map(
     noisy_map: rs.DataSet,
     map_labels: MapLabels,
 ) -> None:
-
     def rms_to_noise_free(test_map: rs.DataSet) -> float:
         return rms_between_coefficients(test_map, noise_free_map, map_labels)
 

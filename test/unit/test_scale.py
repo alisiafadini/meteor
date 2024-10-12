@@ -80,11 +80,17 @@ def test_scale_datasets(random_difference_map: rs.DataSet, diffmap_labels: MapLa
         column_to_compare=diffmap_labels.amplitude,
         weight_using_uncertainties=False,
     )
-    np.testing.assert_array_almost_equal(scaled[diffmap_labels.amplitude], random_difference_map[diffmap_labels.amplitude])
-    np.testing.assert_array_almost_equal(scaled[diffmap_labels.phase], random_difference_map[diffmap_labels.phase])
+    np.testing.assert_array_almost_equal(
+        scaled[diffmap_labels.amplitude], random_difference_map[diffmap_labels.amplitude]
+    )
+    np.testing.assert_array_almost_equal(
+        scaled[diffmap_labels.phase], random_difference_map[diffmap_labels.phase]
+    )
 
 
-def test_scale_datasets_with_errors(random_difference_map: rs.DataSet, diffmap_labels: MapLabels) -> None:
+def test_scale_datasets_with_errors(
+    random_difference_map: rs.DataSet, diffmap_labels: MapLabels
+) -> None:
     multiple = 2.0
     doubled_difference_map = random_difference_map.copy()
     doubled_difference_map[diffmap_labels.amplitude] /= multiple
@@ -96,10 +102,15 @@ def test_scale_datasets_with_errors(random_difference_map: rs.DataSet, diffmap_l
         uncertainty_column=str(diffmap_labels.uncertainty),
         weight_using_uncertainties=True,
     )
-    np.testing.assert_array_almost_equal(scaled[diffmap_labels.amplitude], random_difference_map[diffmap_labels.amplitude])
-    np.testing.assert_array_almost_equal(scaled[diffmap_labels.phase], random_difference_map[diffmap_labels.phase])
+    np.testing.assert_array_almost_equal(
+        scaled[diffmap_labels.amplitude], random_difference_map[diffmap_labels.amplitude]
+    )
+    np.testing.assert_array_almost_equal(
+        scaled[diffmap_labels.phase], random_difference_map[diffmap_labels.phase]
+    )
 
     # also make sure we scale the uncertainties
     np.testing.assert_array_almost_equal(
-        scaled[diffmap_labels.uncertainty] / multiple, random_difference_map[diffmap_labels.uncertainty]
+        scaled[diffmap_labels.uncertainty] / multiple,
+        random_difference_map[diffmap_labels.uncertainty],
     )
