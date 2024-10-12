@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
@@ -11,15 +13,15 @@ from .utils import (
 from .validate import ScalarMaximizer, negentropy
 
 
-def compute_fofo_difference_map(
+def compute_difference_map(
     dataset: rs.DataSet,
     *,
     native_amplitudes_column: str,
     derivative_amplitudes_column: str,
     native_phases_column: str,
     derivative_phases_column: str | None = None,
-    output_amplitudes_column: str = "DeltaFoFo",
-    output_phases_column: str = "DeltaPhases",
+    output_amplitudes_column: str = "DF",
+    output_phases_column: str = "DPHI",
 ) -> rs.DataSet:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
@@ -38,14 +40,15 @@ def compute_fofo_difference_map(
             derivative phases. If `None`, the native phases are used for the derivative.
             Defaults to None.
         output_amplitudes_column (str, optional): The name of the output column where
-            amplitude differences (DeltaFoFo) will be stored. Defaults to "DeltaFoFo".
+            amplitude differences (DF) will be stored. Defaults to "DF".
         output_phases_column (str, optional): The name of the output column where phase
-            differences (DeltaPhases) will be stored. Defaults to "DeltaPhases".
+            differences (DPHI) will be stored. Defaults to "DPHI".
     Return:
         dataset with added columns
     """
 
     dataset = dataset.copy()
+    print("DATASET", dataset.head())
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
     native_complex = rs_dataseries_to_complex_array(
@@ -73,6 +76,8 @@ def compute_fofo_difference_map(
     # Add results to dataset
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
+
+    print("DATASET after", dataset.head())
 
     return dataset
 
@@ -112,11 +117,10 @@ def compute_kweighted_difference_map(
     derivative_phases_column: str | None = None,
     sigf_native_column: str,
     sigf_deriv_column: str,
-    output_unweighted_amplitudes_column: str = "DeltaFoFo",
-    output_weighted_amplitudes_column: str = "DeltaFoFoKWeighted",
-    kweight: float = None,
-    optimize_kweight: bool = False,
-) -> rs.Dataset:
+    output_unweighted_amplitudes_column: str = "DF",
+    output_weighted_amplitudes_column: str = "DFKWeighted",
+    use_fixed_kweight: float | Literal[False] = False,
+) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
 
@@ -151,7 +155,7 @@ def compute_kweighted_difference_map(
     dataset = dataset.copy()
 
     # Compute differences between native and derivative amplitudes and phases
-    dataset = compute_fofo_difference_map(
+    dataset = compute_difference_map(
         dataset=dataset,
         native_amplitudes_column=native_amplitudes_column,
         derivative_amplitudes_column=derivative_amplitudes_column,
@@ -165,11 +169,13 @@ def compute_kweighted_difference_map(
         dataset[sigf_deriv_column] ** 2 + dataset[sigf_native_column] ** 2
     )
 
-    # Handle kweight or optimize it
-    if optimize_kweight:
+    if use_fixed_kweight:
+        kweight = use_fixed_kweight
+    # optimize kweight over explicit values (0 to 1) to maximize negentropy
+    else:
 
         def negentropy_objective(kweight_value: float) -> float:
-            # Apply k-weighting to FoFo differences
+            # Apply k-weighting to differences
             weights = compute_kweights(
                 delta_amplitudes, sigdelta_amplitudes, kweight_value
             )
@@ -197,14 +203,7 @@ def compute_kweighted_difference_map(
         kweight = maximizer.argument_optimum
         print(f"Optimized kweight: {kweight}")
 
-    elif kweight is not None:
-        print(f"Using specified kweight: {kweight}")
-    else:
-        raise ValueError(
-            "Either kweight must be specified or optimization must be enabled."
-        )
-
-    # Compute weights and apply to FoFo differences
+    # Compute weights and apply to differences
     weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
     dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
 
