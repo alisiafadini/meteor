@@ -3,13 +3,36 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.utils import compute_coefficients_from_map, numpy_array_to_map
+from meteor.utils import (
+    MapLabels,
+    canonicalize_amplitudes,
+    compute_coefficients_from_map,
+    numpy_array_to_map,
+)
 
 RESOLUTION = 1.0
 UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
 SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
 CARBON2_POSITION = (5.0, 5.2, 5.0)
+
+
+@pytest.fixture
+def map_labels() -> MapLabels:
+    return MapLabels(
+        amplitude="F",
+        phase="PHIC",
+        uncertainty="SIGF",
+    )
+
+
+@pytest.fixture
+def diffmap_labels() -> MapLabels:
+    return MapLabels(
+        amplitude="DF",
+        phase="PHIC",
+        uncertainty="SIGDF",
+    )
 
 
 def single_carbon_density(
@@ -47,64 +70,70 @@ def single_carbon_density(
     return density_map.grid
 
 
-def carbon_density_at_position1() -> gemmi.FloatGrid:
+def carbon1_density() -> gemmi.FloatGrid:
     return single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
 
-def carbon_density_at_position2() -> gemmi.FloatGrid:
-    return single_carbon_density(CARBON2_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
-
-
-def displaced_single_atom_difference_map_coefficients(
-    *,
-    noise_sigma: float,
-) -> rs.DataSet:
-    diff_density = np.array(carbon_density_at_position1()) - np.array(carbon_density_at_position2())
-    grid_values = diff_density + noise_sigma * np.random.randn(*diff_density.shape)
-
+def single_atom_map_coefficients(*, noise_sigma: float) -> rs.DataSet:
+    density = np.array(carbon1_density())
+    grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
-    difference_map_coefficients = compute_coefficients_from_map(
-        ccp4_map=ccp4_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="DF",
-        phase_label="PHIC",
+    map_coefficients = compute_coefficients_from_map(
+        ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION, amplitude_label="F", phase_label="PHIC"
     )
 
-    return difference_map_coefficients
+    uncertainties = noise_sigma * np.ones_like(map_coefficients["F"])
+    uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
+    map_coefficients["SIGF"] = uncertainties.astype(rs.StandardDeviationDtype())
+
+    return map_coefficients
 
 
 @pytest.fixture
-def noise_free_map_of_displaced_atom() -> rs.DataSet:
-    return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
+def random_difference_map(diffmap_labels: MapLabels) -> rs.DataSet:
+    resolution = 1.0
+    cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    space_group = gemmi.SpaceGroup(1)
+    hall = rs.utils.generate_reciprocal_asu(cell, space_group, resolution, anomalous=False)
+    sigma = 1.0
+
+    h, k, l = hall.T  # noqa: E741
+    number_of_reflections = len(h)
+
+    ds = rs.DataSet(
+        {
+            "H": h,
+            "K": k,
+            "L": l,
+            diffmap_labels.amplitude: sigma * np.random.randn(number_of_reflections),
+            diffmap_labels.phase: np.random.uniform(-180, 180, size=number_of_reflections),
+        },
+        spacegroup=space_group,
+        cell=cell,
+    ).infer_mtz_dtypes()
+
+    ds.set_index(["H", "K", "L"], inplace=True)
+    ds[diffmap_labels.amplitude] = ds[diffmap_labels.amplitude].astype("SFAmplitude")
+
+    canonicalize_amplitudes(
+        ds,
+        amplitude_label=diffmap_labels.amplitude,
+        phase_label=diffmap_labels.phase,
+        inplace=True,
+    )
+
+    uncertainties = sigma * np.ones_like(ds[diffmap_labels.amplitude])
+    uncertainties = rs.DataSeries(uncertainties, index=ds.index)
+    ds[diffmap_labels.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
+
+    return ds
+
+@pytest.fixture
+def noise_free_map() -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=0.0)
 
 
 @pytest.fixture
-def noisy_map_of_displaced_atom() -> rs.DataSet:
-    return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
-
-
-@pytest.fixture
-def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
-    noise_sigma = 1.0
-
-    map = gemmi.Ccp4Map()
-    map.grid = carbon_density_at_position1()
-
-    noisy_array = np.array(map.grid) + noise_sigma * np.random.randn(*map.grid.shape)
-    noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
-
-    coefficents1 = compute_coefficients_from_map(
-        ccp4_map=map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noise_free",
-        phase_label="PHIC_noise_free",
-    )
-    coefficents2 = compute_coefficients_from_map(
-        ccp4_map=noisy_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noisy",
-        phase_label="PHIC_noisy",
-    )
-
-    return rs.concat([coefficents1, coefficents2], axis=1)
+def noisy_map() -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=0.03)

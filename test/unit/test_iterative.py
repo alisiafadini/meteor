@@ -78,12 +78,12 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None:
+def test_iterative_tv(single_atom_map_coefficients: rs.DataSet) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
     result, metadata = iterative.iterative_tv_phase_retrieval(
-        single_atom_maps_noisy_and_noise_free,
+        single_atom_map_coefficients,
         native_amplitude_column="F_noise_free",
         calculated_phase_column="PHIC_noise_free",
         derivative_amplitude_column="F_noisy",
@@ -95,10 +95,10 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
 
     # make sure output columns that should not be altered are in fact the same
     assert_phases_allclose(
-        result["PHIC_noise_free"], single_atom_maps_noisy_and_noise_free["PHIC_noise_free"]
+        result["PHIC_noise_free"], single_atom_map_coefficients["PHIC_noise_free"]
     )
     for label in ["F_noise_free", "F_noisy"]:
-        pdt.assert_series_equal(result[label], single_atom_maps_noisy_and_noise_free[label])
+        pdt.assert_series_equal(result[label], single_atom_map_coefficients[label])
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
@@ -107,13 +107,13 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
     # test correctness by comparing denoised dataset to noise-free
     map_sampling = 3
     noise_free_density = compute_map_from_coefficients(
-        map_coefficients=single_atom_maps_noisy_and_noise_free,
+        map_coefficients=single_atom_map_coefficients,
         amplitude_label="F_noise_free",
         phase_label="PHIC_noise_free",
         map_sampling=map_sampling,
     )
     noisy_density = compute_map_from_coefficients(
-        map_coefficients=single_atom_maps_noisy_and_noise_free,
+        map_coefficients=single_atom_map_coefficients,
         amplitude_label="F_noisy",
         phase_label="PHIC_noisy",
         map_sampling=map_sampling,
