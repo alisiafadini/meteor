@@ -20,14 +20,13 @@ def compute_fofo_difference_map(
     derivative_phases_column: str | None = None,
     output_amplitudes_column: str = "DeltaFoFo",
     output_phases_column: str = "DeltaPhases",
-    inplace: bool = False,
-) -> rs.DataSet | None:
+) -> None:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
     This function calculates the complex differences between native and derivative
     datasets using their respective amplitude and phase columns. The results are either
-    modified in-place or returned as a new dataset depending on the value of `inplace`.
+    modified in-place.
 
     Args:
         dataset (rs.DataSet): The input dataset containing native and derivative amplitudes
@@ -42,16 +41,7 @@ def compute_fofo_difference_map(
             amplitude differences (DeltaFoFo) will be stored. Defaults to "DeltaFoFo".
         output_phases_column (str, optional): The name of the output column where phase
             differences (DeltaPhases) will be stored. Defaults to "DeltaPhases".
-        inplace (bool, optional): If True, modifies the dataset in place. Otherwise,
-            returns a copy with the differences. Defaults to False.
-
-    Returns:
-        rs.DataSet | None: The modified dataset with amplitude and phase differences if
-            `inplace=False`, otherwise returns None.
     """
-
-    if not inplace:
-        dataset = dataset.copy()
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
     native_complex = rs_dataseries_to_complex_array(
@@ -79,9 +69,6 @@ def compute_fofo_difference_map(
     # Add results to dataset
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
-
-    if not inplace:
-        return dataset
 
 
 def compute_kweights(
@@ -123,14 +110,13 @@ def compute_kweighted_difference_map(
     output_weighted_amplitudes_column: str = "DeltaFoFoKWeighted",
     kweight: float = None,
     optimize_kweight: bool = False,
-    inplace: bool = False,
-) -> rs.DataSet | None:
+) -> None:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
 
     Assumes that scaling has already been applied to the amplitudes before calling this function.
 
-    Need to either specify k-weight or enable optimization
+    Need to either specify k-weight or enable optimization. Dataset modified inplace.
 
     Parameters:
     -----------
@@ -152,16 +138,7 @@ def compute_kweighted_difference_map(
         k-weight factor, optional.
     optimize_kweight : bool, optional
         Whether to optimize the kweight using negentropy, by default False.
-    inplace : bool, optional
-        Whether to modify the dataset in place. Default is False.
-
-    Returns:
-    --------
-    rs.DataSet | None
-        The modified dataset with k-weighted differences, if inplace=False, otherwise None.
     """
-    if not inplace:
-        dataset = dataset.copy()
 
     # Compute differences between native and derivative amplitudes and phases
     dataset = compute_fofo_difference_map(
@@ -171,7 +148,6 @@ def compute_kweighted_difference_map(
         native_phases_column=native_phases_column,
         derivative_phases_column=derivative_phases_column,
         output_amplitudes_column=output_unweighted_amplitudes_column,
-        inplace=inplace,
     )
 
     delta_amplitudes = dataset[output_unweighted_amplitudes_column]
@@ -221,6 +197,3 @@ def compute_kweighted_difference_map(
     # Compute weights and apply to FoFo differences
     weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
     dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
-
-    if not inplace:
-        return dataset
