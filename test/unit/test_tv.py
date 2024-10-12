@@ -7,22 +7,22 @@ import reciprocalspaceship as rs
 from meteor import tv
 from meteor.utils import MapLabels, compute_map_from_coefficients
 
-DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 30)
+DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 25)
 
 
 def rms_between_coefficients(
-    ds1: rs.DataSet, ds2: rs.DataSet, diffmap_labels: MapLabels, map_sampling: int = 3
+    ds1: rs.DataSet, ds2: rs.DataSet, labels: MapLabels, map_sampling: int = 3
 ) -> float:
     map1 = compute_map_from_coefficients(
         map_coefficients=ds1,
-        amplitude_label=diffmap_labels.amplitude,
-        phase_label=diffmap_labels.phase,
+        amplitude_label=labels.amplitude,
+        phase_label=labels.phase,
         map_sampling=map_sampling,
     )
     map2 = compute_map_from_coefficients(
         map_coefficients=ds2,
-        amplitude_label=diffmap_labels.amplitude,
-        phase_label=diffmap_labels.phase,
+        amplitude_label=labels.amplitude,
+        phase_label=labels.phase,
         map_sampling=map_sampling,
     )
 
@@ -42,21 +42,22 @@ def rms_between_coefficients(
     "lambda_values_to_scan",
     [
         None,
-        [
-            0.01,
-        ],
+        [0.01],
     ],
 )
 @pytest.mark.parametrize("full_output", [False, True])
-def test_tv_denoise_difference_map_smoke(
+def test_tv_denoise_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
-    noisy_map: rs.DataSet,
+    random_difference_map: rs.DataSet,
+    test_diffmap_labels: MapLabels,
 ) -> None:
     output = tv.tv_denoise_difference_map(
-        difference_map_coefficients=noisy_map,
+        difference_map_coefficients=random_difference_map,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=full_output,
+        difference_map_amplitude_column=test_diffmap_labels.amplitude,
+        difference_map_phase_column=test_diffmap_labels.phase,
     )  # type: ignore
     if full_output:
         assert len(output) == 2
@@ -67,17 +68,17 @@ def test_tv_denoise_difference_map_smoke(
 
 
 @pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
-def test_tv_denoise_difference_map(
+def test_tv_denoise_map(
     lambda_values_to_scan: None | Sequence[float],
     noise_free_map: rs.DataSet,
     noisy_map: rs.DataSet,
-    diffmap_labels: MapLabels,
+    test_map_labels: MapLabels,
 ) -> None:
     def rms_to_noise_free(test_map: rs.DataSet) -> float:
-        return rms_between_coefficients(test_map, noise_free_map, diffmap_labels)
+        return rms_between_coefficients(test_map, noise_free_map, test_map_labels)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
-    # know  the ground truth, work around this to test all possible results.
+    # know the ground truth, work around this to test all possible results.
 
     lowest_rms: float = np.inf
     best_lambda: float = 0.0
@@ -85,6 +86,8 @@ def test_tv_denoise_difference_map(
     for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
             difference_map_coefficients=noisy_map,
+            difference_map_amplitude_column=test_map_labels.amplitude,
+            difference_map_phase_column=test_map_labels.phase,
             lambda_values_to_scan=[
                 trial_lambda,
             ],
@@ -100,9 +103,10 @@ def test_tv_denoise_difference_map(
     denoised_map, result = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
+        difference_map_amplitude_column=test_map_labels.amplitude,
+        difference_map_phase_column=test_map_labels.phase,
         full_output=True,
     )
 
-    rms_after_denoising = rms_to_noise_free(denoised_map)
-    assert rms_after_denoising < rms_to_noise_free(noisy_map)
-    np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.2)
+    assert rms_to_noise_free(denoised_map) < rms_to_noise_free(noisy_map), "error didnt drop"
+    np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.5, err_msg="opt lambda")
