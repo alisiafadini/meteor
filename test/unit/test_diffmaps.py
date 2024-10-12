@@ -63,20 +63,9 @@ def test_compute_kweighted_difference_map_smoke(dummy_dataset):
 
 def test_compute_difference_map_vs_analytical(dummy_dataset):
 
-    # Expected complex numbers for native and derivative
-    native_complex = np.array(
-        [1.0 + 0j, -2.0 + 0j]
-    )  # (amplitude 1, phase 0), (amplitude 2, phase 180)
-    derivative_complex = np.array(
-        [-2.0 + 0j, 3.0 + 0j]
-    )  # (amplitude 2, phase 180), (amplitude 3, phase 0)
-
-    # Compute expected complex differences
-    delta_complex = derivative_complex - native_complex
-
-    # Expected amplitude and phase differences
-    expected_amplitudes = np.abs(delta_complex)
-    expected_phases = np.rad2deg(np.angle(delta_complex)) % 360
+    # Manually calculated expected amplitude and phase differences
+    expected_amplitudes = np.array([3.0, 5.0])
+    expected_phases = np.array([180.0, 0.0])
 
     # Run the function
     result = compute_difference_map(
