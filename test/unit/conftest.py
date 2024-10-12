@@ -146,6 +146,7 @@ def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
 
 @pytest.fixture
 def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
+    # TODO remove this; replace with very_noisy_map and noise_free_map
     noise_sigma = 1.0
 
     map = gemmi.Ccp4Map()

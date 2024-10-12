@@ -48,7 +48,6 @@ def compute_difference_map(
     """
 
     dataset = dataset.copy()
-    print("DATASET", dataset.head())
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
     native_complex = rs_dataseries_to_complex_array(
@@ -76,8 +75,6 @@ def compute_difference_map(
     # Add results to dataset
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
-
-    print("DATASET after", dataset.head())
 
     return dataset
 
@@ -111,6 +108,7 @@ def compute_kweights(
 def compute_kweighted_difference_map(
     dataset: rs.DataSet,
     *,
+    kweight: float,
     native_amplitudes_column: str,
     derivative_amplitudes_column: str,
     native_phases_column: str,
@@ -119,7 +117,6 @@ def compute_kweighted_difference_map(
     sigf_deriv_column: str,
     output_unweighted_amplitudes_column: str = "DF",
     output_weighted_amplitudes_column: str = "DFKWeighted",
-    use_fixed_kweight: float | Literal[False] = False,
 ) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
@@ -128,8 +125,8 @@ def compute_kweighted_difference_map(
 
     Need to either specify k-weight or enable optimization. Dataset modified inplace.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     dataset : rs.DataSet
         The input dataset containing columns for native and derivative amplitudes/phases.
     native_amplitudes_column : str
@@ -146,10 +143,10 @@ def compute_kweighted_difference_map(
         Column label for uncertainties of derivative amplitudes.
     kweight : float, optional
         k-weight factor, optional.
-    optimize_kweight : bool, optional
-        Whether to optimize the kweight using negentropy, by default False.
 
-    Return:
+    Returns
+    -------
+    dataset: rs.DataSet
         dataset with added columns
     """
     dataset = dataset.copy()
@@ -169,42 +166,131 @@ def compute_kweighted_difference_map(
         dataset[sigf_deriv_column] ** 2 + dataset[sigf_native_column] ** 2
     )
 
-    if use_fixed_kweight:
-        kweight = use_fixed_kweight
-    # optimize kweight over explicit values (0 to 1) to maximize negentropy
-    else:
-
-        def negentropy_objective(kweight_value: float) -> float:
-            # Apply k-weighting to differences
-            weights = compute_kweights(
-                delta_amplitudes, sigdelta_amplitudes, kweight_value
-            )
-            weighted_delta_fofo = delta_amplitudes * weights
-            dataset[output_weighted_amplitudes_column] = weighted_delta_fofo
-
-            # Convert weighted amplitudes and phases to a map
-            delta_map = compute_map_from_coefficients(
-                map_coefficients=dataset,
-                amplitude_label=output_weighted_amplitudes_column,
-                phase_label=native_phases_column,
-                map_sampling=TV_MAP_SAMPLING,
-            )
-
-            delta_map_as_array = np.array(delta_map.grid)
-
-            # Compute negentropy of the map
-            return negentropy(delta_map_as_array.flatten())
-
-        # Optimize kweight using negentropy objective
-        maximizer = ScalarMaximizer(objective=negentropy_objective)
-        maximizer.optimize_over_explicit_values(
-            arguments_to_scan=np.linspace(0.0, 1.0, 101)
-        )
-        kweight = maximizer.argument_optimum
-        print(f"Optimized kweight: {kweight}")
-
     # Compute weights and apply to differences
     weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
     dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
 
     return dataset
+
+
+def _determine_kweight(
+    dataset: rs.DataSet,
+    delta_amplitudes: str,
+    sigdelta_amplitudes: str,
+    output_weighted_amplitudes_column: str,
+    native_phases_column: str,
+) -> float:
+
+    def negentropy_objective(kweight_value: float) -> float:
+        # Apply k-weighting to differences
+        weights = compute_kweights(
+            delta_amplitudes, sigdelta_amplitudes, kweight_value
+        )
+        dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
+
+        # Convert weighted amplitudes and phases to a map
+        delta_map = compute_map_from_coefficients(
+            map_coefficients=dataset,
+            amplitude_label=output_weighted_amplitudes_column,
+            phase_label=native_phases_column,
+            map_sampling=TV_MAP_SAMPLING,
+        )
+
+        delta_map_as_array = np.array(delta_map.grid)
+
+        # Compute negentropy of the map
+        return negentropy(delta_map_as_array.flatten())
+
+    # Optimize kweight using negentropy objective
+    maximizer = ScalarMaximizer(objective=negentropy_objective)
+    maximizer.optimize_over_explicit_values(
+        arguments_to_scan=np.linspace(0.0, 1.0, 101)
+    )
+    print(maximizer.argument_optimum, maximizer.objective_maximum, maximizer.values_evaluated)
+
+    return maximizer.argument_optimum
+
+
+def max_negentropy_kweighted_difference_map(
+    dataset: rs.DataSet,
+    *,
+    native_amplitudes_column: str,
+    derivative_amplitudes_column: str,
+    native_phases_column: str,
+    derivative_phases_column: str | None = None,
+    sigf_native_column: str,
+    sigf_deriv_column: str,
+    output_unweighted_amplitudes_column: str = "DF",
+    output_weighted_amplitudes_column: str = "DFKWeighted",
+) -> rs.DataSet:
+    """
+    Compute k-weighted differences between native and derivative amplitudes and phases.
+
+    Assumes that scaling has already been applied to the amplitudes before calling this function.
+
+    Need to either specify k-weight or enable optimization. Dataset modified inplace.
+
+    Parameters
+    ----------
+    dataset : rs.DataSet
+        The input dataset containing columns for native and derivative amplitudes/phases.
+    native_amplitudes_column : str
+        Column label for native amplitudes in the dataset.
+    derivative_amplitudes_column : str
+        Column label for derivative amplitudes in the dataset.
+    native_phases_column : str, optional
+        Column label for native phases.
+    derivative_phases_column : str, optional
+        Column label for derivative phases, by default None.
+    sigf_native_column : str
+        Column label for uncertainties of native amplitudes.
+    sigf_deriv_column : str
+        Column label for uncertainties of derivative amplitudes.
+    kweight : float, optional
+        k-weight factor, optional.
+
+    Returns
+    -------
+    kweighted_dataset: rs.DataSet
+        dataset with added columns
+
+    kweight: float
+        optimized weight
+    """
+
+    dataset = compute_difference_map(
+        dataset=dataset,
+        native_amplitudes_column=native_amplitudes_column,
+        derivative_amplitudes_column=derivative_amplitudes_column,
+        native_phases_column=native_phases_column,
+        derivative_phases_column=derivative_phases_column,
+        output_amplitudes_column=output_unweighted_amplitudes_column,
+    )
+
+    delta_amplitudes = dataset[output_unweighted_amplitudes_column]
+    sigdelta_amplitudes = np.sqrt(
+        dataset[sigf_deriv_column] ** 2 + dataset[sigf_native_column] ** 2
+    )
+
+    kweight = _determine_kweight(
+        dataset,
+        delta_amplitudes,
+        sigdelta_amplitudes,
+        output_weighted_amplitudes_column,
+        native_phases_column,
+    )
+
+    kweighted_dataset = compute_kweighted_difference_map(
+        dataset=dataset,
+        kweight=kweight,
+        native_amplitudes_column=native_amplitudes_column,
+        derivative_amplitudes_column=derivative_amplitudes_column,
+        native_phases_column=native_phases_column,
+        derivative_phases_column=derivative_phases_column,
+        sigf_native_column=sigf_native_column,
+        sigf_deriv_column=sigf_deriv_column,
+        output_unweighted_amplitudes_column=output_unweighted_amplitudes_column,
+        output_weighted_amplitudes_column=output_weighted_amplitudes_column,
+    )
+
+    return kweighted_dataset, kweight

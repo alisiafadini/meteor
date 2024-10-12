@@ -7,8 +7,11 @@ import reciprocalspaceship as rs
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
+    max_negentropy_kweighted_difference_map,
     compute_kweights,
 )
+from meteor.utils import MapLabels, compute_map_from_coefficients
+from meteor.validate import negentropy
 
 
 # Dummy dataset for testing
@@ -49,13 +52,13 @@ def test_compute_kweights_smoke(dummy_dataset):
 def test_compute_kweighted_difference_map_smoke(dummy_dataset):
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
+        kweight=0.5,
         native_amplitudes_column="NativeAmplitudes",
         derivative_amplitudes_column="DerivativeAmplitudes",
         native_phases_column="NativePhases",
         derivative_phases_column="DerivativePhases",
         sigf_native_column="SigFNative",
         sigf_deriv_column="SigFDeriv",
-        use_fixed_kweight=0.5,
     )
     assert isinstance(result, rs.DataSet)
     assert "DFKWeighted" in result.columns
@@ -102,13 +105,13 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
     # Run the function with known kweight
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
+        kweight=0.5,
         native_amplitudes_column="NativeAmplitudes",
         derivative_amplitudes_column="DerivativeAmplitudes",
         native_phases_column="NativePhases",
         derivative_phases_column="DerivativePhases",
         sigf_native_column="SigFNative",
         sigf_deriv_column="SigFDeriv",
-        use_fixed_kweight=0.5,
     )
 
     # Correct expected weighted amplitudes (calculated by hand)
@@ -120,47 +123,59 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
     )
 
 
-def test_kweight_optimization_edge_case():
-    # Create a super simple dataset with very small differences between native and derivative amplitudes
-    index = pd.MultiIndex.from_arrays(
-        [[1, 1], [1, 2], [1, 3]], names=("H", "K", "L")
-    ).astype(rs.HKLIndexDtype())
-    data = {
-        "NativeAmplitudes": np.array([1.0, 1.0]),
-        "DerivativeAmplitudes": np.array([1.01, 1.01]),
-        "NativePhases": np.array([0.0, 0.0]),  # in degrees
-        "DerivativePhases": np.array([0.0, 0.0]),
-        "SigFNative": np.array([0.01, 0.01]),
-        "SigFDeriv": np.array([0.01, 0.01]),
+def test_kweight_optimization(test_map_labels: MapLabels, noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet):
+
+    very_noisy_map_columns = {
+        test_map_labels.amplitude: "F_noisy",
+        test_map_labels.phase: "PHIC_noisy",
+        test_map_labels.uncertainty: "SIGF_noisy",
     }
 
-    # Create a DataSet and add unit cell and space group information
-    dataset = rs.DataSet(data, index=index)
+    combined_dataset = rs.concat([
+        noise_free_map,
+        very_noisy_map.rename(columns=very_noisy_map_columns),
+    ], axis=1)
 
-    # Add unit cell and space group information
-    dataset.cell = gemmi.UnitCell(
-        10, 10, 10, 90, 90, 90
-    )  # Example unit cell parameters
-    dataset.spacegroup = gemmi.SpaceGroup("P 1")  # Simple space group (no symmetry)
-
-    # Run the function with k-weight optimization enabled
-    result = compute_kweighted_difference_map(
-        dataset=dataset,
-        native_amplitudes_column="NativeAmplitudes",
-        derivative_amplitudes_column="DerivativeAmplitudes",
-        native_phases_column="NativePhases",
-        derivative_phases_column="DerivativePhases",
-        sigf_native_column="SigFNative",
-        sigf_deriv_column="SigFDeriv",
-        use_fixed_kweight=False,  # Enable optimization
+    # run the function with k-weight optimization enabled
+    result, max_negent_kweight = max_negentropy_kweighted_difference_map(
+        dataset=combined_dataset,
+        native_amplitudes_column=test_map_labels.amplitude,
+        derivative_amplitudes_column=very_noisy_map_columns[test_map_labels.amplitude],
+        native_phases_column=test_map_labels.phase,
+        derivative_phases_column=very_noisy_map_columns[test_map_labels.phase],
+        sigf_native_column=test_map_labels.uncertainty,
+        sigf_deriv_column=very_noisy_map_columns[test_map_labels.uncertainty],
     )
 
-    # Log the result for checking
-    print("Optimized k-weight:", result.attrs.get("kweight"))
-    print("DF (unweighted):", result["DF"].values)
-    print("DFKWeighted (weighted):", result["DFKWeighted"].values)
+    epsilon = 0.01
+    kweights_to_scan = [max_negent_kweight - epsilon, max_negent_kweight, max_negent_kweight + epsilon]
+    negentropies = []
+    
+    for kweight in kweights_to_scan:
 
-    # Since the differences are minimal, we expect the optimization to return a low k-weight value
-    assert (
-        result.attrs.get("kweight") < 0.1
-    )  # Optimized k-weight should be small for this simple case
+        kweighted_diffmap = compute_kweighted_difference_map(
+            dataset=combined_dataset,
+            kweight=kweight,
+            native_amplitudes_column=test_map_labels.amplitude,
+            derivative_amplitudes_column=very_noisy_map_columns[test_map_labels.amplitude],
+            native_phases_column=test_map_labels.phase,
+            derivative_phases_column=very_noisy_map_columns[test_map_labels.phase],
+            sigf_native_column=test_map_labels.uncertainty,
+            sigf_deriv_column=very_noisy_map_columns[test_map_labels.uncertainty],
+        )
+
+        realspace_map = compute_map_from_coefficients(
+            map_coefficients=kweighted_diffmap,
+            amplitude_label="DFKWeighted",
+            phase_label="DPHI",
+            map_sampling=3,
+        )
+
+        map_negentropy = negentropy(np.array(realspace_map.grid))
+        negentropies.append(map_negentropy)
+
+    # the optimal k-weight should have the highest negentropy
+    print(kweights_to_scan)
+    print(negentropies)
+    assert negentropies[0] < negentropies[1]
+    assert negentropies[2] < negentropies[1]
