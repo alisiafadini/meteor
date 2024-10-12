@@ -77,39 +77,52 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(atom_and_noisy_atom: rs.DataSet) -> None:
+def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
+    
+
     result, metadata = iterative.iterative_tv_phase_retrieval(
-        atom_and_noisy_atom,
-        tv_weights_to_scan=[1.0],
+        single_atom_maps_noisy_and_noise_free,
+        native_amplitude_column="F_noise_free",
+        calculated_phase_column="PHIC_noise_free",
+        derivative_amplitude_column="F_noisy",
+        output_derivative_phase_column="PHIC_denoised",
+        tv_weights_to_scan=[0.01, 0.1, 1.0],
         max_iterations=100,
         convergence_tolerance=0.01,
     )
 
     # make sure output columns that should not be altered are in fact the same
-    assert_phases_allclose(result["PHIC"], atom_and_noisy_atom["PHIC"])
-    for label in ["F", "Fh"]:
-        pdt.assert_series_equal(result[label], atom_and_noisy_atom[label])
+    assert_phases_allclose(
+        result["PHIC_noise_free"], single_atom_maps_noisy_and_noise_free["PHIC_noise_free"]
+    )
+    for label in ["F_noise_free", "F_noisy"]:
+        pdt.assert_series_equal(result[label], single_atom_maps_noisy_and_noise_free[label])
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
+    print(metadata)
 
     # test correctness by comparing denoised dataset to noise-free
+    map_sampling = 3
     noise_free_density = compute_map_from_coefficients(
-        map_coefficients=atom_and_noisy_atom,
-        amplitude_label="F",
-        phase_label="PHIC",
-        map_sampling=3,
+        map_coefficients=single_atom_maps_noisy_and_noise_free,
+        amplitude_label="F_noise_free",
+        phase_label="PHIC_noise_free",
+        map_sampling=map_sampling,
     )
     noisy_density = compute_map_from_coefficients(
-        map_coefficients=atom_and_noisy_atom,
-        amplitude_label="Fh",
-        phase_label="PHICh_initial",
-        map_sampling=3,
+        map_coefficients=single_atom_maps_noisy_and_noise_free,
+        amplitude_label="F_noisy",
+        phase_label="PHIC_noisy",
+        map_sampling=map_sampling,
     )
     denoised_density = compute_map_from_coefficients(
-        map_coefficients=result, amplitude_label="Fh", phase_label="PHICh", map_sampling=3
+        map_coefficients=result,
+        amplitude_label="F_noisy",
+        phase_label="PHIC_denoised",
+        map_sampling=map_sampling,
     )
     noisy_error = map_norm(noisy_density, noise_free_density)
     denoised_error = map_norm(denoised_density, noise_free_density)

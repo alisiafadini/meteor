@@ -49,10 +49,10 @@ def rms_between_coefficients(
 def test_tv_denoise_difference_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
-    noisy_map: rs.DataSet,
+    noisy_map_of_displaced_atom: rs.DataSet,
 ) -> None:
     output = tv.tv_denoise_difference_map(
-        difference_map_coefficients=noisy_map,
+        difference_map_coefficients=noisy_map_of_displaced_atom,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=full_output,
     )  # type: ignore
@@ -67,12 +67,12 @@ def test_tv_denoise_difference_map_smoke(
 @pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
 def test_tv_denoise_difference_map(
     lambda_values_to_scan: None | Sequence[float],
-    noise_free_map: rs.DataSet,
-    noisy_map: rs.DataSet,
+    noise_free_map_of_displaced_atom: rs.DataSet,
+    noisy_map_of_displaced_atom: rs.DataSet,
     diffmap_labels: MapLabels,
 ) -> None:
     def rms_to_noise_free(test_map: rs.DataSet) -> float:
-        return rms_between_coefficients(test_map, noise_free_map, diffmap_labels)
+        return rms_between_coefficients(test_map, noise_free_map_of_displaced_atom, diffmap_labels)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know the ground truth, work around this to test all possible results.
@@ -82,7 +82,7 @@ def test_tv_denoise_difference_map(
 
     for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
-            difference_map_coefficients=noisy_map,
+            difference_map_coefficients=noisy_map_of_displaced_atom,
             lambda_values_to_scan=[
                 trial_lambda,
             ],
@@ -96,11 +96,11 @@ def test_tv_denoise_difference_map(
     # now run the denoising algorithm and make sure we get a result that's close
     # to the one that minimizes the RMS error to the ground truth
     denoised_map, result = tv.tv_denoise_difference_map(
-        difference_map_coefficients=noisy_map,
+        difference_map_coefficients=noisy_map_of_displaced_atom,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=True,
     )
 
     rms_after_denoising = rms_to_noise_free(denoised_map)
-    assert rms_after_denoising < rms_to_noise_free(noisy_map)
+    assert rms_after_denoising < rms_to_noise_free(noisy_map_of_displaced_atom)
     np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.2)

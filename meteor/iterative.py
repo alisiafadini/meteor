@@ -10,6 +10,7 @@ from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
     rs_dataseies_to_complex_array,
+    compute_map_from_coefficients,
 )
 
 
@@ -120,7 +121,7 @@ def _complex_derivative_from_iterative_tv(
             {
                 "iteration": num_iterations,
                 "tv_weight": tv_metadata.optimal_lambda,
-                "negentropy": tv_metadata.optimal_negentropy,
+                "negentropy_after_tv": tv_metadata.optimal_negentropy,
                 "average_phase_change": phase_change,
             }
         )
