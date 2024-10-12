@@ -20,7 +20,7 @@ def compute_fofo_difference_map(
     derivative_phases_column: str | None = None,
     output_amplitudes_column: str = "DeltaFoFo",
     output_phases_column: str = "DeltaPhases",
-) -> None:
+) -> rs.DataSet:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
@@ -41,7 +41,11 @@ def compute_fofo_difference_map(
             amplitude differences (DeltaFoFo) will be stored. Defaults to "DeltaFoFo".
         output_phases_column (str, optional): The name of the output column where phase
             differences (DeltaPhases) will be stored. Defaults to "DeltaPhases".
+    Return:
+        dataset with added columns
     """
+
+    dataset = dataset.copy()
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
     native_complex = rs_dataseries_to_complex_array(
@@ -69,6 +73,8 @@ def compute_fofo_difference_map(
     # Add results to dataset
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
+
+    return dataset
 
 
 def compute_kweights(
@@ -110,7 +116,7 @@ def compute_kweighted_difference_map(
     output_weighted_amplitudes_column: str = "DeltaFoFoKWeighted",
     kweight: float = None,
     optimize_kweight: bool = False,
-) -> None:
+) -> rs.Dataset:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
 
@@ -138,7 +144,11 @@ def compute_kweighted_difference_map(
         k-weight factor, optional.
     optimize_kweight : bool, optional
         Whether to optimize the kweight using negentropy, by default False.
+
+    Return:
+        dataset with added columns
     """
+    dataset = dataset.copy()
 
     # Compute differences between native and derivative amplitudes and phases
     dataset = compute_fofo_difference_map(
@@ -197,3 +207,5 @@ def compute_kweighted_difference_map(
     # Compute weights and apply to FoFo differences
     weights = compute_kweights(delta_amplitudes, sigdelta_amplitudes, kweight)
     dataset[output_weighted_amplitudes_column] = delta_amplitudes * weights
+
+    return dataset
