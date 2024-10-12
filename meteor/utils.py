@@ -94,7 +94,7 @@ def average_phase_diff_in_degrees(
     return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
 
 
-def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
+def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
     """
     Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
 

@@ -95,22 +95,22 @@ def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
         utils.average_phase_diff_in_degrees(arr1, arr2)
 
 
-def test_rs_dataseies_to_complex_array() -> None:
+def test_rs_dataseries_to_complex_array() -> None:
     index = pd.Index(np.arange(4))
     amp = rs.DataSeries(np.ones(4), index=index)
     phase = rs.DataSeries(np.arange(4) * 90.0, index=index)
 
-    carray = utils.rs_dataseies_to_complex_array(amp, phase)
+    carray = utils.rs_dataseries_to_complex_array(amp, phase)
     expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
 
     np.testing.assert_almost_equal(carray, expected)
 
 
-def test_rs_dataseies_to_complex_array_index_mismatch() -> None:
+def test_rs_dataseries_to_complex_array_index_mismatch() -> None:
     amp = rs.DataSeries(np.ones(4), index=[0, 1, 2, 3])
     phase = rs.DataSeries(np.arange(4) * 90.0, index=[1, 2, 3, 4])
     with pytest.raises(utils.ShapeMismatchError):
-        utils.rs_dataseies_to_complex_array(amp, phase)
+        utils.rs_dataseries_to_complex_array(amp, phase)
 
 
 def test_complex_array_to_rs_dataseries() -> None:
@@ -148,7 +148,7 @@ def test_complex_array_dataseries_roundtrip() -> None:
     pdt.assert_index_equal(ds_amplitudes.index, indices)
     pdt.assert_index_equal(ds_phases.index, indices)
 
-    carray2 = utils.rs_dataseies_to_complex_array(ds_amplitudes, ds_phases)
+    carray2 = utils.rs_dataseries_to_complex_array(ds_amplitudes, ds_phases)
     np.testing.assert_almost_equal(carray, carray2, decimal=5)
 
 

@@ -80,7 +80,6 @@ def test_complex_derivative_from_iterative_tv() -> None:
 def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
-    
 
     result, metadata = iterative.iterative_tv_phase_retrieval(
         single_atom_maps_noisy_and_noise_free,

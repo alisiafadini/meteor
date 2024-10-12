@@ -9,8 +9,7 @@ from .utils import (
     average_phase_diff_in_degrees,
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
-    rs_dataseies_to_complex_array,
-    compute_map_from_coefficients,
+    rs_dataseries_to_complex_array,
 )
 
 
@@ -232,17 +231,17 @@ def iterative_tv_phase_retrieval(
             full_output=True,
         )
 
-        denoised_difference = rs_dataseies_to_complex_array(
+        denoised_difference = rs_dataseries_to_complex_array(
             denoised_map_coefficients[delta_amp.name], denoised_map_coefficients[delta_phase.name]
         )
 
         return denoised_difference, tv_metadata
 
     # convert the native and derivative datasets to complex arrays
-    native = rs_dataseies_to_complex_array(
+    native = rs_dataseries_to_complex_array(
         input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
     )
-    initial_derivative = rs_dataseies_to_complex_array(
+    initial_derivative = rs_dataseries_to_complex_array(
         input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
     )
 
