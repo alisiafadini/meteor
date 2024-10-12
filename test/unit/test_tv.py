@@ -50,14 +50,14 @@ def test_tv_denoise_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
     random_difference_map: rs.DataSet,
-    diffmap_labels: MapLabels,
+    test_diffmap_labels: MapLabels,
 ) -> None:
     output = tv.tv_denoise_difference_map(
         difference_map_coefficients=random_difference_map,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=full_output,
-        difference_map_amplitude_column=diffmap_labels.amplitude,
-        difference_map_phase_column=diffmap_labels.phase,
+        difference_map_amplitude_column=test_diffmap_labels.amplitude,
+        difference_map_phase_column=test_diffmap_labels.phase,
     )  # type: ignore
     if full_output:
         assert len(output) == 2
@@ -72,10 +72,10 @@ def test_tv_denoise_map(
     lambda_values_to_scan: None | Sequence[float],
     noise_free_map: rs.DataSet,
     noisy_map: rs.DataSet,
-    map_labels: MapLabels,
+    test_map_labels: MapLabels,
 ) -> None:
     def rms_to_noise_free(test_map: rs.DataSet) -> float:
-        return rms_between_coefficients(test_map, noise_free_map, map_labels)
+        return rms_between_coefficients(test_map, noise_free_map, test_map_labels)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know the ground truth, work around this to test all possible results.
@@ -86,8 +86,8 @@ def test_tv_denoise_map(
     for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
             difference_map_coefficients=noisy_map,
-            difference_map_amplitude_column=map_labels.amplitude,
-            difference_map_phase_column=map_labels.phase,
+            difference_map_amplitude_column=test_map_labels.amplitude,
+            difference_map_phase_column=test_map_labels.phase,
             lambda_values_to_scan=[
                 trial_lambda,
             ],
@@ -103,8 +103,8 @@ def test_tv_denoise_map(
     denoised_map, result = tv.tv_denoise_difference_map(
         difference_map_coefficients=noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
-        difference_map_amplitude_column=map_labels.amplitude,
-        difference_map_phase_column=map_labels.phase,
+        difference_map_amplitude_column=test_map_labels.amplitude,
+        difference_map_phase_column=test_map_labels.phase,
         full_output=True,
     )
 
