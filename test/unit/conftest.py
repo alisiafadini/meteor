@@ -100,6 +100,11 @@ def noisy_map(test_map_labels: MapLabels) -> rs.DataSet:
 
 
 @pytest.fixture
+def very_noisy_map(test_map_labels: MapLabels) -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=1.0, labels=test_map_labels)
+
+
+@pytest.fixture
 def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
     resolution = 1.0
     cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
