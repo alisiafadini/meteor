@@ -81,7 +81,20 @@ def canonicalize_amplitudes(
         return None
 
 
-def rs_dataseies_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
+def average_phase_diff_in_degrees(
+    array1: np.ndarray,
+    array2: np.ndarray,
+) -> float:
+    if not array1.shape == array2.shape:
+        raise ShapeMismatchError(f"inputs not same shape: {array1.shape} vs {array2.shape}")
+    phase1 = np.rad2deg(np.angle(array1))
+    phase2 = np.rad2deg(np.angle(array2))
+    diff = phase2 - phase1
+    diff = (diff + 180) % 360 - 180
+    return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
+
+
+def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
     """
     Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
 

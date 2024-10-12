@@ -47,11 +47,11 @@ def single_carbon_density(
     return density_map.grid
 
 
-def carbon1_density() -> gemmi.FloatGrid:
+def carbon_density_at_position1() -> gemmi.FloatGrid:
     return single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
 
-def carbon2_density() -> gemmi.FloatGrid:
+def carbon_density_at_position2() -> gemmi.FloatGrid:
     return single_carbon_density(CARBON2_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
 
@@ -59,10 +59,8 @@ def displaced_single_atom_difference_map_coefficients(
     *,
     noise_sigma: float,
 ) -> rs.DataSet:
-    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
-    grid_values = np.array(difference_density) + noise_sigma * np.random.randn(
-        *difference_density.shape
-    )
+    diff_density = np.array(carbon_density_at_position1()) - np.array(carbon_density_at_position2())
+    grid_values = diff_density + noise_sigma * np.random.randn(*diff_density.shape)
 
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
@@ -77,16 +75,36 @@ def displaced_single_atom_difference_map_coefficients(
 
 
 @pytest.fixture
-def carbon_difference_density() -> np.ndarray:
-    difference_density = np.array(carbon1_density()) - np.array(carbon2_density())
-    return difference_density
-
-
-@pytest.fixture
-def noise_free_map() -> rs.DataSet:
+def noise_free_map_of_displaced_atom() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.0)
 
 
 @pytest.fixture
-def noisy_map() -> rs.DataSet:
+def noisy_map_of_displaced_atom() -> rs.DataSet:
     return displaced_single_atom_difference_map_coefficients(noise_sigma=0.03)
+
+
+@pytest.fixture
+def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
+    noise_sigma = 1.0
+
+    map = gemmi.Ccp4Map()
+    map.grid = carbon_density_at_position1()
+
+    noisy_array = np.array(map.grid) + noise_sigma * np.random.randn(*map.grid.shape)
+    noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
+
+    coefficents1 = compute_coefficients_from_map(
+        ccp4_map=map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="F_noise_free",
+        phase_label="PHIC_noise_free",
+    )
+    coefficents2 = compute_coefficients_from_map(
+        ccp4_map=noisy_map,
+        high_resolution_limit=RESOLUTION,
+        amplitude_label="F_noisy",
+        phase_label="PHIC_noisy",
+    )
+
+    return rs.concat([coefficents1, coefficents2], axis=1)
