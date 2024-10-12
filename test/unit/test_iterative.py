@@ -11,6 +11,7 @@ from meteor import iterative
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
 from meteor.utils import compute_map_from_coefficients
+from meteor.validate import negentropy
 
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
@@ -128,3 +129,6 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
 
     # insist on 1% or better improvement
     assert 1.01 * denoised_error < noisy_error
+
+    # insist that the negentropy improves after denoising
+    assert negentropy(np.array(denoised_density.grid)) > negentropy(np.array(noisy_density.grid))
