@@ -20,21 +20,23 @@ def _project_derivative_on_experimental_set(
     difference: np.ndarray,
 ) -> np.ndarray:
     """
-    Project `derivative` onto the set of experimentally observed amplitudes,
+    Project the `derivative` structure factor onto the set of experimentally observed amplitudes.
 
-        Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]
-
-    In English, the output is a complex-valued array that changes the derivative phase to ensure:
+    Specifically, we change the amplitude of the complex-valued `derivative` to ensure that both
 
         difference = derivative - native
+
+    and that the modulus |derivative| is equal to the specified (user-input) `derivative_amplitudes`
 
     Parameters
     ----------
     native: np.ndarray
         The experimentally observed native amplitudes and computed phases, as a complex array.
+
     derivative_amplitudes: np.ndarray
         An array of the experimentally observed derivative amplitudes. Typically real-valued, but
         a complex-valued array with arbitrary phase can be passed (phases discarded).
+
     difference: np.ndarray
         The estimated complex structure factor difference, derivative-minus-native.
 
@@ -143,7 +145,7 @@ def iterative_tv_phase_retrieval(
     tv_weights_to_scan: list[float] = [0.001, 0.01, 0.1, 1.0],
 ) -> tuple[rs.DataSet, pd.DataFrame]:
     """
-    Here is a brief psuedocode sketch of the alogrithm. Structure factors F below are complex unless
+    Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless
     explicitly annotated |*|.
 
         Input: |F|, |Fh|, phi_c
@@ -161,8 +163,7 @@ def iterative_tv_phase_retrieval(
             D_F = Fh' - F
 
     Where the TV lambda parameter is determined using golden section optimization. The algorithm
-    iterates until the changes in DF for each iteration drop below a specified per-amplitude
-    threshold.
+    iterates until the changes in the derivative phase drop below a specified threshold.
 
     Parameters
     ----------
