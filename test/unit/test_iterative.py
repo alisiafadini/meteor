@@ -1,9 +1,11 @@
-import gemmi
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import reciprocalspaceship as rs
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
@@ -12,6 +14,10 @@ from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
 from meteor.utils import compute_map_from_coefficients
 from meteor.validate import negentropy
+
+if TYPE_CHECKING:
+    import gemmi
+    import reciprocalspaceship as rs
 
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
@@ -26,7 +32,7 @@ def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoise
     result = TvDenoiseResult(
         optimal_lambda=weight,
         optimal_negentropy=0.0,
-        lambdas_scanned=set([weight]),
+        lambdas_scanned={weight},
         map_sampling_used_for_tv=0,
     )
     return np.fft.fftn(denoised), result
@@ -102,7 +108,6 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
-    print(metadata)
 
     # test correctness by comparing denoised dataset to noise-free
     map_sampling = 3

@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import numpy as np
-import reciprocalspaceship as rs
 from skimage.restoration import denoise_tv_chambolle
 
 from .settings import (
@@ -19,6 +20,9 @@ from .utils import (
 )
 from .validate import ScalarMaximizer, negentropy
 
+if TYPE_CHECKING:
+    import reciprocalspaceship as rs
+
 
 @dataclass
 class TvDenoiseResult:
@@ -30,13 +34,12 @@ class TvDenoiseResult:
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
-    denoised_map = denoise_tv_chambolle(
+    return denoise_tv_chambolle(
         map_as_array,
         weight=weight,
         eps=TV_STOP_TOLERANCE,
         max_num_iter=TV_MAX_NUM_ITER,
     )
-    return denoised_map
 
 
 @overload

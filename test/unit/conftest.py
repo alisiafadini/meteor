@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gemmi
 import numpy as np
 import pytest
@@ -15,6 +17,9 @@ UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
 SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
 CARBON2_POSITION = (5.0, 5.2, 5.0)
+
+
+NP_RNG = np.random.default_rng()
 
 
 @pytest.fixture
@@ -127,7 +132,7 @@ def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
         cell=cell,
     ).infer_mtz_dtypes()
 
-    ds.set_index(["H", "K", "L"], inplace=True)
+    ds = ds.set_index(["H", "K", "L"])
     ds[test_diffmap_labels.amplitude] = ds[test_diffmap_labels.amplitude].astype("SFAmplitude")
 
     canonicalize_amplitudes(

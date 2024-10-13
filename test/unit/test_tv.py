@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Sequence
 
 import numpy as np
@@ -33,9 +35,8 @@ def rms_between_coefficients(
     map1_array /= map1_array.std()
     map2_array /= map2_array.std()
 
-    rms = float(np.linalg.norm(map2_array - map1_array))
+    return float(np.linalg.norm(map2_array - map1_array))
 
-    return rms
 
 
 @pytest.mark.parametrize(

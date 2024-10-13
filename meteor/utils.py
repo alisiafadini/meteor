@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import gemmi
 import numpy as np
-import pandas as pd
 import reciprocalspaceship as rs
 from pandas.testing import assert_index_equal
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
 
@@ -85,8 +89,9 @@ def average_phase_diff_in_degrees(
     array1: np.ndarray,
     array2: np.ndarray,
 ) -> float:
-    if not array1.shape == array2.shape:
-        raise ShapeMismatchError(f"inputs not same shape: {array1.shape} vs {array2.shape}")
+    if array1.shape != array2.shape:
+        msg = f"inputs not same shape: {array1.shape} vs {array2.shape}"
+        raise ShapeMismatchError(msg)
     phase1 = np.rad2deg(np.angle(array1))
     phase2 = np.rad2deg(np.angle(array2))
     diff = phase2 - phase1
@@ -118,14 +123,14 @@ def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSer
     try:
         assert_index_equal(amplitudes.index, phases.index)
     except AssertionError as exptn:
+        msg = f"indices for `amplitudes` and `phases` don't match: {amplitudes.index} {phases.index}"
         raise ShapeMismatchError(
-            f"indices for `amplitudes` and `phases` don't match: {amplitudes.index} {phases.index}",
+            msg,
             " To safely cast to a single complex array, pass DataSeries with a common set of",
             " indices. One possible way: Series.align(other, join='inner', axis=0).",
             exptn,
         )
-    complex_structure_factors = amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
-    return complex_structure_factors
+    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
 
 
 def complex_array_to_rs_dataseries(
@@ -155,10 +160,13 @@ def complex_array_to_rs_dataseries(
     ValueError
         if `complex_structure_factors and `index` do not have the same shape
     """
-    if not complex_structure_factors.shape == index.shape:
-        raise ShapeMismatchError(
+    if complex_structure_factors.shape != index.shape:
+        msg = (
             f"shape of `complex_structure_factors` ({complex_structure_factors.shape}) does not "
             f"match shape of `index` ({index.shape})"
+        )
+        raise ShapeMismatchError(
+            msg
         )
 
     amplitudes = rs.DataSeries(np.abs(complex_structure_factors), index=index)

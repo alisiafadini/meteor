@@ -1,9 +1,13 @@
-from typing import Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Tuple
 
 import numpy as np
-import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 DTYPES_TO_SCALE = (
     rs.AnomalousDifferenceDtype,
@@ -69,8 +73,8 @@ def compute_scale_factors(
 
     The parameters Bxy are fit using least squares, optionally with uncertainty weighting.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     reference_values : rs.DataSeries
         The reference dataset against which scaling is performed, indexed by Miller indices.
     values_to_scale : rs.DataSeries
@@ -82,13 +86,13 @@ def compute_scale_factors(
         Uncertainty values associated with `values_to_scale`. If provided, they are used in
         weighting the scaling process. Must have the same index as `values_to_scale`.
 
-    Returns:
-    --------
+    Returns
+    -------
     rs.DataSeries
         The computed anisotropic scale factors for each Miller index in `values_to_scale`.
 
-    See Also:
-    ---------
+    See Also
+    --------
     scale_datasets : higher-level interface that operates on entire DataSets, typically more
     convienent.
 
@@ -158,8 +162,8 @@ def scale_datasets(
     modified (scaled). To access the scale parameters directly, use
     `meteor.scale.compute_scale_factors`.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     reference_dataset : rs.DataSet
         The reference dataset, containing a column with the values to which `dataset_to_scale` is
         compared.
@@ -174,21 +178,20 @@ def scale_datasets(
         Whether or not to weight the scaling by uncertainty values. If True, uncertainty values are
         extracted from the `uncertainty_column` in both datasets.
 
-    Returns:
-    --------
+    Returns
+    -------
     rs.DataSet
         A copy of `dataset_to_scale`, with the specified columns scaled to match the reference
         dataset.
 
-    See Also:
-    ---------
+    See Also
+    --------
     compute_scale_factors : function to compute scale factors directly
 
     Citations:
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
-
     if weight_using_uncertainties:
         scale_factors = compute_scale_factors(
             reference_values=reference_dataset[column_to_compare],
@@ -211,8 +214,9 @@ def scale_datasets(
         if isinstance(column_dtype, DTYPES_TO_SCALE)
     ]
     if column_to_compare not in columns_to_scale:
+        msg = f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
         raise TypeError(
-            f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
+            msg
         )
 
     for column in columns_to_scale:
