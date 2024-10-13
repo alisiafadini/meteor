@@ -4,7 +4,7 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.utils import (
-    MapLabels,
+    MapColumns,
     canonicalize_amplitudes,
     compute_coefficients_from_map,
     numpy_array_to_map,
@@ -18,8 +18,8 @@ CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 
 @pytest.fixture
-def test_map_labels() -> MapLabels:
-    return MapLabels(
+def test_map_columns() -> MapColumns:
+    return MapColumns(
         amplitude="F",
         phase="PHIC",
         uncertainty="SIGF",
@@ -27,8 +27,8 @@ def test_map_labels() -> MapLabels:
 
 
 @pytest.fixture
-def test_diffmap_labels() -> MapLabels:
-    return MapLabels(
+def test_diffmap_columns() -> MapColumns:
+    return MapColumns(
         amplitude="DF",
         phase="PHIC",
         uncertainty="SIGDF",
@@ -70,7 +70,7 @@ def single_carbon_density(
     return density_map.grid
 
 
-def single_atom_map_coefficients(*, noise_sigma: float, labels: MapLabels) -> rs.DataSet:
+def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> rs.DataSet:
     density = np.array(single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION))
     grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
@@ -90,22 +90,22 @@ def single_atom_map_coefficients(*, noise_sigma: float, labels: MapLabels) -> rs
 
 
 @pytest.fixture
-def noise_free_map(test_map_labels: MapLabels) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=0.0, labels=test_map_labels)
+def noise_free_map(test_map_columns: MapColumns) -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=0.0, labels=test_map_columns)
 
 
 @pytest.fixture
-def noisy_map(test_map_labels: MapLabels) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=0.03, labels=test_map_labels)
+def noisy_map(test_map_columns: MapColumns) -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=0.03, labels=test_map_columns)
 
 
 @pytest.fixture
-def very_noisy_map(test_map_labels: MapLabels) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=1.0, labels=test_map_labels)
+def very_noisy_map(test_map_columns: MapColumns) -> rs.DataSet:
+    return single_atom_map_coefficients(noise_sigma=1.0, labels=test_map_columns)
 
 
 @pytest.fixture
-def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
+def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
     resolution = 1.0
     cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     space_group = gemmi.SpaceGroup(1)
@@ -120,26 +120,26 @@ def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
             "H": h,
             "K": k,
             "L": l,
-            test_diffmap_labels.amplitude: sigma * np.random.randn(number_of_reflections),
-            test_diffmap_labels.phase: np.random.uniform(-180, 180, size=number_of_reflections),
+            test_diffmap_columns.amplitude: sigma * np.random.randn(number_of_reflections),
+            test_diffmap_columns.phase: np.random.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=space_group,
         cell=cell,
     ).infer_mtz_dtypes()
 
     ds.set_index(["H", "K", "L"], inplace=True)
-    ds[test_diffmap_labels.amplitude] = ds[test_diffmap_labels.amplitude].astype("SFAmplitude")
+    ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
 
     canonicalize_amplitudes(
         ds,
-        amplitude_label=test_diffmap_labels.amplitude,
-        phase_label=test_diffmap_labels.phase,
+        amplitude_label=test_diffmap_columns.amplitude,
+        phase_label=test_diffmap_columns.phase,
         inplace=True,
     )
 
-    uncertainties = sigma * np.ones_like(ds[test_diffmap_labels.amplitude])
+    uncertainties = sigma * np.ones_like(ds[test_diffmap_columns.amplitude])
     uncertainties = rs.DataSeries(uncertainties, index=ds.index)
-    ds[test_diffmap_labels.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
+    ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
     return ds
 

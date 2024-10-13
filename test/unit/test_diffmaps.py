@@ -9,7 +9,7 @@ from meteor.diffmaps import (
     compute_kweights,
     max_negentropy_kweighted_difference_map,
 )
-from meteor.utils import MapLabels, compute_map_from_coefficients
+from meteor.utils import MapColumns, compute_map_from_coefficients
 from meteor.validate import negentropy
 
 
@@ -120,12 +120,12 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset: rs.DataSe
 
 
 def test_kweight_optimization(
-    test_map_labels: MapLabels, noise_free_map: rs.DataSet, noisy_map: rs.DataSet
+    test_map_columns: MapColumns, noise_free_map: rs.DataSet, noisy_map: rs.DataSet
 ) -> None:
     noisy_map_columns = {
-        test_map_labels.amplitude: "F_noisy",
-        test_map_labels.phase: "PHIC_noisy",
-        test_map_labels.uncertainty: "SIGF_noisy",
+        test_map_columns.amplitude: "F_noisy",
+        test_map_columns.phase: "PHIC_noisy",
+        test_map_columns.uncertainty: "SIGF_noisy",
     }
 
     combined_dataset = rs.concat(
@@ -139,12 +139,12 @@ def test_kweight_optimization(
     # run the function with k-weight optimization enabled
     result, max_negent_kweight = max_negentropy_kweighted_difference_map(
         combined_dataset,
-        native_amplitudes_column=test_map_labels.amplitude,
-        native_phases_column=test_map_labels.phase,
-        native_uncertainty_column=test_map_labels.uncertainty,
-        derivative_amplitudes_column=noisy_map_columns[test_map_labels.amplitude],
-        derivative_phases_column=noisy_map_columns[test_map_labels.phase],
-        derivative_uncertainty_column=noisy_map_columns[test_map_labels.uncertainty],
+        native_amplitudes_column=test_map_columns.amplitude,
+        native_phases_column=test_map_columns.phase,
+        native_uncertainty_column=test_map_columns.uncertainty,
+        derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
+        derivative_phases_column=noisy_map_columns[test_map_columns.phase],
+        derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
     )
 
     epsilon = 0.01
@@ -159,12 +159,12 @@ def test_kweight_optimization(
         kweighted_diffmap = compute_kweighted_difference_map(
             dataset=combined_dataset,
             k_parameter=k_parameter,
-            native_amplitudes_column=test_map_labels.amplitude,
-            native_phases_column=test_map_labels.phase,
-            native_uncertainty_column=test_map_labels.uncertainty,
-            derivative_amplitudes_column=noisy_map_columns[test_map_labels.amplitude],
-            derivative_phases_column=noisy_map_columns[test_map_labels.phase],
-            derivative_uncertainty_column=noisy_map_columns[test_map_labels.uncertainty],
+            native_amplitudes_column=test_map_columns.amplitude,
+            native_phases_column=test_map_columns.phase,
+            native_uncertainty_column=test_map_columns.uncertainty,
+            derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
+            derivative_phases_column=noisy_map_columns[test_map_columns.phase],
+            derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
         )
 
         realspace_map = compute_map_from_coefficients(

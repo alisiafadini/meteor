@@ -14,7 +14,7 @@ class ShapeMismatchError(Exception): ...
 
 
 @dataclass
-class MapLabels:
+class MapColumns:
     amplitude: str
     phase: str
     uncertainty: str
