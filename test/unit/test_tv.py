@@ -38,7 +38,6 @@ def rms_between_coefficients(
     return float(np.linalg.norm(map2_array - map1_array))
 
 
-
 @pytest.mark.parametrize(
     "lambda_values_to_scan",
     [

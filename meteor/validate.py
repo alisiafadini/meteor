@@ -17,7 +17,7 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
     from Gaussianity.
 
     Parameters
-    -----------
+    ----------
     samples: np.ndarray
         A numpy array of sample data for which to calculate the negentropy.
 
@@ -55,9 +55,7 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
             f"negentropy is a large negative number {neg_e}, exceeds the tolerance {tolerance}"
             " -- something may have gone wrong"
         )
-        raise ValueError(
-            msg
-        )
+        raise ValueError(msg)
 
     return neg_e
 

@@ -214,10 +214,10 @@ def scale_datasets(
         if isinstance(column_dtype, DTYPES_TO_SCALE)
     ]
     if column_to_compare not in columns_to_scale:
-        msg = f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
-        raise TypeError(
-            msg
+        msg = (
+            f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
         )
+        raise TypeError(msg)
 
     for column in columns_to_scale:
         scaled_dataset[column] *= scale_factors

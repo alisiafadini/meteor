@@ -157,13 +157,13 @@ def test_complex_array_dataseries_roundtrip() -> None:
 def test_compute_map_from_coefficients(
     random_difference_map: rs.DataSet, test_diffmap_labels: utils.MapLabels
 ) -> None:
-    map = utils.compute_map_from_coefficients(
+    diffmap = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=test_diffmap_labels.amplitude,
         phase_label=test_diffmap_labels.phase,
         map_sampling=1,
     )
-    assert isinstance(map, gemmi.Ccp4Map)
+    assert isinstance(diffmap, gemmi.Ccp4Map)
 
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])

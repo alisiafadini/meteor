@@ -153,14 +153,18 @@ def random_difference_map(test_diffmap_labels: MapLabels) -> rs.DataSet:
 def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
     noise_sigma = 1.0
 
-    map = gemmi.Ccp4Map()
-    map.grid = single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
+    noise_free_map = gemmi.Ccp4Map()
+    noise_free_map.grid = single_carbon_density(
+        CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION
+    )
 
-    noisy_array = np.array(map.grid) + noise_sigma * np.random.randn(*map.grid.shape)
+    noisy_array = np.array(noise_free_map.grid) + noise_sigma * np.random.randn(
+        *noise_free_map.grid.shape
+    )
     noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
     coefficents1 = compute_coefficients_from_map(
-        ccp4_map=map,
+        ccp4_map=noise_free_map,
         high_resolution_limit=RESOLUTION,
         amplitude_label="F_noise_free",
         phase_label="PHIC_noise_free",

@@ -213,6 +213,7 @@ def iterative_tv_phase_retrieval(
     # maintains state for the HKL index, spacegroup, and cell information
     if tv_weights_to_scan is None:
         tv_weights_to_scan = [0.001, 0.01, 0.1, 1.0]
+
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
         delta_amp, delta_phase = complex_array_to_rs_dataseries(
             difference, index=input_dataset.index
