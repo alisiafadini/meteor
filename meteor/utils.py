@@ -81,8 +81,7 @@ def canonicalize_amplitudes(
 
     if not inplace:
         return dataset
-    else:
-        return None
+    return None
 
 
 def average_phase_diff_in_degrees(

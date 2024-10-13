@@ -105,12 +105,19 @@ def compute_scale_factors(
     # if we are going to weight the scaling using the uncertainty values, then the weights will be
     #    inverse_sigma = 1 / sqrt{ sigmaA ** 2 + sigmaB ** 2 }
     if reference_uncertainties is not None and to_scale_uncertainties is not None:
-        assert reference_uncertainties.index.equals(reference_values.index)
-        assert to_scale_uncertainties.index.equals(values_to_scale.index)
+
+        if not reference_uncertainties.index.equals(reference_values.index):
+            msg = "indices of `reference_uncertainties`, `reference_values` differ, cannot combine"
+            raise IndexError(msg)
+        if not to_scale_uncertainties.index.equals(values_to_scale.index):
+            msg = "indices of `to_scale_uncertainties`, `values_to_scale` differ, cannot combine"
+            raise IndexError(msg)
+
         uncertainty_weights = np.sqrt(
             np.square(reference_uncertainties.loc[common_miller_indices])
             + np.square(to_scale_uncertainties.loc[common_miller_indices])
         )
+
     else:
         uncertainty_weights = 1.0
 
@@ -133,7 +140,11 @@ def compute_scale_factors(
     optimized_scale_factors = _compute_anisotropic_scale_factors(
         values_to_scale.index, optimized_parameters
     )
-    assert len(optimized_scale_factors) == len(values_to_scale)
+
+    if len(optimized_scale_factors) != len(values_to_scale):
+        msg1 = "length mismatch: `optimized_scale_factors`"
+        msg2 = f"({len(optimized_scale_factors)}) vs `values_to_scale` ({len(values_to_scale)})"
+        raise RuntimeError(msg1, msg2)
 
     return optimized_scale_factors
 

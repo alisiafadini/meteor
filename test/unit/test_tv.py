@@ -58,7 +58,7 @@ def test_tv_denoise_map_smoke(
         full_output=full_output,
         difference_map_amplitude_column=test_diffmap_labels.amplitude,
         difference_map_phase_column=test_diffmap_labels.phase,
-    )  # type: ignore
+    )  # type: ignore[call-overload]
     if full_output:
         assert len(output) == 2
         assert isinstance(output[0], rs.DataSet)

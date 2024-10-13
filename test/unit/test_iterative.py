@@ -9,7 +9,11 @@ import pytest
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
-from meteor import iterative
+from meteor.iterative import (
+    _complex_derivative_from_iterative_tv,
+    _project_derivative_on_experimental_set,
+    iterative_tv_phase_retrieval,
+)
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
 from meteor.utils import compute_map_from_coefficients
@@ -54,7 +58,7 @@ def test_projected_derivative(scalar: float) -> None:
     # ensure the projection removes a scalar multiple of the native & difference
     scaled_native = scalar * native
     scaled_difference = scalar * difference
-    proj_derivative = iterative._project_derivative_on_experimental_set(
+    proj_derivative = _project_derivative_on_experimental_set(
         native=scaled_native, derivative_amplitudes=np.abs(derivative), difference=scaled_difference
     )
     np.testing.assert_allclose(proj_derivative, derivative)
@@ -69,7 +73,7 @@ def test_complex_derivative_from_iterative_tv() -> None:
     test_image_noisy = test_image + 0.2 * np.random.randn(*test_image.shape)
     test_image_noisy_ft = np.fft.fftn(test_image_noisy)
 
-    denoised_derivative, _ = iterative._complex_derivative_from_iterative_tv(
+    denoised_derivative, _ = _complex_derivative_from_iterative_tv(
         native=constant_image_ft,
         initial_derivative=test_image_noisy_ft,
         tv_denoise_function=simple_tv_function,
@@ -88,7 +92,7 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
-    result, metadata = iterative.iterative_tv_phase_retrieval(
+    result, metadata = iterative_tv_phase_retrieval(
         single_atom_maps_noisy_and_noise_free,
         native_amplitude_column="F_noise_free",
         calculated_phase_column="PHIC_noise_free",

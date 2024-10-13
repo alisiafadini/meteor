@@ -170,7 +170,7 @@ def test_compute_map_from_coefficients(
 def test_map_to_coefficients_round_trip(
     map_sampling: int, random_difference_map: rs.DataSet, test_diffmap_labels: utils.MapLabels
 ) -> None:
-    map = utils.compute_map_from_coefficients(
+    realspace_map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=test_diffmap_labels.amplitude,
         phase_label=test_diffmap_labels.phase,
@@ -180,7 +180,7 @@ def test_map_to_coefficients_round_trip(
     _, dmin = utils.resolution_limits(random_difference_map)
 
     output_coefficients = utils.compute_coefficients_from_map(
-        ccp4_map=map,
+        ccp4_map=realspace_map,
         high_resolution_limit=dmin,
         amplitude_label=test_diffmap_labels.amplitude,
         phase_label=test_diffmap_labels.phase,
