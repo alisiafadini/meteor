@@ -8,6 +8,8 @@ from pandas import testing as pdt
 from meteor import testing as mt
 from meteor import utils
 
+NP_RNG = np.random.default_rng()
+
 
 def omit_nones_in_list(input_list: list) -> list:
     return [x for x in input_list if x]
@@ -136,7 +138,7 @@ def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
 
 def test_complex_array_dataseries_roundtrip() -> None:
     n = 5
-    carray = np.random.randn(n) + 1j * np.random.randn(n)
+    carray = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
     indices = pd.Index(np.arange(n))
 
     ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, indices)

@@ -18,7 +18,6 @@ SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
 CARBON2_POSITION = (5.0, 5.2, 5.0)
 
-
 NP_RNG = np.random.default_rng()
 
 
@@ -77,7 +76,7 @@ def single_carbon_density(
 
 def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> rs.DataSet:
     density = np.array(single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION))
-    grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
+    grid_values = np.array(density) + noise_sigma * NP_RNG.normal(size=density.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
     map_coefficients = compute_coefficients_from_map(
@@ -125,8 +124,8 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
             "H": h,
             "K": k,
             "L": l,
-            test_diffmap_columns.amplitude: sigma * np.random.randn(number_of_reflections),
-            test_diffmap_columns.phase: np.random.uniform(-180, 180, size=number_of_reflections),
+            test_diffmap_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
+            test_diffmap_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=space_group,
         cell=cell,

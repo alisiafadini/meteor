@@ -19,7 +19,8 @@ def miller_dataseries() -> rs.DataSeries:
 
 def test_compute_anisotropic_scale_factors_smoke(miller_dataseries: rs.DataSeries) -> None:
     # test call signature, valid return
-    random_params: scale.ScaleParameters = tuple(np.random.randn(7))
+    np_rng = np.random.default_rng()
+    random_params: scale.ScaleParameters = tuple(np_rng.normal(size=7))
     scale_factors = _compute_anisotropic_scale_factors(miller_dataseries.index, random_params)
     assert len(scale_factors) == len(miller_dataseries)
 

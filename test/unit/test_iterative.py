@@ -24,6 +24,9 @@ if TYPE_CHECKING:
     import gemmi
 
 
+NP_RNG = np.random.default_rng()
+
+
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
     diff = np.array(map1.grid) - np.array(map2.grid)
     return float(np.linalg.norm(diff))
@@ -51,8 +54,8 @@ def normalized_rms(x: np.ndarray, y: np.ndarray) -> float:
 @pytest.mark.parametrize("scalar", [0.01, 1.0, 2.0, 100.0])
 def test_projected_derivative(scalar: float) -> None:
     n = 16
-    native = np.random.randn(n) + 1j * np.random.randn(n)
-    derivative = np.random.randn(n) + 1j * np.random.randn(n)
+    native = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
+    derivative = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
     difference = derivative - native
 
     # ensure the projection removes a scalar multiple of the native & difference
@@ -70,7 +73,7 @@ def test_complex_derivative_from_iterative_tv() -> None:
     constant_image = np.ones_like(test_image) / 2.0
     constant_image_ft = np.fft.fftn(constant_image)
 
-    test_image_noisy = test_image + 0.2 * np.random.randn(*test_image.shape)
+    test_image_noisy = test_image + 0.2 * NP_RNG.normal(size=test_image.shape)
     test_image_noisy_ft = np.fft.fftn(test_image_noisy)
 
     denoised_derivative, _ = _complex_derivative_from_iterative_tv(
