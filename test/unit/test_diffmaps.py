@@ -76,31 +76,23 @@ def test_compute_difference_map_vs_analytical(dummy_dataset: rs.DataSet) -> None
         derivative_phases_column="DerivativePhases",
     )
 
-    # Compare the results
     np.testing.assert_almost_equal(result["DF"].values, expected_amplitudes)
     np.testing.assert_almost_equal(result["DPHI"].values, expected_phases)
 
 
 def test_compute_kweights_vs_analytical() -> None:
-    # Known deltaF and sigdeltaF values
     deltaf = rs.DataSeries([2.0, 3.0, 4.0])
     sigdeltaf = rs.DataSeries([1.0, 1.0, 1.0])
     k_parameter = 0.5
 
-    # Expected result (analytically calculated)
     expected_weights = np.array([0.453, 0.406, 0.354])
-
-    # Run the function
     result = compute_kweights(deltaf, sigdeltaf, k_parameter)
-
-    # Compare results
     np.testing.assert_almost_equal(result.values, expected_weights, decimal=3)
 
 
 def test_compute_kweighted_difference_map_vs_analytical(
     dummy_dataset: rs.DataSet,
 ) -> None:
-    # Run the function with known kweight
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
         k_parameter=0.5,
@@ -112,10 +104,9 @@ def test_compute_kweighted_difference_map_vs_analytical(
         derivative_uncertainty_column="SigFDeriv",
     )
 
-    # Correct expected weighted amplitudes (calculated by hand)
+    # expected weighted amplitudes calculated by hand
     expected_weighted_amplitudes = np.array([1.3247, 1.8280])
 
-    # Compare results, using 4 decimal places for comparison
     np.testing.assert_almost_equal(
         result["DF_KWeighted"].values, expected_weighted_amplitudes, decimal=4
     )
@@ -138,8 +129,7 @@ def test_kweight_optimization(
         axis=1,
     )
 
-    # run the function with k-weight optimization enabled
-    result, max_negent_kweight = max_negentropy_kweighted_difference_map(
+    _, max_negent_kweight = max_negentropy_kweighted_difference_map(
         combined_dataset,
         native_amplitudes_column=test_map_columns.amplitude,
         native_phases_column=test_map_columns.phase,

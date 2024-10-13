@@ -1,5 +1,6 @@
 import numpy as np
 import reciprocalspaceship as rs
+from typing import Sequence
 
 from .settings import TV_MAP_SAMPLING
 from .utils import (
@@ -68,7 +69,6 @@ def compute_difference_map(
 
     If uncertainty columns are provided for both native and derivative data,
     it also propagates the uncertainty of the difference in amplitudes.
-
     """
 
     dataset = dataset.copy()
@@ -197,7 +197,6 @@ def compute_kweighted_difference_map(
     """
 
     # this label is only used internally in this function
-    # less than ideal...
     diffmap_amplitudes = "__INTERNAL_DF_LABEL"
 
     diffmap_dataset = compute_difference_map(
@@ -241,7 +240,7 @@ def max_negentropy_kweighted_difference_map(
     output_amplitudes_column: str = "DF_KWeighted",
     output_phases_column: str = "DPHI_KWeighted",
     output_uncertainties_column: str = "SIGDF_KWeighted",
-    k_parameter_values_to_scan: np.ndarray = np.linspace(0.0, 1.0, 101),
+    k_parameter_values_to_scan: np.ndarray | Sequence[float] = np.linspace(0.0, 1.0, 101),
 ) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
@@ -266,8 +265,8 @@ def max_negentropy_kweighted_difference_map(
         Column label for uncertainties of native amplitudes.
     uncertainty_deriv_column : str
         Column label for uncertainties of derivative amplitudes.
-    k_parameter : float, optional
-        k-weight factor, optional.
+    k_parameter_values_to_scan : np.ndarray | Sequence[float]
+        The values to scan to optimize the k-weighting parameter, by default is 0.00, 0.01 ... 1.00
 
     Returns
     -------
@@ -275,7 +274,7 @@ def max_negentropy_kweighted_difference_map(
         dataset with added columns
 
     opt_k_parameter: float
-        optimized weight
+        optimized k-weighting parameter
     """
 
     def negentropy_objective(k_parameter: float) -> float:
