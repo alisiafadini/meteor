@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import numpy as np
-import reciprocalspaceship as rs
 from skimage.restoration import denoise_tv_chambolle
 
 from .settings import (
@@ -19,6 +20,9 @@ from .utils import (
 )
 from .validate import ScalarMaximizer, negentropy
 
+if TYPE_CHECKING:
+    import reciprocalspaceship as rs
+
 
 @dataclass
 class TvDenoiseResult:
@@ -30,19 +34,19 @@ class TvDenoiseResult:
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
-    denoised_map = denoise_tv_chambolle(
+    return denoise_tv_chambolle(
         map_as_array,
         weight=weight,
         eps=TV_STOP_TOLERANCE,
         max_num_iter=TV_MAX_NUM_ITER,
     )
-    return denoised_map
 
 
 @overload
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
-    full_output: Literal[False] = False,
+    *,
+    full_output: Literal[False],
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
     lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
@@ -52,6 +56,7 @@ def tv_denoise_difference_map(
 @overload
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
+    *,
     full_output: Literal[True],
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
@@ -61,6 +66,7 @@ def tv_denoise_difference_map(
 
 def tv_denoise_difference_map(
     difference_map_coefficients: rs.DataSet,
+    *,
     full_output: bool = False,
     difference_map_amplitude_column: str = "DF",
     difference_map_phase_column: str = "PHIC",
@@ -164,7 +170,9 @@ def tv_denoise_difference_map(
     extra_indices = final_map_coefficients.index.difference(difference_map_coefficients.index)
     final_map_coefficients = final_map_coefficients.drop(extra_indices)
     sym_diff = difference_map_coefficients.index.symmetric_difference(final_map_coefficients.index)
-    assert len(sym_diff) == 0
+    if len(sym_diff) > 0:
+        msg = "something went wrong, input and output coefficients do not have identical indices"
+        raise IndexError(msg)
 
     if full_output:
         tv_result = TvDenoiseResult(
@@ -174,5 +182,5 @@ def tv_denoise_difference_map(
             lambdas_scanned=maximizer.values_evaluated,
         )
         return final_map_coefficients, tv_result
-    else:
-        return final_map_coefficients
+
+    return final_map_coefficients

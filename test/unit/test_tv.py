@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Sequence
 
 import numpy as np
@@ -33,9 +35,7 @@ def rms_between_coefficients(
     map1_array /= map1_array.std()
     map2_array /= map2_array.std()
 
-    rms = float(np.linalg.norm(map2_array - map1_array))
-
-    return rms
+    return float(np.linalg.norm(map2_array - map1_array))
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,7 @@ def test_tv_denoise_map_smoke(
         full_output=full_output,
         difference_map_amplitude_column=test_diffmap_columns.amplitude,
         difference_map_phase_column=test_diffmap_columns.phase,
-    )  # type: ignore
+    )  # type: ignore[call-overload]
     if full_output:
         assert len(output) == 2
         assert isinstance(output[0], rs.DataSet)

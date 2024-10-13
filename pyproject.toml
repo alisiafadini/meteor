@@ -34,14 +34,41 @@ ignore_missing_imports = true
 line-length = 100
 lint.flake8-pytest-style.fixture-parentheses = false
 lint.select = [
-    "E",  # pycodestyle (PEP 8) rules
-    "F",  # pyflakes rules
-    "W",  # warnings like trailing whitespace
-    "C90",  # specific rules for use of commas, e.g., avoid trailing commas
-    "I",  # isort rules for import sorting
-    "N",  # flake8 naming conventions
-    "Q",  # quote rules (e.g., enforcing consistent quote usage)
-    "PT", # flake8-pytest-style rules for pytest
+    "ALL", # include all the rules, including new ones
+]
+lint.ignore = [
+    #### modules
+    "ANN", # flake8-annotations
+    "COM", # flake8-commas
+    "C90", # mccabe complexity
+    "DJ",  # django
+    "EXE", # flake8-executable
+    "T10", # debugger
+    "TID", # flake8-tidy-imports
+
+    #### specific rules
+    "D100",   # ignore missing docs
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "D200",
+    "D205",
+    "D212",
+    "D400",
+    "D401",
+    "D415",
+    "E402",   # false positives for local imports
+    "E501",   # line too long
+    "TRY003", # external messages in exceptions are too verbose
+    "TD002",
+    "TD003",
+    "FIX002", # too verbose descriptions of todos
+    "ISC001",
+    "PLR0913", # TEMPORARYLY DISABLED too many arguments in function definition
 ]
 exclude = [
     "build/",
@@ -52,6 +79,17 @@ exclude = [
     "__pycache__/",
     "*.pyc",
 ]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"test/**/*.py" = [
+    "S101",     # asserts allowed in tests
+    "ARG",      # unused function args -> fixtures
+    "PLR2004",  # magic value used in comparison
+    "FBT001",   # allow positional bools as function args
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pytest.ini_options]
 addopts = "--cov=meteor --cov-report=xml"

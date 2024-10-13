@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gemmi
 import numpy as np
 import pytest
@@ -15,6 +17,8 @@ UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
 SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
 CARBON2_POSITION = (5.0, 5.2, 5.0)
+
+NP_RNG = np.random.default_rng()
 
 
 @pytest.fixture
@@ -72,7 +76,7 @@ def single_carbon_density(
 
 def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> rs.DataSet:
     density = np.array(single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION))
-    grid_values = np.array(density) + noise_sigma * np.random.randn(*density.shape)
+    grid_values = np.array(density) + noise_sigma * NP_RNG.normal(size=density.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
     map_coefficients = compute_coefficients_from_map(
@@ -120,14 +124,14 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
             "H": h,
             "K": k,
             "L": l,
-            test_diffmap_columns.amplitude: sigma * np.random.randn(number_of_reflections),
-            test_diffmap_columns.phase: np.random.uniform(-180, 180, size=number_of_reflections),
+            test_diffmap_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
+            test_diffmap_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=space_group,
         cell=cell,
     ).infer_mtz_dtypes()
 
-    ds.set_index(["H", "K", "L"], inplace=True)
+    ds = ds.set_index(["H", "K", "L"])
     ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
 
     canonicalize_amplitudes(
@@ -142,30 +146,3 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
     ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
     return ds
-
-
-@pytest.fixture
-def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
-    # TODO remove this; replace with very_noisy_map and noise_free_map
-    noise_sigma = 1.0
-
-    map = gemmi.Ccp4Map()
-    map.grid = single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
-
-    noisy_array = np.array(map.grid) + noise_sigma * np.random.randn(*map.grid.shape)
-    noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
-
-    coefficents1 = compute_coefficients_from_map(
-        ccp4_map=map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noise_free",
-        phase_label="PHIC_noise_free",
-    )
-    coefficents2 = compute_coefficients_from_map(
-        ccp4_map=noisy_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noisy",
-        phase_label="PHIC_noisy",
-    )
-
-    return rs.concat([coefficents1, coefficents2], axis=1)

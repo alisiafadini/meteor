@@ -8,6 +8,8 @@ from pandas import testing as pdt
 from meteor import testing as mt
 from meteor import utils
 
+NP_RNG = np.random.default_rng()
+
 
 def omit_nones_in_list(input_list: list) -> list:
     return [x for x in input_list if x]
@@ -136,7 +138,7 @@ def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
 
 def test_complex_array_dataseries_roundtrip() -> None:
     n = 5
-    carray = np.random.randn(n) + 1j * np.random.randn(n)
+    carray = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
     indices = pd.Index(np.arange(n))
 
     ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, indices)
@@ -157,20 +159,20 @@ def test_complex_array_dataseries_roundtrip() -> None:
 def test_compute_map_from_coefficients(
     random_difference_map: rs.DataSet, test_diffmap_columns: utils.MapColumns
 ) -> None:
-    map = utils.compute_map_from_coefficients(
+    diffmap = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=test_diffmap_columns.amplitude,
         phase_label=test_diffmap_columns.phase,
         map_sampling=1,
     )
-    assert isinstance(map, gemmi.Ccp4Map)
+    assert isinstance(diffmap, gemmi.Ccp4Map)
 
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
 def test_map_to_coefficients_round_trip(
     map_sampling: int, random_difference_map: rs.DataSet, test_diffmap_columns: utils.MapColumns
 ) -> None:
-    map = utils.compute_map_from_coefficients(
+    realspace_map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
         amplitude_label=test_diffmap_columns.amplitude,
         phase_label=test_diffmap_columns.phase,
@@ -180,7 +182,7 @@ def test_map_to_coefficients_round_trip(
     _, dmin = utils.resolution_limits(random_difference_map)
 
     output_coefficients = utils.compute_coefficients_from_map(
-        ccp4_map=map,
+        ccp4_map=realspace_map,
         high_resolution_limit=dmin,
         amplitude_label=test_diffmap_columns.amplitude,
         phase_label=test_diffmap_columns.phase,

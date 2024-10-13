@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Callable
 
 import numpy as np
@@ -95,7 +97,6 @@ def _complex_derivative_from_iterative_tv(
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
-
     derivative = np.copy(initial_derivative)
     difference = initial_derivative - native
 
@@ -142,7 +143,7 @@ def iterative_tv_phase_retrieval(
     output_derivative_phase_column: str = "PHICh",
     convergence_tolerance: float = 1e-3,
     max_iterations: int = 100,
-    tv_weights_to_scan: list[float] = [0.001, 0.01, 0.1, 1.0],
+    tv_weights_to_scan: list[float] | None = None,
 ) -> tuple[rs.DataSet, pd.DataFrame]:
     """
     Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -208,9 +209,11 @@ def iterative_tv_phase_retrieval(
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
-
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
+    if tv_weights_to_scan is None:
+        tv_weights_to_scan = [0.001, 0.01, 0.1, 1.0]
+
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
         delta_amp, delta_phase = complex_array_to_rs_dataseries(
             difference, index=input_dataset.index
