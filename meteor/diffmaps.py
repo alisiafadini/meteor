@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
-import reciprocalspaceship as rs  # noqa: TCH002
 
 from .settings import TV_MAP_SAMPLING
 from .utils import (
@@ -12,6 +11,9 @@ from .utils import (
     rs_dataseries_to_complex_array,
 )
 from .validate import ScalarMaximizer, negentropy
+
+if TYPE_CHECKING:
+    import reciprocalspaceship as rs
 
 DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
