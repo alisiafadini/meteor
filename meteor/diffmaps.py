@@ -26,7 +26,49 @@ def compute_difference_map(
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
-    If `derivative_phases_column` are not supplied....
+    Parameters
+    ----------
+    dataset : rs.DataSet
+        The dataset containing the native and derivative structure factor data.
+    native_amplitudes_column : str
+        Column name for the native amplitudes.
+    native_phases_column : str
+        Column name for the native phases.
+    native_uncertainty_column : str, optional
+        Column name for the native uncertainties (optional). If provided, it will be used to compute
+        uncertainty for the difference map.
+    derivative_amplitudes_column : str
+        Column name for the derivative amplitudes.
+    derivative_phases_column : str, optional
+        Column name for the derivative phases. If not provided, native phases
+        will be used in its place.
+    derivative_uncertainty_column : str, optional
+        Column name for the derivative uncertainties (optional). If provided, it will be used to
+        compute uncertainty for the difference map.
+    output_amplitudes_column : str, optional
+        Column name for the output difference amplitudes. Default is "DF".
+    output_phases_column : str, optional
+        Column name for the output difference phases. Default is "DPHI".
+    output_uncertainties_column : str, optional
+        Column name for the output uncertainties. Default is "SIGDF". This will only be used if
+        both native and derivative uncertainties are provided.
+
+    Returns
+    -------
+    rs.DataSet
+        A copy of the input dataset with added columns for the difference amplitudes,
+        phases, and uncertainties, if specified at input.
+
+    Notes
+    -----
+    This function computes the complex difference between native and derivative structure factors.
+    It converts the amplitude and phase pairs from both the native and derivative structure factor
+    sets into complex numbers, computes the difference, and then converts the result back
+    into amplitudes and phases.
+
+    If uncertainty columns are provided for both native and derivative data,
+    it also propagates the uncertainty of the difference in amplitudes.
+
     """
 
     dataset = dataset.copy()
@@ -48,14 +90,19 @@ def compute_difference_map(
 
     # compute complex differences & convert back to amplitude and phase DataSeries
     delta_complex = derivative_complex - native_complex
-    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(delta_complex, dataset.index)
+    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(
+        delta_complex, dataset.index
+    )
 
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
 
-    if (derivative_uncertainty_column is not None) and (native_uncertainty_column is not None):
+    if (derivative_uncertainty_column is not None) and (
+        native_uncertainty_column is not None
+    ):
         sigdelta_amplitudes = np.sqrt(
-            dataset[derivative_uncertainty_column] ** 2 + dataset[native_uncertainty_column] ** 2
+            dataset[derivative_uncertainty_column] ** 2
+            + dataset[native_uncertainty_column] ** 2
         )
         dataset[output_uncertainties_column] = sigdelta_amplitudes
 
@@ -63,7 +110,9 @@ def compute_difference_map(
 
 
 def compute_kweights(
-    delta_amplitudes: rs.DataSeries, delta_uncertainties: rs.DataSeries, k_parameter: float
+    delta_amplitudes: rs.DataSeries,
+    delta_uncertainties: rs.DataSeries,
+    k_parameter: float,
 ) -> rs.DataSeries:
     """
     Compute weights for each structure factor based on DeltaF and its uncertainty.
@@ -108,35 +157,43 @@ def compute_kweighted_difference_map(
     output_uncertainties_column: str = "SIGDF_KWeighted",
 ) -> rs.DataSet:
     """
-    Compute k-weighted differences between native and derivative amplitudes and phases.
-
-    Assumes that scaling has already been applied to the amplitudes before calling this function.
-
-    Need to either specify k-weight or enable optimization. Dataset modified inplace.
+    Compute k-weighted differences between native and derivative structure factor datasets.
 
     Parameters
     ----------
     dataset : rs.DataSet
-        The input dataset containing columns for native and derivative amplitudes/phases.
+        The dataset containing native and derivative structure factor data.
     k_parameter : float
-        ...
+        Weighting factor applied to the amplitude differences.
     native_amplitudes_column : str
-        Column label for native amplitudes in the dataset.
+        Column name for native amplitudes.
+    native_phases_column : str
+        Column name for native phases.
+    native_uncertainty_column : str
+        Column name for native uncertainties.
     derivative_amplitudes_column : str
-        Column label for derivative amplitudes in the dataset.
-    native_phases_column : str, optional
-        Column label for native phases.
+        Column name for derivative amplitudes.
     derivative_phases_column : str, optional
-        Column label for derivative phases, by default None.
-    uncertainty_native_column : str
-        Column label for uncertainties of native amplitudes.
-    uncertainty_deriv_column : str
-        Column label for uncertainties of derivative amplitudes.
+        Column name for derivative phases. If not provided, native phases will be used.
+    derivative_uncertainty_column : str
+        Column name for derivative uncertainties.
+    output_amplitudes_column : str, optional
+        Column name for k-weighted amplitude differences. Default is "DF_KWeighted".
+    output_phases_column : str, optional
+        Column name for k-weighted phase differences. Default is "DPHI_KWeighted".
+    output_uncertainties_column : str, optional
+        Column name for uncertainties in the k-weighted differences. Default is "SIGDF_KWeighted".
 
     Returns
     -------
-    dataset: rs.DataSet
-        dataset with added columns
+    rs.DataSet
+        A dataset containing the k-weighted amplitude and phase differences, with uncertainties.
+
+    Notes
+    -----
+    This function first computes the standard difference map using `compute_difference_map`.
+    Then, it applies k-weighting to the amplitude differences based on the provided `k_parameter`.
+    Assumes amplitudes have already been scaled prior to invoking this function.
     """
 
     # this label is only used internally in this function
@@ -165,7 +222,9 @@ def compute_kweighted_difference_map(
     output_ds = dataset.copy()
     output_ds[output_amplitudes_column] = diffmap_dataset[diffmap_amplitudes] * weights
     output_ds[output_phases_column] = diffmap_dataset[output_phases_column]
-    output_ds[output_uncertainties_column] = diffmap_dataset[output_uncertainties_column]
+    output_ds[output_uncertainties_column] = diffmap_dataset[
+        output_uncertainties_column
+    ]
 
     return output_ds
 
@@ -242,11 +301,14 @@ def max_negentropy_kweighted_difference_map(
         )
 
         k_weighted_map_array = np.array(k_weighted_map.grid)
+
         return negentropy(k_weighted_map_array)
 
     # optimize k_parameter using negentropy objective
     maximizer = ScalarMaximizer(objective=negentropy_objective)
-    maximizer.optimize_over_explicit_values(arguments_to_scan=k_parameter_values_to_scan)
+    maximizer.optimize_over_explicit_values(
+        arguments_to_scan=k_parameter_values_to_scan
+    )
 
     opt_k_parameter = maximizer.argument_optimum
 
