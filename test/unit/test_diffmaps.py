@@ -7,7 +7,7 @@ import reciprocalspaceship as rs
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
-    max_negentropy_kweighted_difference_map,
+    # max_negentropy_kweighted_difference_map,
     compute_kweights,
 )
 from meteor.utils import MapLabels, compute_map_from_coefficients
@@ -45,23 +45,23 @@ def test_compute_difference_map_smoke(dummy_dataset):
 def test_compute_kweights_smoke(dummy_dataset):
     deltaf = dummy_dataset["NativeAmplitudes"]
     sigdeltaf = dummy_dataset["SigFNative"]
-    result = compute_kweights(deltaf, sigdeltaf, kweight=0.5)
+    result = compute_kweights(deltaf, sigdeltaf, k_parameter=0.5)
     assert isinstance(result, rs.DataSeries)
 
 
 def test_compute_kweighted_difference_map_smoke(dummy_dataset):
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
-        kweight=0.5,
+        k_parameter=0.5,
         native_amplitudes_column="NativeAmplitudes",
-        derivative_amplitudes_column="DerivativeAmplitudes",
         native_phases_column="NativePhases",
+        native_uncertainty_column="SigFNative",
+        derivative_amplitudes_column="DerivativeAmplitudes",
         derivative_phases_column="DerivativePhases",
-        sigf_native_column="SigFNative",
-        sigf_deriv_column="SigFDeriv",
+        derivative_uncertainty_column="SigFDeriv",
     )
     assert isinstance(result, rs.DataSet)
-    assert "DFKWeighted" in result.columns
+    assert "DF_KWeighted" in result.columns
 
 
 def test_compute_difference_map_vs_analytical(dummy_dataset):
@@ -88,13 +88,13 @@ def test_compute_kweights_vs_analytical():
     # Known deltaF and sigdeltaF values
     deltaf = rs.DataSeries([2.0, 3.0, 4.0])
     sigdeltaf = rs.DataSeries([1.0, 1.0, 1.0])
-    kweight = 0.5
+    k_parameter = 0.5
 
     # Expected result (analytically calculated)
     expected_weights = np.array([0.453, 0.406, 0.354])
 
     # Run the function
-    result = compute_kweights(deltaf, sigdeltaf, kweight)
+    result = compute_kweights(deltaf, sigdeltaf, k_parameter)
 
     # Compare results
     np.testing.assert_almost_equal(result.values, expected_weights, decimal=3)
@@ -105,13 +105,13 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
     # Run the function with known kweight
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
-        kweight=0.5,
+        k_parameter=0.5,
         native_amplitudes_column="NativeAmplitudes",
-        derivative_amplitudes_column="DerivativeAmplitudes",
         native_phases_column="NativePhases",
+        derivative_amplitudes_column="DerivativeAmplitudes",
         derivative_phases_column="DerivativePhases",
-        sigf_native_column="SigFNative",
-        sigf_deriv_column="SigFDeriv",
+        native_uncertainty_column="SigFNative",
+        derivative_uncertainty_column="SigFDeriv",
     )
 
     # Correct expected weighted amplitudes (calculated by hand)
@@ -119,7 +119,7 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
 
     # Compare results, using 4 decimal places for comparison
     np.testing.assert_almost_equal(
-        result["DFKWeighted"].values, expected_weighted_amplitudes, decimal=4
+        result["DF_KWeighted"].values, expected_weighted_amplitudes, decimal=4
     )
 
 
@@ -148,20 +148,20 @@ def test_kweight_optimization(test_map_labels: MapLabels, noise_free_map: rs.Dat
     )
 
     epsilon = 0.01
-    kweights_to_scan = [max_negent_kweight - epsilon, max_negent_kweight, max_negent_kweight + epsilon]
+    k_parameters_to_scan = [max_negent_kweight - epsilon, max_negent_kweight, max_negent_kweight + epsilon]
     negentropies = []
-    
-    for kweight in kweights_to_scan:
+
+    for k_parameter in k_parameters_to_scan:
 
         kweighted_diffmap = compute_kweighted_difference_map(
             dataset=combined_dataset,
-            kweight=kweight,
+            k_parameter=k_parameter,
             native_amplitudes_column=test_map_labels.amplitude,
-            derivative_amplitudes_column=very_noisy_map_columns[test_map_labels.amplitude],
             native_phases_column=test_map_labels.phase,
+            native_uncertainty_column=test_map_labels.uncertainty,
+            derivative_amplitudes_column=very_noisy_map_columns[test_map_labels.amplitude],
             derivative_phases_column=very_noisy_map_columns[test_map_labels.phase],
-            sigf_native_column=test_map_labels.uncertainty,
-            sigf_deriv_column=very_noisy_map_columns[test_map_labels.uncertainty],
+            derivative_uncertainty_column=very_noisy_map_columns[test_map_labels.uncertainty],
         )
 
         realspace_map = compute_map_from_coefficients(
@@ -175,7 +175,7 @@ def test_kweight_optimization(test_map_labels: MapLabels, noise_free_map: rs.Dat
         negentropies.append(map_negentropy)
 
     # the optimal k-weight should have the highest negentropy
-    print(kweights_to_scan)
+    print(k_parameters_to_scan)
     print(negentropies)
     assert negentropies[0] < negentropies[1]
     assert negentropies[2] < negentropies[1]
