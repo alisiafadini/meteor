@@ -18,7 +18,7 @@ class ShapeMismatchError(Exception): ...
 
 
 @dataclass
-class MapLabels:
+class MapColumns:
     amplitude: str
     phase: str
     uncertainty: str | None = None
@@ -84,10 +84,7 @@ def canonicalize_amplitudes(
     return None
 
 
-def average_phase_diff_in_degrees(
-    array1: np.ndarray,
-    array2: np.ndarray,
-) -> float:
+def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> float:
     if array1.shape != array2.shape:
         msg = f"inputs not same shape: {array1.shape} vs {array2.shape}"
         raise ShapeMismatchError(msg)
