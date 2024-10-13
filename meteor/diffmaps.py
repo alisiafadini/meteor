@@ -182,7 +182,7 @@ def max_negentropy_kweighted_difference_map(
     output_amplitudes_column: str = "DF_KWeighted",
     output_phases_column: str = "DPHI_KWeighted",
     output_uncertainties_column: str = "SIGDF_KWeighted",
-    k_parameter_values_to_scan=np.linspace(0.0, 1.0, 101),
+    k_parameter_values_to_scan: np.ndarray = np.linspace(0.0, 1.0, 101),
 ) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.

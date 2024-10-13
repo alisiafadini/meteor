@@ -13,7 +13,6 @@ from meteor.utils import MapLabels, compute_map_from_coefficients
 from meteor.validate import negentropy
 
 
-# Dummy dataset for testing
 @pytest.fixture
 def dummy_dataset():
     index = pd.MultiIndex.from_arrays([[1, 1], [1, 2], [1, 3]], names=("H", "K", "L"))
