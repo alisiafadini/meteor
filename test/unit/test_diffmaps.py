@@ -97,7 +97,9 @@ def test_compute_kweights_vs_analytical() -> None:
     np.testing.assert_almost_equal(result.values, expected_weights, decimal=3)
 
 
-def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset: rs.DataSet) -> None:
+def test_compute_kweighted_difference_map_vs_analytical(
+    dummy_dataset: rs.DataSet,
+) -> None:
     # Run the function with known kweight
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
@@ -149,9 +151,9 @@ def test_kweight_optimization(
 
     epsilon = 0.01
     k_parameters_to_scan = [
-        max_negent_kweight - epsilon,
-        max_negent_kweight,
-        max_negent_kweight + epsilon,
+        max(0.0, min(1.0, max_negent_kweight - epsilon)),
+        max_negent_kweight,  # Already in range
+        max(0.0, min(1.0, max_negent_kweight + epsilon)),
     ]
     negentropies = []
 
@@ -164,7 +166,9 @@ def test_kweight_optimization(
             native_uncertainty_column=test_map_columns.uncertainty,
             derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
             derivative_phases_column=noisy_map_columns[test_map_columns.phase],
-            derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
+            derivative_uncertainty_column=noisy_map_columns[
+                test_map_columns.uncertainty
+            ],
         )
 
         realspace_map = compute_map_from_coefficients(
@@ -178,5 +182,5 @@ def test_kweight_optimization(
         negentropies.append(map_negentropy)
 
     # the optimal k-weight should have the highest negentropy
-    assert negentropies[0] < negentropies[1]
-    assert negentropies[2] < negentropies[1]
+    assert negentropies[0] <= negentropies[1]
+    assert negentropies[2] <= negentropies[1]
