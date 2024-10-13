@@ -133,7 +133,7 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
     ).infer_mtz_dtypes()
 
     ds = ds.set_index(["H", "K", "L"])
-    ds[test_diffmap_labels.amplitude] = ds[test_diffmap_labels.amplitude].astype("SFAmplitude")
+    ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
 
     canonicalize_amplitudes(
         ds,
