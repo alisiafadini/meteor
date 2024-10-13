@@ -14,7 +14,7 @@ from meteor.validate import negentropy
 
 
 @pytest.fixture
-def dummy_dataset():
+def dummy_dataset() -> rs.DataSet:
     index = pd.MultiIndex.from_arrays([[1, 1], [1, 2], [1, 3]], names=("H", "K", "L"))
     data = {
         "NativeAmplitudes": np.array([1.0, 2.0]),
@@ -27,7 +27,7 @@ def dummy_dataset():
     return rs.DataSet(data, index=index)
 
 
-def test_compute_difference_map_smoke(dummy_dataset):
+def test_compute_difference_map_smoke(dummy_dataset: rs.DataSet) -> None:
     result = compute_difference_map(
         dataset=dummy_dataset,
         native_amplitudes_column="NativeAmplitudes",
@@ -40,14 +40,14 @@ def test_compute_difference_map_smoke(dummy_dataset):
     assert "DPHI" in result.columns
 
 
-def test_compute_kweights_smoke(dummy_dataset):
+def test_compute_kweights_smoke(dummy_dataset: rs.DataSet) -> None:
     deltaf = dummy_dataset["NativeAmplitudes"]
     sigdeltaf = dummy_dataset["SigFNative"]
     result = compute_kweights(deltaf, sigdeltaf, k_parameter=0.5)
     assert isinstance(result, rs.DataSeries)
 
 
-def test_compute_kweighted_difference_map_smoke(dummy_dataset):
+def test_compute_kweighted_difference_map_smoke(dummy_dataset: rs.DataSet) -> None:
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
         k_parameter=0.5,
@@ -62,7 +62,7 @@ def test_compute_kweighted_difference_map_smoke(dummy_dataset):
     assert "DF_KWeighted" in result.columns
 
 
-def test_compute_difference_map_vs_analytical(dummy_dataset):
+def test_compute_difference_map_vs_analytical(dummy_dataset: rs.DataSet) -> None:
     # Manually calculated expected amplitude and phase differences
     expected_amplitudes = np.array([3.0, 5.0])
     expected_phases = np.array([180.0, 0.0])
@@ -81,7 +81,7 @@ def test_compute_difference_map_vs_analytical(dummy_dataset):
     np.testing.assert_almost_equal(result["DPHI"].values, expected_phases)
 
 
-def test_compute_kweights_vs_analytical():
+def test_compute_kweights_vs_analytical() -> None:
     # Known deltaF and sigdeltaF values
     deltaf = rs.DataSeries([2.0, 3.0, 4.0])
     sigdeltaf = rs.DataSeries([1.0, 1.0, 1.0])
@@ -97,7 +97,7 @@ def test_compute_kweights_vs_analytical():
     np.testing.assert_almost_equal(result.values, expected_weights, decimal=3)
 
 
-def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
+def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset: rs.DataSet) -> None:
     # Run the function with known kweight
     result = compute_kweighted_difference_map(
         dataset=dummy_dataset,
@@ -121,7 +121,7 @@ def test_compute_kweighted_difference_map_vs_analytical(dummy_dataset):
 
 def test_kweight_optimization(
     test_map_labels: MapLabels, noise_free_map: rs.DataSet, noisy_map: rs.DataSet
-):
+) -> None:
     noisy_map_columns = {
         test_map_labels.amplitude: "F_noisy",
         test_map_labels.phase: "PHIC_noisy",
