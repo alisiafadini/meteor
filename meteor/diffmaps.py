@@ -1,6 +1,7 @@
+from typing import Sequence
+
 import numpy as np
 import reciprocalspaceship as rs
-from typing import Sequence
 
 from .settings import TV_MAP_SAMPLING
 from .utils import (
@@ -90,19 +91,14 @@ def compute_difference_map(
 
     # compute complex differences & convert back to amplitude and phase DataSeries
     delta_complex = derivative_complex - native_complex
-    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(
-        delta_complex, dataset.index
-    )
+    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(delta_complex, dataset.index)
 
     dataset[output_amplitudes_column] = delta_amplitudes
     dataset[output_phases_column] = delta_phases
 
-    if (derivative_uncertainty_column is not None) and (
-        native_uncertainty_column is not None
-    ):
+    if (derivative_uncertainty_column is not None) and (native_uncertainty_column is not None):
         sigdelta_amplitudes = np.sqrt(
-            dataset[derivative_uncertainty_column] ** 2
-            + dataset[native_uncertainty_column] ** 2
+            dataset[derivative_uncertainty_column] ** 2 + dataset[native_uncertainty_column] ** 2
         )
         dataset[output_uncertainties_column] = sigdelta_amplitudes
 
@@ -221,9 +217,7 @@ def compute_kweighted_difference_map(
     output_ds = dataset.copy()
     output_ds[output_amplitudes_column] = diffmap_dataset[diffmap_amplitudes] * weights
     output_ds[output_phases_column] = diffmap_dataset[output_phases_column]
-    output_ds[output_uncertainties_column] = diffmap_dataset[
-        output_uncertainties_column
-    ]
+    output_ds[output_uncertainties_column] = diffmap_dataset[output_uncertainties_column]
 
     return output_ds
 
@@ -305,9 +299,7 @@ def max_negentropy_kweighted_difference_map(
 
     # optimize k_parameter using negentropy objective
     maximizer = ScalarMaximizer(objective=negentropy_objective)
-    maximizer.optimize_over_explicit_values(
-        arguments_to_scan=k_parameter_values_to_scan
-    )
+    maximizer.optimize_over_explicit_values(arguments_to_scan=k_parameter_values_to_scan)
 
     opt_k_parameter = maximizer.argument_optimum
 

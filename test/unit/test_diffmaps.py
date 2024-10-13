@@ -129,6 +129,10 @@ def test_kweight_optimization(
         axis=1,
     )
 
+    if not isinstance(test_map_columns.uncertainty, str):
+        msg = "test_map_columns.uncertainty undefined"
+        raise ValueError(msg)
+
     _, max_negent_kweight = max_negentropy_kweighted_difference_map(
         combined_dataset,
         native_amplitudes_column=test_map_columns.amplitude,
@@ -147,6 +151,10 @@ def test_kweight_optimization(
     ]
     negentropies = []
 
+    if not isinstance(test_map_columns.uncertainty, str):
+        msg = "test_map_columns.uncertainty undefined"
+        raise ValueError(msg)
+
     for k_parameter in k_parameters_to_scan:
         kweighted_diffmap = compute_kweighted_difference_map(
             dataset=combined_dataset,
@@ -156,9 +164,7 @@ def test_kweight_optimization(
             native_uncertainty_column=test_map_columns.uncertainty,
             derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
             derivative_phases_column=noisy_map_columns[test_map_columns.phase],
-            derivative_uncertainty_column=noisy_map_columns[
-                test_map_columns.uncertainty
-            ],
+            derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
         )
 
         realspace_map = compute_map_from_coefficients(
