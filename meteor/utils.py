@@ -121,9 +121,7 @@ def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSer
             " indices. One possible way: Series.align(other, join='inner', axis=0).",
             exptn,
         )
-    complex_structure_factors = amplitudes.to_numpy() * np.exp(
-        1j * np.deg2rad(phases.to_numpy())
-    )
+    complex_structure_factors = amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
     return complex_structure_factors
 
 
