@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
+import reciprocalspaceship as rs
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
-import reciprocalspaceship as rs
 
 from meteor.iterative import (
     _complex_derivative_from_iterative_tv,
@@ -17,12 +17,11 @@ from meteor.iterative import (
 )
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
-from meteor.utils import compute_map_from_coefficients, MapColumns
+from meteor.utils import MapColumns, compute_map_from_coefficients
 from meteor.validate import negentropy
 
 if TYPE_CHECKING:
     import gemmi
-    
 
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
@@ -89,14 +88,14 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet, test_map_columns: MapColumns) -> None:
+def test_iterative_tv(
+    noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet, test_map_columns: MapColumns
+) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
     noisy_map_columns = MapColumns(
-        amplitude="F_noisy",
-        phase="PHIC_noisy",
-        uncertainty="SIGF_noisy"
+        amplitude="F_noisy", phase="PHIC_noisy", uncertainty="SIGF_noisy"
     )
 
     noisy_column_renaming = {
@@ -105,10 +104,9 @@ def test_iterative_tv(noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet, te
         test_map_columns.uncertainty: noisy_map_columns.uncertainty,
     }
 
-    noisy_and_noise_free = rs.concat([
-        noise_free_map,
-        very_noisy_map.rename(columns=noisy_column_renaming)
-    ], axis=1)
+    noisy_and_noise_free = rs.concat(
+        [noise_free_map, very_noisy_map.rename(columns=noisy_column_renaming)], axis=1
+    )
 
     result, metadata = iterative_tv_phase_retrieval(
         noisy_and_noise_free,
