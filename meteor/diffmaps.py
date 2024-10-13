@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from typing import Sequence
 
 import numpy as np
-import reciprocalspaceship as rs
+import reciprocalspaceship as rs  # noqa: TCH002
 
 from .settings import TV_MAP_SAMPLING
 from .utils import (
@@ -10,6 +12,8 @@ from .utils import (
     rs_dataseries_to_complex_array,
 )
 from .validate import ScalarMaximizer, negentropy
+
+DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 
 def compute_difference_map(
@@ -71,7 +75,6 @@ def compute_difference_map(
     If uncertainty columns are provided for both native and derivative data,
     it also propagates the uncertainty of the difference in amplitudes.
     """
-
     dataset = dataset.copy()
 
     # Convert native and derivative amplitude/phase pairs to complex arrays
@@ -191,7 +194,6 @@ def compute_kweighted_difference_map(
     Then, it applies k-weighting to the amplitude differences based on the provided `k_parameter`.
     Assumes amplitudes have already been scaled prior to invoking this function.
     """
-
     # this label is only used internally in this function
     diffmap_amplitudes = "__INTERNAL_DF_LABEL"
 
@@ -234,7 +236,7 @@ def max_negentropy_kweighted_difference_map(
     output_amplitudes_column: str = "DF_KWeighted",
     output_phases_column: str = "DPHI_KWeighted",
     output_uncertainties_column: str = "SIGDF_KWeighted",
-    k_parameter_values_to_scan: np.ndarray | Sequence[float] = np.linspace(0.0, 1.0, 101),
+    k_parameter_values_to_scan: np.ndarray | Sequence[float] = DEFAULT_KPARAMS_TO_SCAN,
 ) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.

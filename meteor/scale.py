@@ -105,7 +105,6 @@ def compute_scale_factors(
     # if we are going to weight the scaling using the uncertainty values, then the weights will be
     #    inverse_sigma = 1 / sqrt{ sigmaA ** 2 + sigmaB ** 2 }
     if reference_uncertainties is not None and to_scale_uncertainties is not None:
-
         if not reference_uncertainties.index.equals(reference_values.index):
             msg = "indices of `reference_uncertainties`, `reference_values` differ, cannot combine"
             raise IndexError(msg)

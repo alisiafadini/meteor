@@ -147,34 +147,3 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
     ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
     return ds
-
-
-@pytest.fixture
-def single_atom_maps_noisy_and_noise_free() -> rs.DataSet:
-    # TODO remove this; replace with very_noisy_map and noise_free_map
-    noise_sigma = 1.0
-
-    noise_free_map = gemmi.Ccp4Map()
-    noise_free_map.grid = single_carbon_density(
-        CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION
-    )
-
-    noisy_array = np.array(noise_free_map.grid) + noise_sigma * np.random.randn(
-        *noise_free_map.grid.shape
-    )
-    noisy_map = numpy_array_to_map(noisy_array, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
-
-    coefficents1 = compute_coefficients_from_map(
-        ccp4_map=noise_free_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noise_free",
-        phase_label="PHIC_noise_free",
-    )
-    coefficents2 = compute_coefficients_from_map(
-        ccp4_map=noisy_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label="F_noisy",
-        phase_label="PHIC_noisy",
-    )
-
-    return rs.concat([coefficents1, coefficents2], axis=1)

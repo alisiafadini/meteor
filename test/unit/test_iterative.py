@@ -8,6 +8,7 @@ import pandas.testing as pdt
 import pytest
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
+import reciprocalspaceship as rs
 
 from meteor.iterative import (
     _complex_derivative_from_iterative_tv,
@@ -16,12 +17,12 @@ from meteor.iterative import (
 )
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
-from meteor.utils import compute_map_from_coefficients
+from meteor.utils import compute_map_from_coefficients, MapColumns
 from meteor.validate import negentropy
 
 if TYPE_CHECKING:
     import gemmi
-    import reciprocalspaceship as rs
+    
 
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
@@ -88,15 +89,32 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None:
+def test_iterative_tv(noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet, test_map_columns: MapColumns) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
+    noisy_map_columns = MapColumns(
+        amplitude="F_noisy",
+        phase="PHIC_noisy",
+        uncertainty="SIGF_noisy"
+    )
+
+    noisy_column_renaming = {
+        test_map_columns.amplitude: noisy_map_columns.amplitude,
+        test_map_columns.phase: noisy_map_columns.phase,
+        test_map_columns.uncertainty: noisy_map_columns.uncertainty,
+    }
+
+    noisy_and_noise_free = rs.concat([
+        noise_free_map,
+        very_noisy_map.rename(columns=noisy_column_renaming)
+    ], axis=1)
+
     result, metadata = iterative_tv_phase_retrieval(
-        single_atom_maps_noisy_and_noise_free,
-        native_amplitude_column="F_noise_free",
-        calculated_phase_column="PHIC_noise_free",
-        derivative_amplitude_column="F_noisy",
+        noisy_and_noise_free,
+        native_amplitude_column=test_map_columns.amplitude,
+        calculated_phase_column=test_map_columns.phase,
+        derivative_amplitude_column=noisy_map_columns.amplitude,
         output_derivative_phase_column="PHIC_denoised",
         tv_weights_to_scan=[0.01, 0.1, 1.0],
         max_iterations=100,
@@ -105,10 +123,10 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
 
     # make sure output columns that should not be altered are in fact the same
     assert_phases_allclose(
-        result["PHIC_noise_free"], single_atom_maps_noisy_and_noise_free["PHIC_noise_free"]
+        result[test_map_columns.phase], noisy_and_noise_free[test_map_columns.phase]
     )
-    for label in ["F_noise_free", "F_noisy"]:
-        pdt.assert_series_equal(result[label], single_atom_maps_noisy_and_noise_free[label])
+    for label in [test_map_columns.amplitude, noisy_map_columns.amplitude]:
+        pdt.assert_series_equal(result[label], noisy_and_noise_free[label])
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
@@ -116,20 +134,20 @@ def test_iterative_tv(single_atom_maps_noisy_and_noise_free: rs.DataSet) -> None
     # test correctness by comparing denoised dataset to noise-free
     map_sampling = 3
     noise_free_density = compute_map_from_coefficients(
-        map_coefficients=single_atom_maps_noisy_and_noise_free,
-        amplitude_label="F_noise_free",
-        phase_label="PHIC_noise_free",
+        map_coefficients=noisy_and_noise_free,
+        amplitude_label=test_map_columns.amplitude,
+        phase_label=test_map_columns.phase,
         map_sampling=map_sampling,
     )
     noisy_density = compute_map_from_coefficients(
-        map_coefficients=single_atom_maps_noisy_and_noise_free,
-        amplitude_label="F_noisy",
-        phase_label="PHIC_noisy",
+        map_coefficients=noisy_and_noise_free,
+        amplitude_label=noisy_map_columns.amplitude,
+        phase_label=noisy_map_columns.phase,
         map_sampling=map_sampling,
     )
     denoised_density = compute_map_from_coefficients(
         map_coefficients=result,
-        amplitude_label="F_noisy",
+        amplitude_label=noisy_map_columns.amplitude,
         phase_label="PHIC_denoised",
         map_sampling=map_sampling,
     )

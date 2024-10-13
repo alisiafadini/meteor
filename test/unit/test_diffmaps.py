@@ -131,7 +131,7 @@ def test_kweight_optimization(
 
     if not isinstance(test_map_columns.uncertainty, str):
         msg = "test_map_columns.uncertainty undefined"
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     _, max_negent_kweight = max_negentropy_kweighted_difference_map(
         combined_dataset,
@@ -153,7 +153,7 @@ def test_kweight_optimization(
 
     if not isinstance(test_map_columns.uncertainty, str):
         msg = "test_map_columns.uncertainty undefined"
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     for k_parameter in k_parameters_to_scan:
         kweighted_diffmap = compute_kweighted_difference_map(
