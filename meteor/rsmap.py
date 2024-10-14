@@ -45,7 +45,6 @@ class Map(rs.DataSet):
                 msg = f"no index set for {input_series.__name__}"
                 raise AttributeError(msg)
 
-        # TODO: check DTypes?
         rs_dataset = rs.concat(inputs, axis=1)
         rs_dataset.cell = cell
         rs_dataset.spacegroup = spacegroup
@@ -56,12 +55,28 @@ class Map(rs.DataSet):
         if uncertainties is not None:
             self._uncertainty_column = uncertainty_column
 
+        self._check_types()
+
         canonicalize_amplitudes(
             self,
             amplitude_label=amplitude_column,
             phase_label=phase_column,
             inplace=True,
         )
+
+    # TODO: ugly
+    def _check_types(self) -> None:
+        amplitude_types = [rs.StructureFactorAmplitudeDtype, rs.FriedelStructureFactorAmplitudeDtype, rs.NormalizedStructureFactorAmplitudeDtype, rs.AnomalousDifferenceDtype]
+        phase_types = [rs.PhaseDtype]
+        uncertainty_types = [rs.StandardDeviationDtype, rs.StandardDeviationFriedelIDtype, rs.StandardDeviationFriedelSFDtype]
+        
+        if self[self.amplitude_column].dtype not in amplitude_types:
+            self[self.amplitude_column] = self[self.amplitude_column].astype(rs.StructureFactorAmplitudeDtype())
+        if self[self.phase_column].dtype not in phase_types:
+            self[self.phase_column] = self[self.phase_column].astype(rs.PhaseDtype())
+        if self.has_uncertainties:
+            if self[self.uncertainty_column].dtype not in uncertainty_types:
+                self[self.uncertainty_column] = self[self.uncertainty_column].astype(rs.StandardDeviationDtype())
 
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
@@ -94,8 +109,12 @@ class Map(rs.DataSet):
         self._phase_column = name
 
     @property
+    def has_uncertainties(self) -> bool:
+        return hasattr(self, "_uncertainty_column")
+
+    @property
     def uncertainty_column(self) -> str:
-        if not hasattr(self, "_uncertainty_column"):
+        if not self.has_uncertainties:
             msg = "uncertainty_column not set, no uncertainties"
             raise AttributeError(msg)
         return self._uncertainty_column
@@ -106,7 +125,7 @@ class Map(rs.DataSet):
         self._uncertainty_column = name
 
     def set_uncertainties(self, uncertainties: rs.DataSeries, *, name: str = "SIGF") -> None:
-        if hasattr(self, "_uncertainty_column"):
+        if self.has_uncertainties:
             self.drop(self.uncertainty_column, axis=1, inplace=True)
         self._uncertainty_column = name
         position = len(self.columns)
@@ -122,7 +141,7 @@ class Map(rs.DataSet):
 
     @property
     def uncertainties(self) -> rs.DataSeries:
-        if not hasattr(self, "_uncertainty_column"):
+        if not self.has_uncertainties:
             msg = "Map object has no uncertainties set, see Map.set_uncertainties(...)"
             raise KeyError(msg)
         return self[self.uncertainty_column]

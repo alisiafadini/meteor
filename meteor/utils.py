@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
+from reciprocalspaceship.utils import canonicalize_phases
 from pandas.testing import assert_index_equal
 
 if TYPE_CHECKING:
@@ -77,7 +78,7 @@ def canonicalize_amplitudes(
     dataset[amplitude_label] = np.abs(dataset[amplitude_label])
     dataset.loc[negative_amplitude_indices, phase_label] += 180.0
 
-    dataset.canonicalize_phases(inplace=True)
+    dataset[phase_label] = canonicalize_phases(dataset[phase_label])
 
     if not inplace:
         return dataset
