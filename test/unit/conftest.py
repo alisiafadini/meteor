@@ -5,13 +5,12 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
+from meteor.rsmap import Map
 from meteor.utils import (
     MapColumns,
     canonicalize_amplitudes,
-    compute_coefficients_from_map,
     numpy_array_to_map,
 )
-from meteor.rsmap import Map
 
 RESOLUTION = 1.0
 UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
@@ -81,12 +80,12 @@ def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
     grid_values = density_array + noise_sigma * NP_RNG.normal(size=density_array.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
-    map_coefficients = Map.from_gemmi(ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION)
+    map_coefficients = Map.from_ccp4_map(ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION)
 
     uncertainties = noise_sigma * np.ones_like(map_coefficients.phases)
     uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
     uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
-    
+
     map_coefficients.set_uncertainties(uncertainties)
 
     return map_coefficients

@@ -1,14 +1,12 @@
-
-
-import pytest
 import gemmi
 import numpy as np
 import pandas as pd
+import pytest
+
 from meteor.rsmap import Map
 
 
 def test_column_names(noise_free_map: Map) -> None:
-
     # default
     assert noise_free_map.amplitude_column == "F"
     assert noise_free_map.phase_column == "PHI"
@@ -26,7 +24,7 @@ def test_column_names(noise_free_map: Map) -> None:
     assert noise_free_map.uncertainty_column == "SIGF2"
     assert np.all(noise_free_map.columns == ["F2", "PHI2", "SIGF2"])
 
-    
+
 def test_setitem(noise_free_map: Map) -> None:
     noise_free_map[noise_free_map.amplitude_column] = noise_free_map.amplitudes
     noise_free_map[noise_free_map.phase_column] = noise_free_map.phases
@@ -42,9 +40,13 @@ def test_insert_disabled(noise_free_map: Map) -> None:
 
 
 def test_set_uncertainties(noise_free_map: Map) -> None:
+    assert type(noise_free_map) is Map
     uncertainties = noise_free_map.uncertainties
+
+    assert hasattr(noise_free_map, "_uncertainty_column")
     noise_free_map.drop(noise_free_map.uncertainty_column, axis=1, inplace=True)
-    
+
+    assert type(noise_free_map) is Map, "***"
     delattr(noise_free_map, "_uncertainty_column")
     with pytest.raises(KeyError):
         noise_free_map.uncertainties
@@ -54,26 +56,29 @@ def test_set_uncertainties(noise_free_map: Map) -> None:
 
 
 def test_complex(noise_free_map: Map) -> None:
-    ...
+    c_array = noise_free_map.complex
+    assert isinstance(c_array, np.ndarray)
+    assert np.issubdtype(c_array.dtype, np.complexfloating)
 
 
 def test_to_structurefactor(noise_free_map: Map) -> None:
-    ...
+    c_dataseries = noise_free_map.to_structurefactor()
+    c_array = noise_free_map.complex
+    np.testing.assert_almost_equal(c_dataseries.to_numpy(), c_array)
 
 
-def test_to_gemmi(noise_free_map: Map) -> None:
-    ...
+def test_to_ccp4_map(noise_free_map: Map) -> None:
+    ccp4_map = noise_free_map.to_ccp4_map(map_sampling=3)
+    assert ccp4_map.grid.shape == (30, 30, 30)
 
 
-def test_from_dataset() -> None:
-    ...
+def test_from_dataset() -> None: ...
 
 
-def from_structurefactor() -> None:
-    ...
+def from_structurefactor() -> None: ...
 
 
-def test_from_gemmi(ccp4_map: gemmi.Ccp4Map) -> None:
+def test_from_ccp4_map(ccp4_map: gemmi.Ccp4Map) -> None:
     resolution = 1.0
-    rsmap = Map.from_gemmi(ccp4_map=ccp4_map, high_resolution_limit=resolution)
+    rsmap = Map.from_ccp4_map(ccp4_map, high_resolution_limit=resolution)
     assert len(rsmap) > 0

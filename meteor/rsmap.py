@@ -6,7 +6,6 @@ import gemmi
 import reciprocalspaceship as rs
 
 from meteor.utils import (
-    ShapeMismatchError,
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
     rs_dataseries_to_complex_array,
@@ -19,6 +18,12 @@ if TYPE_CHECKING:
     import pandas as pd
 
 GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+DEFAULT_AMPLITUDE_COLUMN = "F"
+DEFAULT_PHASE_COLUMN = "PHI"
+DEFAULT_UNCERTAINTY_COLUMN = "SIGF"
+
+CellType = tuple[float, float, float, float, float, float] | gemmi.UnitCell
+SpaceGroupType = int | str | gemmi.SpaceGroup
 
 
 class Map(rs.DataSet):
@@ -28,11 +33,9 @@ class Map(rs.DataSet):
         amplitudes: rs.DataSeries,
         phases: rs.DataSeries,
         uncertainties: rs.DataSeries | None = None,
-        amplitude_column: str = "F",
-        phase_column: str = "PHI",
-        uncertainty_column: str = "SIGF",
+        cell: CellType | None = None,
+        spacegroup: SpaceGroupType | None = None,
     ) -> None:
-
         inputs = [amplitudes, phases]
         if uncertainties:
             inputs.append(uncertainties)
@@ -43,13 +46,15 @@ class Map(rs.DataSet):
                 raise AttributeError(msg)
 
         # TODO: check DTypes?
+        rs_dataset = rs.concat(inputs, axis=1)
+        rs_dataset.cell = cell
+        rs_dataset.spacegroup = spacegroup
+        super().__init__(rs_dataset)
 
-        super().__init__(rs.concat(inputs, axis=1))
-
-        self._amplitude_column = amplitude_column
-        self._phase_column = phase_column
+        self._amplitude_column = DEFAULT_AMPLITUDE_COLUMN
+        self._phase_column = DEFAULT_PHASE_COLUMN
         if uncertainties:
-            self._uncertainty_column = uncertainty_column
+            self._uncertainty_column = DEFAULT_UNCERTAINTY_COLUMN
 
         canonicalize_amplitudes(
             self,
@@ -91,7 +96,8 @@ class Map(rs.DataSet):
     @property
     def uncertainty_column(self) -> str:
         if not hasattr(self, "_uncertainty_column"):
-            raise AttributeError("uncertainty_column not set, no uncertainties")
+            msg = "uncertainty_column not set, no uncertainties"
+            raise AttributeError(msg)
         return self._uncertainty_column
 
     @uncertainty_column.setter
@@ -129,7 +135,7 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self.amplitude_column, self.phase_column)
 
-    def to_gemmi(self, *, map_sampling: int) -> gemmi.Ccp4Map:
+    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
         map_coefficients_gemmi_format = super().to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
@@ -137,7 +143,7 @@ class Map(rs.DataSet):
         )
         ccp4_map.update_ccp4_header()
         return ccp4_map
-    
+
     @classmethod
     def from_dataset(
         cls,
@@ -146,31 +152,34 @@ class Map(rs.DataSet):
         amplitude_column: str,
         phase_column: str,
         uncertainty_column: str | None = None,
-    ):
+    ) -> Map:
         return cls(
             amplitudes=dataset[amplitude_column],
             phases=dataset[phase_column],
             uncertainties=(dataset[uncertainty_column] if uncertainty_column else None),
+            spacegroup=dataset.spacegroup,
+            cell=dataset.cell,
         )
-    
+
     # TODO: can we infer index if `complex_structure_factors` is DataSeries?
     @classmethod
-    def from_structurefactor(cls, complex_structurefactor: np.ndarray, *, index: pd.Index):
+    def from_structurefactor(
+        cls, complex_structurefactor: np.ndarray, *, index: pd.Index, cell=None, spacegroup=None
+    ) -> Map:
         amplitudes, phases = complex_array_to_rs_dataseries(
-            complex_structure_factors=complex_structurefactor,
-            index=index
+            complex_structure_factors=complex_structurefactor, index=index
         )
-        return cls(amplitudes=amplitudes, phases=phases)
+        return cls(amplitudes=amplitudes, phases=phases, spacegroup=spacegroup, cell=cell)
 
     @classmethod
-    def from_gemmi(
+    def from_ccp4_map(
         cls,
-        *,
         ccp4_map: gemmi.Ccp4Map,
+        *,
         high_resolution_limit: float,
         amplitude_column: str = "F",
         phase_column: str = "PHI",
-    ):
+    ) -> Map:
         # to ensure we include the final shell of reflections, add a small buffer to the resolution
         gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
         data = gemmi_structure_factors.prepare_asu_data(
@@ -189,10 +198,12 @@ class Map(rs.DataSet):
         mtz.switch_to_asu_hkl()
 
         # TODO: why doesnt this work?
-        #dataset = super().from_gemmi(mtz)
+        # dataset = super().from_gemmi(mtz)
         dataset = rs.DataSet.from_gemmi(mtz)
 
-        return cls.from_dataset(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
+        return cls.from_dataset(
+            dataset, amplitude_column=amplitude_column, phase_column=phase_column
+        )
 
     @classmethod
     def from_mtz_file(
@@ -202,7 +213,7 @@ class Map(rs.DataSet):
         amplitude_column: str,
         phase_column: str,
         uncertainty_column: str,
-    ):
+    ) -> Map:
         dataset = super().from_mtz_file(file_path)
         return cls.from_dataset(
             dataset,
@@ -210,3 +221,8 @@ class Map(rs.DataSet):
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
         )
+
+    # TODO: verify these OK
+    # def from_records(): ...
+    # def from_dict(): ...
+    # def drop(): ...
