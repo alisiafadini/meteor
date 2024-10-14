@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
 
 import gemmi
+import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 
 from meteor.utils import (
@@ -14,16 +16,11 @@ from meteor.utils import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import numpy as np
-    import pandas as pd
 
 GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
-DEFAULT_AMPLITUDE_COLUMN = "F"
-DEFAULT_PHASE_COLUMN = "PHI"
-DEFAULT_UNCERTAINTY_COLUMN = "SIGF"
 
-CellType = tuple[float, float, float, float, float, float] | gemmi.UnitCell
-SpaceGroupType = int | str | gemmi.SpaceGroup
+CellType = Type[tuple[float, float, float, float, float, float] | gemmi.UnitCell]
+SpaceGroupType = Type[int | str | gemmi.SpaceGroup]
 
 
 class Map(rs.DataSet):
@@ -35,9 +32,12 @@ class Map(rs.DataSet):
         uncertainties: rs.DataSeries | None = None,
         cell: CellType | None = None,
         spacegroup: SpaceGroupType | None = None,
+        amplitude_column: str = "F",
+        phase_column: str = "PHI",
+        uncertainty_column: str = "SIGF",
     ) -> None:
         inputs = [amplitudes, phases]
-        if uncertainties:
+        if uncertainties is not None:
             inputs.append(uncertainties)
 
         for input_series in inputs:
@@ -51,15 +51,15 @@ class Map(rs.DataSet):
         rs_dataset.spacegroup = spacegroup
         super().__init__(rs_dataset)
 
-        self._amplitude_column = DEFAULT_AMPLITUDE_COLUMN
-        self._phase_column = DEFAULT_PHASE_COLUMN
-        if uncertainties:
-            self._uncertainty_column = DEFAULT_UNCERTAINTY_COLUMN
+        self._amplitude_column = amplitude_column
+        self._phase_column = phase_column
+        if uncertainties is not None:
+            self._uncertainty_column = uncertainty_column
 
         canonicalize_amplitudes(
             self,
-            amplitude_label=self._amplitude_column,
-            phase_label=self._phase_column,
+            amplitude_label=amplitude_column,
+            phase_label=phase_column,
             inplace=True,
         )
 
@@ -153,22 +153,42 @@ class Map(rs.DataSet):
         phase_column: str,
         uncertainty_column: str | None = None,
     ) -> Map:
-        return cls(
+        map_obj = cls(
             amplitudes=dataset[amplitude_column],
             phases=dataset[phase_column],
             uncertainties=(dataset[uncertainty_column] if uncertainty_column else None),
             spacegroup=dataset.spacegroup,
             cell=dataset.cell,
+            amplitude_column=amplitude_column,
+            phase_column=phase_column,
+            uncertainty_column=(uncertainty_column if uncertainty_column else "None"),
         )
+        return map_obj
 
-    # TODO: can we infer index if `complex_structure_factors` is DataSeries?
     @classmethod
     def from_structurefactor(
-        cls, complex_structurefactor: np.ndarray, *, index: pd.Index, cell=None, spacegroup=None
+        cls,
+        complex_structurefactor: np.ndarray | rs.DataSeries,
+        *,
+        index: pd.Index | None = None,
+        cell: CellType | None = None,
+        spacegroup: SpaceGroupType | None = None,
     ) -> Map:
-        amplitudes, phases = complex_array_to_rs_dataseries(
-            complex_structure_factors=complex_structurefactor, index=index
-        )
+        if isinstance(complex_structurefactor, np.ndarray):
+            if not isinstance(index, pd.Index):
+                msg = "if `complex_structurefactor` is a numpy array, `index` must be provided"
+                raise TypeError(msg)
+            amplitudes, phases = complex_array_to_rs_dataseries(
+                complex_structure_factors=complex_structurefactor, index=index
+            )
+
+        elif isinstance(complex_structurefactor, rs.DataSeries):
+            amplitudes, phases = super().from_structurefactor(complex_structurefactor)
+
+        else:
+            msg = f"`complex_structurefactor` invalid type: {type(complex_structurefactor)}"
+            raise TypeError(msg)
+
         return cls(amplitudes=amplitudes, phases=phases, spacegroup=spacegroup, cell=cell)
 
     @classmethod

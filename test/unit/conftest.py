@@ -8,7 +8,6 @@ import reciprocalspaceship as rs
 from meteor.rsmap import Map
 from meteor.utils import (
     MapColumns,
-    canonicalize_amplitudes,
     numpy_array_to_map,
 )
 
@@ -25,7 +24,7 @@ NP_RNG = np.random.default_rng()
 def test_map_columns() -> MapColumns:
     return MapColumns(
         amplitude="F",
-        phase="PHIC",
+        phase="PHI",
         uncertainty="SIGF",
     )
 
@@ -34,7 +33,7 @@ def test_map_columns() -> MapColumns:
 def test_diffmap_columns() -> MapColumns:
     return MapColumns(
         amplitude="DF",
-        phase="PHIC",
+        phase="DPHI",
         uncertainty="SIGDF",
     )
 
@@ -112,11 +111,12 @@ def very_noisy_map() -> Map:
 
 
 @pytest.fixture
-def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
-    resolution = 1.0
-    cell = gemmi.UnitCell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    space_group = gemmi.SpaceGroup(1)
-    hall = rs.utils.generate_reciprocal_asu(cell, space_group, resolution, anomalous=False)
+def random_difference_map() -> Map:
+    ampli_col_name = "DF"
+    phase_col_name = "DPHI"
+    uncty_col_name = "SIGDF"
+
+    hall = rs.utils.generate_reciprocal_asu(UNIT_CELL, SPACE_GROUP, RESOLUTION, anomalous=False)
     sigma = 1.0
 
     h, k, l = hall.T  # noqa: E741
@@ -127,25 +127,25 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> rs.DataSet:
             "H": h,
             "K": k,
             "L": l,
-            test_diffmap_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
-            test_diffmap_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
+            ampli_col_name: sigma * NP_RNG.normal(size=number_of_reflections),
+            phase_col_name: NP_RNG.uniform(-180, 180, size=number_of_reflections),
         },
-        spacegroup=space_group,
-        cell=cell,
+        spacegroup=SPACE_GROUP,
+        cell=UNIT_CELL,
     ).infer_mtz_dtypes()
 
     ds = ds.set_index(["H", "K", "L"])
-    ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
+    ds[ampli_col_name] = ds[ampli_col_name].astype("SFAmplitude")
 
-    canonicalize_amplitudes(
+    uncertainties = sigma * np.ones_like(ds[ampli_col_name])
+    uncertainties = rs.DataSeries(uncertainties, index=ds.index)
+    ds[uncty_col_name] = uncertainties.astype(rs.StandardDeviationDtype())
+
+    rsmap = Map.from_dataset(
         ds,
-        amplitude_label=test_diffmap_columns.amplitude,
-        phase_label=test_diffmap_columns.phase,
-        inplace=True,
+        amplitude_column=ampli_col_name,
+        phase_column=phase_col_name,
+        uncertainty_column=uncty_col_name,
     )
 
-    uncertainties = sigma * np.ones_like(ds[test_diffmap_columns.amplitude])
-    uncertainties = rs.DataSeries(uncertainties, index=ds.index)
-    ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
-
-    return ds
+    return rsmap

@@ -95,6 +95,8 @@ def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> flo
     return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
 
 
+# TODO: the following two functions are duplicated in reciprocalspaceship
+# https://github.com/rs-station/reciprocalspaceship/blob/ceae60e293bfdb3e969d0e3e2b53fa3a2b9e34f9/reciprocalspaceship/utils/structurefactors.py#L8
 def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
     """
     Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
@@ -192,6 +194,7 @@ def numpy_array_to_map(
     return ccp4_map
 
 
+# TODO: do we need these two methods anymore?
 def compute_map_from_coefficients(
     *,
     map_coefficients: rs.DataSet,

@@ -2,6 +2,7 @@ import gemmi
 import numpy as np
 import pandas as pd
 import pytest
+import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
 
@@ -72,10 +73,24 @@ def test_to_ccp4_map(noise_free_map: Map) -> None:
     assert ccp4_map.grid.shape == (30, 30, 30)
 
 
-def test_from_dataset() -> None: ...
+def test_from_dataset(noise_free_map: Map) -> None:
+    map_as_dataset = rs.DataSet(noise_free_map)
+    map2 = Map.from_dataset(
+        map_as_dataset,
+        amplitude_column=noise_free_map.amplitude_column,
+        phase_column=noise_free_map.phase_column,
+    )
+    pd.testing.assert_frame_equal(noise_free_map, map2)
 
 
-def from_structurefactor() -> None: ...
+def from_structurefactor(noise_free_map: Map) -> None:
+    # first interface, complex array
+    map2 = Map.from_structurefactor(noise_free_map.complex, index=noise_free_map.index)
+    pd.testing.assert_frame_equal(noise_free_map, map2)
+
+    # second interface, complex DataSeries
+    map2 = Map.from_structurefactor(noise_free_map.to_structurefactor())
+    pd.testing.assert_frame_equal(noise_free_map, map2)
 
 
 def test_from_ccp4_map(ccp4_map: gemmi.Ccp4Map) -> None:
