@@ -49,7 +49,7 @@ def test_set_uncertainties(noise_free_map: Map) -> None:
     assert type(noise_free_map) is Map, "***"
     delattr(noise_free_map, "_uncertainty_column")
     with pytest.raises(KeyError):
-        noise_free_map.uncertainties
+        _ = noise_free_map.uncertainties
 
     noise_free_map.set_uncertainties(uncertainties)
     pd.testing.assert_series_equal(noise_free_map.uncertainties, uncertainties)

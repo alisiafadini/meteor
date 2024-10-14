@@ -70,7 +70,7 @@ class Map(rs.DataSet):
             raise KeyError(msg)
         super().__setitem__(key, value)
 
-    def insert(self, *args, **kwargs) -> None:
+    def insert(self, *args, **kwargs) -> None:  # noqa: ARG002
         msg = "only amplitude, phase, and uncertainty columns allowed; to add uncertainties "
         msg += "after object creation, see Map.set_uncertainties(...)"
         raise NotImplementedError(msg)

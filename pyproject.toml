@@ -68,7 +68,7 @@ lint.ignore = [
     "TD003",
     "FIX002", # too verbose descriptions of todos
     "ISC001",
-    "PLR0913", # TEMPORARYLY DISABLED too many arguments in function definition
+    "PD002",  # allow inplace modifications
 ]
 exclude = [
     "build/",
