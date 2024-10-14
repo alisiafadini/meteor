@@ -42,12 +42,9 @@ class Map(rs.DataSet):
                 msg = f"no index set for {input_series.__name__}"
                 raise AttributeError(msg)
 
-        dataset = rs.concat(inputs, axis=1)
-        if len(dataset) == 0:
-            msg = "no common indices found in inputs"
-            raise ValueError(msg)
-        
-        super().__init__(dataset)
+        # TODO: check DTypes?
+
+        super().__init__(rs.concat(inputs, axis=1))
 
         self._amplitude_column = amplitude_column
         self._phase_column = phase_column
@@ -64,13 +61,13 @@ class Map(rs.DataSet):
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
             msg = "only amplitude, phase, and uncertainty columns allowed; to add uncertainties "
-            msg += "after object creation, see Map.add_uncertainties(...)"
-            raise ValueError(msg)
+            msg += "after object creation, see Map.set_uncertainties(...)"
+            raise KeyError(msg)
         super().__setitem__(key, value)
 
     def insert(self, *args, **kwargs) -> None:
         msg = "only amplitude, phase, and uncertainty columns allowed; to add uncertainties "
-        msg += "after object creation, see Map.add_uncertainties(...)"
+        msg += "after object creation, see Map.set_uncertainties(...)"
         raise NotImplementedError(msg)
 
     @property
@@ -92,20 +89,19 @@ class Map(rs.DataSet):
         self._phase_column = name
 
     @property
-    def uncertainty_column(self) -> str | None:
-        if hasattr(self, "_uncertainty_column"):
-            return self._uncertainty_column
-        return None
+    def uncertainty_column(self) -> str:
+        if not hasattr(self, "_uncertainty_column"):
+            raise AttributeError("uncertainty_column not set, no uncertainties")
+        return self._uncertainty_column
 
     @uncertainty_column.setter
     def uncertainty_column(self, name: str) -> None:
         self.rename(columns={self.uncertainty_column: name}, inplace=True)
         self._uncertainty_column = name
 
-    def add_uncertainties(self, uncertainties: rs.DataSeries, *, name: str = "SIGF") -> None:
-        if self.uncertainty_column is not None:
-            msg = f"uncertainty column {self.uncertainty_column} already assigned"
-            raise KeyError(msg)
+    def set_uncertainties(self, uncertainties: rs.DataSeries, *, name: str = "SIGF") -> None:
+        if hasattr(self, "_uncertainty_column"):
+            self.drop(self.uncertainty_column, axis=1, inplace=True)
         self._uncertainty_column = name
         position = len(self.columns)
         super().insert(position, name, uncertainties, allow_duplicates=False)
@@ -120,30 +116,28 @@ class Map(rs.DataSet):
 
     @property
     def uncertainties(self) -> rs.DataSeries:
-        if self.uncertainty_column is None:
-            msg = "Map object has no uncertainties set, see Map.add_uncertainties(...)"
+        if not hasattr(self, "_uncertainty_column"):
+            msg = "Map object has no uncertainties set, see Map.set_uncertainties(...)"
             raise KeyError(msg)
         return self[self.uncertainty_column]
 
+    # TODO: naming of this function, relation to to_structurefactor
     @property
-    def complex_structure_factors(self) -> np.ndarray:
+    def complex(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
 
-    @classmethod
-    def to_gemmi(
-        cls,
-        *,
-        map_sampling: int,
-    ) -> gemmi.Ccp4Map:
+    def to_structurefactor(self) -> rs.DataSeries:
+        return super().to_structurefactor(self.amplitude_column, self.phase_column)
+
+    def to_gemmi(self, *, map_sampling: int) -> gemmi.Ccp4Map:
         map_coefficients_gemmi_format = super().to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-            cls.amplitude, cls.phase, sample_rate=map_sampling
+            self.amplitude_column, self.phase_column, sample_rate=map_sampling
         )
         ccp4_map.update_ccp4_header()
-
         return ccp4_map
-
+    
     @classmethod
     def from_dataset(
         cls,
@@ -158,23 +152,14 @@ class Map(rs.DataSet):
             phases=dataset[phase_column],
             uncertainties=(dataset[uncertainty_column] if uncertainty_column else None),
         )
-
+    
+    # TODO: can we infer index if `complex_structure_factors` is DataSeries?
     @classmethod
-    def from_complex_sfs(
-        cls,
-        *,
-        complex_structure_factors: np.ndarray,
-        index: pd.Index,
-        uncertainties: np.ndarray | None,
-    ):
+    def from_structurefactor(cls, complex_structurefactor: np.ndarray, *, index: pd.Index):
         amplitudes, phases = complex_array_to_rs_dataseries(
-            complex_structure_factors=complex_structure_factors, index=index
+            complex_structure_factors=complex_structurefactor,
+            index=index
         )
-        if uncertainties:
-            if complex_structure_factors.shape != uncertainties.shape:
-                msg = "`complex_sfs` and `uncertainties` do not have same shapes"
-                raise ShapeMismatchError(msg)
-            return cls(amplitudes=amplitudes, phases=phases, uncertainties=uncertainties)
         return cls(amplitudes=amplitudes, phases=phases)
 
     @classmethod

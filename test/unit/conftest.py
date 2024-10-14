@@ -45,7 +45,7 @@ def single_carbon_density(
     space_group: gemmi.SpaceGroup,
     unit_cell: gemmi.UnitCell,
     d_min: float,
-) -> gemmi.FloatGrid:
+) -> gemmi.Ccp4Map:
     model = gemmi.Model("single_atom")
     chain = gemmi.Chain("A")
 
@@ -72,20 +72,14 @@ def single_carbon_density(
     density_map.grid.setup_from(structure)
     density_map.put_model_density_on_grid(structure[0])
 
-    return density_map.grid
+    return density_map
 
 
-def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> Map:
-    density = np.array(single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION))
-    grid_values = np.array(density) + noise_sigma * NP_RNG.normal(size=density.shape)
+def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
+    density_map = single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
+    density_array = np.array(density_map.grid)
+    grid_values = density_array + noise_sigma * NP_RNG.normal(size=density_array.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
-
-    # map_coefficients = compute_coefficients_from_map(
-    #     ccp4_map=ccp4_map,
-    #     high_resolution_limit=RESOLUTION,
-    #     amplitude_label=labels.amplitude,
-    #     phase_label=labels.phase,
-    # )
 
     map_coefficients = Map.from_gemmi(ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION)
 
@@ -93,28 +87,29 @@ def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> M
     uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
     uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
     
-    map_coefficients.add_uncertainties(uncertainties)
+    map_coefficients.set_uncertainties(uncertainties)
 
     return map_coefficients
 
 
-# @pytest.fixture
-# def noise_free_map(test_map_columns: MapColumns) -> rs.DataSet:
-#     return single_atom_map_coefficients(noise_sigma=0.0, labels=test_map_columns)
-
 @pytest.fixture
-def noise_free_map(test_map_columns: MapColumns) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=0.0, labels=test_map_columns)
+def ccp4_map() -> gemmi.Ccp4Map:
+    return single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
 
 
 @pytest.fixture
-def noisy_map(test_map_columns: MapColumns) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=0.03, labels=test_map_columns)
+def noise_free_map() -> Map:
+    return single_atom_map_coefficients(noise_sigma=0.0)
 
 
 @pytest.fixture
-def very_noisy_map(test_map_columns: MapColumns) -> rs.DataSet:
-    return single_atom_map_coefficients(noise_sigma=1.0, labels=test_map_columns)
+def noisy_map() -> Map:
+    return single_atom_map_coefficients(noise_sigma=0.03)
+
+
+@pytest.fixture
+def very_noisy_map() -> Map:
+    return single_atom_map_coefficients(noise_sigma=1.0)
 
 
 @pytest.fixture
