@@ -111,10 +111,7 @@ def very_noisy_map() -> Map:
 
 
 @pytest.fixture
-def random_difference_map() -> Map:
-    ampli_col_name = "DF"
-    phase_col_name = "DPHI"
-    uncty_col_name = "SIGDF"
+def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
 
     hall = rs.utils.generate_reciprocal_asu(UNIT_CELL, SPACE_GROUP, RESOLUTION, anomalous=False)
     sigma = 1.0
@@ -127,25 +124,25 @@ def random_difference_map() -> Map:
             "H": h,
             "K": k,
             "L": l,
-            ampli_col_name: sigma * NP_RNG.normal(size=number_of_reflections),
-            phase_col_name: NP_RNG.uniform(-180, 180, size=number_of_reflections),
+            test_diffmap_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
+            test_diffmap_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=SPACE_GROUP,
         cell=UNIT_CELL,
     ).infer_mtz_dtypes()
 
     ds = ds.set_index(["H", "K", "L"])
-    ds[ampli_col_name] = ds[ampli_col_name].astype("SFAmplitude")
+    ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
 
-    uncertainties = sigma * np.ones_like(ds[ampli_col_name])
+    uncertainties = sigma * np.ones_like(ds[test_diffmap_columns.amplitude])
     uncertainties = rs.DataSeries(uncertainties, index=ds.index)
-    ds[uncty_col_name] = uncertainties.astype(rs.StandardDeviationDtype())
+    ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
     rsmap = Map.from_dataset(
         ds,
-        amplitude_column=ampli_col_name,
-        phase_column=phase_col_name,
-        uncertainty_column=uncty_col_name,
+        amplitude_column=test_diffmap_columns.amplitude,
+        phase_column=test_diffmap_columns.phase,
+        uncertainty_column=test_diffmap_columns.uncertainty,
     )
 
     return rsmap

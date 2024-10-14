@@ -79,6 +79,7 @@ def test_from_dataset(noise_free_map: Map) -> None:
         map_as_dataset,
         amplitude_column=noise_free_map.amplitude_column,
         phase_column=noise_free_map.phase_column,
+        uncertainty_column=noise_free_map.uncertainty_column
     )
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
