@@ -9,75 +9,43 @@ from meteor.diffmaps import (
     compute_kweights,
     max_negentropy_kweighted_difference_map,
 )
+from meteor.rsmap import Map
 from meteor.utils import MapColumns, compute_map_from_coefficients
 from meteor.validate import negentropy
 
 
 @pytest.fixture
-def dummy_dataset() -> rs.DataSet:
+def dummy_derivative() -> Map:
     index = pd.MultiIndex.from_arrays([[1, 1], [1, 2], [1, 3]], names=("H", "K", "L"))
-    data = {
-        "NativeAmplitudes": np.array([1.0, 2.0]),
-        "DerivativeAmplitudes": np.array([2.0, 3.0]),
-        "NativePhases": np.array([0.0, 180.0]),  # in degrees
-        "DerivativePhases": np.array([180.0, 0.0]),
-        "SigFNative": np.array([0.5, 0.5]),
-        "SigFDeriv": np.array([0.5, 0.5]),
+    derivative = {
+        "F": np.array([2.0, 3.0]),
+        "PHI": np.array([180.0, 0.0]),
+        "SIGF": np.array([0.5, 0.5]),
     }
-    return rs.DataSet(data, index=index)
+    return Map.from_dict(derivative, index=index)
 
 
-def test_compute_difference_map_smoke(dummy_dataset: rs.DataSet) -> None:
-    result = compute_difference_map(
-        dataset=dummy_dataset,
-        native_amplitudes_column="NativeAmplitudes",
-        derivative_amplitudes_column="DerivativeAmplitudes",
-        native_phases_column="NativePhases",
-        derivative_phases_column="DerivativePhases",
-    )
-    assert isinstance(result, rs.DataSet)
-    assert "DF" in result.columns
-    assert "DPHI" in result.columns
+@pytest.fixture
+def dummy_native() -> Map:
+    index = pd.MultiIndex.from_arrays([[1, 1], [1, 2], [1, 3]], names=("H", "K", "L"))
+    native = {
+        "F": np.array([1.0, 2.0]),
+        "PHI": np.array([0.0, 180.0]),
+        "SIGF": np.array([0.5, 0.5]),
+    }
+    return Map.from_dict(native, index=index)
 
 
-def test_compute_kweights_smoke(dummy_dataset: rs.DataSet) -> None:
-    deltaf = dummy_dataset["NativeAmplitudes"]
-    sigdeltaf = dummy_dataset["SigFNative"]
-    result = compute_kweights(deltaf, sigdeltaf, k_parameter=0.5)
-    assert isinstance(result, rs.DataSeries)
-
-
-def test_compute_kweighted_difference_map_smoke(dummy_dataset: rs.DataSet) -> None:
-    result = compute_kweighted_difference_map(
-        dataset=dummy_dataset,
-        k_parameter=0.5,
-        native_amplitudes_column="NativeAmplitudes",
-        native_phases_column="NativePhases",
-        native_uncertainty_column="SigFNative",
-        derivative_amplitudes_column="DerivativeAmplitudes",
-        derivative_phases_column="DerivativePhases",
-        derivative_uncertainty_column="SigFDeriv",
-    )
-    assert isinstance(result, rs.DataSet)
-    assert "DF_KWeighted" in result.columns
-
-
-def test_compute_difference_map_vs_analytical(dummy_dataset: rs.DataSet) -> None:
+def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
     # Manually calculated expected amplitude and phase differences
     expected_amplitudes = np.array([3.0, 5.0])
-    expected_phases = np.array([180.0, 0.0])
+    expected_phases = np.array([-180.0, 0.0])
+    assert isinstance(dummy_native, Map)
+    assert isinstance(dummy_derivative, Map)
 
-    # Run the function
-    result = compute_difference_map(
-        dataset=dummy_dataset,
-        native_amplitudes_column="NativeAmplitudes",
-        derivative_amplitudes_column="DerivativeAmplitudes",
-        native_phases_column="NativePhases",
-        derivative_phases_column="DerivativePhases",
-    )
-
-    np.testing.assert_almost_equal(result["DF"].values, expected_amplitudes)
-    np.testing.assert_almost_equal(result["DPHI"].values, expected_phases)
+    result = compute_difference_map(dummy_derivative, dummy_native)
+    np.testing.assert_almost_equal(result.amplitudes, expected_amplitudes)
+    np.testing.assert_almost_equal(result.phases, expected_phases)
 
 
 def test_compute_kweights_vs_analytical() -> None:

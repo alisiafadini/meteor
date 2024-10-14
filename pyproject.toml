@@ -38,38 +38,37 @@ lint.select = [
 ]
 lint.ignore = [
     #### modules
-    "ANN", # flake8-annotations
-    "COM", # flake8-commas
-    "C90", # mccabe complexity
-    "DJ",  # django
-    "EXE", # flake8-executable
-    "T10", # debugger
-    "TID", # flake8-tidy-imports
+    "ANN", # flake8-annotations: ignore annotation-related errors
+    "COM", # flake8-commas: ignore missing/extra commas
+    "C90", # mccabe complexity: ignore code complexity checks
+    "DJ",  # django: ignore Django-specific linting rules
+    "EXE", # flake8-executable: ignore file execution permission errors
+    "T10", # debugger: ignore debugger-related code (e.g., `pdb`)
+    "TID", # flake8-tidy-imports: ignore tidy import-related checks
 
     #### specific rules
-    "D100",   # ignore missing docs
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    "D200",
-    "D205",
-    "D212",
-    "D400",
-    "D401",
-    "D415",
-    "E402",   # false positives for local imports
-    "E501",   # line too long
-    "TRY003", # external messages in exceptions are too verbose
-    "TD002",
-    "TD003",
-    "FIX002", # too verbose descriptions of todos
-    "ISC001",
-    "PD002",  # allow inplace modifications
-    "PLR0913",  # TEMPORARY number of arguments <= 5
+    "D100",   # ignore missing docstrings in module
+    "D101",   # ignore missing docstrings in class
+    "D102",   # ignore missing docstrings in public method
+    "D103",   # ignore missing docstrings in function
+    "D104",   # ignore missing docstrings in package
+    "D105",   # ignore missing docstrings in magic methods (e.g., __init__)
+    "D106",   # ignore missing docstrings in public nested class
+    "D107",   # ignore missing docstrings in __init__ method
+    "D200",   # ignore incorrect indentation of docstring (1st line should be empty)
+    "D205",   # ignore failure to separate summary line from description in docstring
+    "D212",   # ignore multiline docstring summary errors
+    "D400",   # ignore docstring should end with period
+    "D401",   # ignore docstring should be in imperative mood
+    "D415",   # ignore first line of docstring should be a one-liner
+    "E402",   # ignore module level import not at top of file (e.g., for local imports)
+    "E501",   # ignore line too long (over 79 characters)
+    "TRY003", # ignore external messages in exceptions being too verbose
+    "TD002",  # ignore undefined rule (from flake8-todos plugin)
+    "TD003",  # ignore another undefined rule (from flake8-todos plugin)
+    "FIX002", # ignore too verbose descriptions of TODO comments
+    "ISC001", # ignore rule related to invalid string escape sequences
+    "PD002",  # allow inplace modifications in Pandas operations
 ]
 exclude = [
     "build/",

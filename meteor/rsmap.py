@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
 
-from meteor.utils import (
+from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
     rs_dataseries_to_complex_array,
@@ -36,13 +36,14 @@ class Map(rs.DataSet):
         amplitude_column: str = "F",
         phase_column: str = "PHI",
         uncertainty_column: str | None = None,
+        **kwargs,
     ) -> None:
         # add to dataset
         labels = [amplitude_column, phase_column]
         if uncertainty_column:
             labels.append(uncertainty_column)
         sub_dataset = dataset[labels].copy()
-        super().__init__(sub_dataset)
+        super().__init__(sub_dataset, **kwargs)
 
         # rename columns
         self[amplitude_column].rename(self._amplitude_column, inplace=True)
@@ -50,6 +51,7 @@ class Map(rs.DataSet):
         if uncertainty_column:
             self[uncertainty_column].rename(self._uncertainty_column, inplace=True)
 
+        # ensure types correct
         self._assert_amplitude_type(self[self._amplitude_column])
         self._assert_phase_type(self[self._phase_column])
         if self.has_uncertainties:
@@ -62,6 +64,14 @@ class Map(rs.DataSet):
             phase_label=self._phase_column,
             inplace=True,
         )
+
+    @property
+    def _constructor(self):
+        return Map
+
+    @property
+    def _constructor_sliced(self):
+        return rs.DataSeries
 
     def _assert_amplitude_type(self, dataseries: rs.DataSeries) -> None:
         amplitude_dtypes = [
@@ -183,11 +193,13 @@ class Map(rs.DataSet):
             msg = f"`complex_structurefactor` invalid type: {type(complex_structurefactor)}"
             raise TypeError(msg)
 
-        dataset = rs.concat([amplitudes, phases], axis=1)
+        dataset = rs.concat(
+            [amplitudes.rename(cls._amplitude_column), phases.rename(cls._phase_column)], axis=1
+        )
         dataset.cell = cell
         dataset.spacegroup = spacegroup
 
-        return cls(dataset, amplitude_column=amplitudes.name, phase_column=phases.name)
+        return cls(dataset, amplitude_column=cls._amplitude_column, phase_column=cls._phase_column)
 
     @classmethod
     def from_ccp4_map(
@@ -234,3 +246,28 @@ class Map(rs.DataSet):
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
         )
+
+    @classmethod
+    def from_dict(cls, data, *, index=None, cell=None, spacegroup=None) -> Map:
+        dataset = rs.DataSet(data=data, index=index, cell=cell, spacegroup=spacegroup)
+
+        for required_column in [cls._amplitude_column, cls._phase_column]:
+            if required_column not in dataset.columns:
+                msg = f"cannot find required key {required_column} in input dict"
+                raise KeyError(msg)
+
+        dataset[cls._amplitude_column] = dataset[cls._amplitude_column].astype(
+            rs.StructureFactorAmplitudeDtype()
+        )
+        dataset[cls._phase_column] = dataset[cls._phase_column].astype(rs.PhaseDtype())
+
+        if cls._uncertainty_column in dataset.columns:
+            dataset[cls._uncertainty_column] = dataset[cls._uncertainty_column].astype(
+                rs.StandardDeviationDtype()
+            )
+            return cls(dataset, uncertainty_column=cls._uncertainty_column)
+
+        return cls(dataset)
+
+    def from_records(self, *args, **kwargs) -> None:
+        raise NotImplementedError

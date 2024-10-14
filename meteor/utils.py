@@ -25,6 +25,15 @@ class MapColumns:
     uncertainty: str | None = None
 
 
+def fitler_common_indices(
+    df1: pd.DataFrame, df2: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    common_indices = df1.index.intersection(df2.index)
+    df1_common = df1.loc[common_indices].copy()
+    df2_common = df2.loc[common_indices].copy()
+    return df1_common, df2_common
+
+
 def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
     d_hkl = dataset.compute_dHKL()["dHKL"]
     return d_hkl.max(), d_hkl.min()
