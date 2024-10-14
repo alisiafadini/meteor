@@ -195,7 +195,7 @@ def numpy_array_to_map(
     return ccp4_map
 
 
-# TODO: do we need these two methods anymore?
+# TODO: do we need these two methods anymore? or can we just us rsmap.Map?
 def compute_map_from_coefficients(
     *,
     map_coefficients: rs.DataSet,
