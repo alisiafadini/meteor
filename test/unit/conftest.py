@@ -11,6 +11,7 @@ from meteor.utils import (
     compute_coefficients_from_map,
     numpy_array_to_map,
 )
+from meteor.rsmap import Map
 
 RESOLUTION = 1.0
 UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
@@ -74,24 +75,32 @@ def single_carbon_density(
     return density_map.grid
 
 
-def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> rs.DataSet:
+def single_atom_map_coefficients(*, noise_sigma: float, labels: MapColumns) -> Map:
     density = np.array(single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION))
     grid_values = np.array(density) + noise_sigma * NP_RNG.normal(size=density.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
-    map_coefficients = compute_coefficients_from_map(
-        ccp4_map=ccp4_map,
-        high_resolution_limit=RESOLUTION,
-        amplitude_label=labels.amplitude,
-        phase_label=labels.phase,
-    )
+    # map_coefficients = compute_coefficients_from_map(
+    #     ccp4_map=ccp4_map,
+    #     high_resolution_limit=RESOLUTION,
+    #     amplitude_label=labels.amplitude,
+    #     phase_label=labels.phase,
+    # )
 
-    uncertainties = noise_sigma * np.ones_like(map_coefficients[labels.amplitude])
+    map_coefficients = Map.from_gemmi(ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION)
+
+    uncertainties = noise_sigma * np.ones_like(map_coefficients.phases)
     uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
-    map_coefficients[labels.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
+    uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
+    
+    map_coefficients.add_uncertainties(uncertainties)
 
     return map_coefficients
 
+
+# @pytest.fixture
+# def noise_free_map(test_map_columns: MapColumns) -> rs.DataSet:
+#     return single_atom_map_coefficients(noise_sigma=0.0, labels=test_map_columns)
 
 @pytest.fixture
 def noise_free_map(test_map_columns: MapColumns) -> rs.DataSet:

@@ -28,15 +28,14 @@ class Map(rs.DataSet):
         amplitudes: rs.DataSeries,
         phases: rs.DataSeries,
         uncertainties: rs.DataSeries | None = None,
+        amplitude_column: str = "F",
+        phase_column: str = "PHI",
+        uncertainty_column: str = "SIGF",
     ) -> None:
-        # enforce defaults, renaming allowed -- keeps column names in sync
-        self._amplitude_column = "F"
-        self._phase_column = "PHI"
-        self._uncertainty_column = "SIGF"
 
-        inputs = [amplitudes.rename(self._amplitude_column), phases.rename(self._phase_column)]
+        inputs = [amplitudes, phases]
         if uncertainties:
-            inputs.append(uncertainties.rename(self._uncertainty_column))
+            inputs.append(uncertainties)
 
         for input_series in inputs:
             if not hasattr(input_series, "index"):
@@ -47,21 +46,32 @@ class Map(rs.DataSet):
         if len(dataset) == 0:
             msg = "no common indices found in inputs"
             raise ValueError(msg)
+        
+        super().__init__(dataset)
+
+        self._amplitude_column = amplitude_column
+        self._phase_column = phase_column
+        if uncertainties:
+            self._uncertainty_column = uncertainty_column
 
         canonicalize_amplitudes(
-            dataset,
+            self,
             amplitude_label=self._amplitude_column,
             phase_label=self._phase_column,
             inplace=True,
         )
 
-        super().__init__(dataset)
-
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
-            msg = "only amplitude, phase, and uncertainty columns allowed"
+            msg = "only amplitude, phase, and uncertainty columns allowed; to add uncertainties "
+            msg += "after object creation, see Map.add_uncertainties(...)"
             raise ValueError(msg)
         super().__setitem__(key, value)
+
+    def insert(self, *args, **kwargs) -> None:
+        msg = "only amplitude, phase, and uncertainty columns allowed; to add uncertainties "
+        msg += "after object creation, see Map.add_uncertainties(...)"
+        raise NotImplementedError(msg)
 
     @property
     def amplitude_column(self) -> str:
@@ -69,7 +79,7 @@ class Map(rs.DataSet):
 
     @amplitude_column.setter
     def amplitude_column(self, name: str) -> None:
-        self.rename(columns={self._amplitude_column: name})
+        self.rename(columns={self._amplitude_column: name}, inplace=True)
         self._amplitude_column = name
 
     @property
@@ -78,17 +88,27 @@ class Map(rs.DataSet):
 
     @phase_column.setter
     def phase_column(self, name: str) -> None:
-        self.rename(columns={self.phase_column: name})
-        self.phase_column = name
+        self.rename(columns={self.phase_column: name}, inplace=True)
+        self._phase_column = name
 
     @property
-    def uncertainty_column(self) -> str:
-        return self._uncertainty_column
+    def uncertainty_column(self) -> str | None:
+        if hasattr(self, "_uncertainty_column"):
+            return self._uncertainty_column
+        return None
 
     @uncertainty_column.setter
     def uncertainty_column(self, name: str) -> None:
-        self.rename(columns={self.uncertainty_column: name})
-        self.uncertainty_column = name
+        self.rename(columns={self.uncertainty_column: name}, inplace=True)
+        self._uncertainty_column = name
+
+    def add_uncertainties(self, uncertainties: rs.DataSeries, *, name: str = "SIGF") -> None:
+        if self.uncertainty_column is not None:
+            msg = f"uncertainty column {self.uncertainty_column} already assigned"
+            raise KeyError(msg)
+        self._uncertainty_column = name
+        position = len(self.columns)
+        super().insert(position, name, uncertainties, allow_duplicates=False)
 
     @property
     def amplitudes(self) -> rs.DataSeries:
@@ -101,7 +121,7 @@ class Map(rs.DataSet):
     @property
     def uncertainties(self) -> rs.DataSeries:
         if self.uncertainty_column is None:
-            msg = "Map object has no set uncertainties"
+            msg = "Map object has no uncertainties set, see Map.add_uncertainties(...)"
             raise KeyError(msg)
         return self[self.uncertainty_column]
 
@@ -110,12 +130,12 @@ class Map(rs.DataSet):
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
 
     @classmethod
-    def to_realspace_map(
+    def to_gemmi(
         cls,
         *,
         map_sampling: int,
     ) -> gemmi.Ccp4Map:
-        map_coefficients_gemmi_format = cls.to_gemmi()
+        map_coefficients_gemmi_format = super().to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
             cls.amplitude, cls.phase, sample_rate=map_sampling
@@ -131,7 +151,7 @@ class Map(rs.DataSet):
         *,
         amplitude_column: str,
         phase_column: str,
-        uncertainty_column: str | None,
+        uncertainty_column: str | None = None,
     ):
         return cls(
             amplitudes=dataset[amplitude_column],
@@ -158,11 +178,13 @@ class Map(rs.DataSet):
         return cls(amplitudes=amplitudes, phases=phases)
 
     @classmethod
-    def from_realspace_map(
+    def from_gemmi(
         cls,
         *,
         ccp4_map: gemmi.Ccp4Map,
         high_resolution_limit: float,
+        amplitude_column: str = "F",
+        phase_column: str = "PHI",
     ):
         # to ensure we include the final shell of reflections, add a small buffer to the resolution
         gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
@@ -175,14 +197,17 @@ class Map(rs.DataSet):
         mtz.set_cell_for_all(gemmi_structure_factors.unit_cell)
         mtz.add_dataset("FromMap")
 
-        # TODO: audit below
-        mtz.add_column(cls.amplitude, "F")
-        mtz.add_column(cls.phase, "PHI")
+        mtz.add_column(amplitude_column, "F")
+        mtz.add_column(phase_column, "P")
 
         mtz.set_data(data)
         mtz.switch_to_asu_hkl()
 
-        return rs.DataSet.from_gemmi(mtz)
+        # TODO: why doesnt this work?
+        #dataset = super().from_gemmi(mtz)
+        dataset = rs.DataSet.from_gemmi(mtz)
+
+        return cls.from_dataset(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
 
     @classmethod
     def from_mtz_file(
