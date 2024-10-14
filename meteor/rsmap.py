@@ -41,7 +41,7 @@ class Map(rs.DataSet):
         if uncertainty_column:
             labels.append(uncertainty_column)
         sub_dataset = dataset[labels].copy()
-        super().__init__(dataset)
+        super().__init__(sub_dataset)
 
         # rename columns
         self[amplitude_column].rename(self._amplitude_column, inplace=True)
@@ -74,11 +74,10 @@ class Map(rs.DataSet):
             raise AssertionError(msg)
 
     def _assert_phase_type(self, dataseries: rs.DataSeries) -> None:
-        ...
-        # TODO: help
-        # if dataseries.dtype not in [rs.PhaseDtype()]:
-        #     msg = f"phase dtype not allowed, got: {dataseries.dtype} allow rs.PhaseDtype()"
-        #     raise AssertionError(msg)
+        allowed_phase_dtypes = [rs.PhaseDtype()]
+        if dataseries.dtype not in allowed_phase_dtypes:
+            msg = f"phase dtype not allowed, got: {dataseries.dtype} allow {allowed_phase_dtypes}"
+            raise AssertionError(msg)
 
     def _assert_uncertainty_type(self, dataseries: rs.DataSeries) -> None:
         uncertainty_dtypes = [
@@ -127,7 +126,8 @@ class Map(rs.DataSet):
     @property
     def uncertainties(self) -> rs.DataSeries:
         if self.has_uncertainties:
-            return self[self._uncertainty_column]            
+            return self[self._uncertainty_column]
+        raise AttributeError("uncertainties not set for Map object")
 
     @uncertainties.setter
     def uncertainties(self, values: rs.DataSeries) -> None:
@@ -140,9 +140,8 @@ class Map(rs.DataSet):
                 raise RuntimeError("Misconfigured columns")
             super().insert(position, self._uncertainty_column, values, allow_duplicates=False)
 
-    # TODO: naming of this function, relation to to_structurefactor
     @property
-    def complex(self) -> np.ndarray:
+    def complex_amplitudes(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
 
     def to_structurefactor(self) -> rs.DataSeries:
@@ -212,9 +211,6 @@ class Map(rs.DataSet):
 
         mtz.set_data(data)
         mtz.switch_to_asu_hkl()
-
-        # TODO: why doesnt this work?
-        # dataset = super().from_gemmi(mtz)
         dataset = rs.DataSet.from_gemmi(mtz)
 
         return cls(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
@@ -235,8 +231,3 @@ class Map(rs.DataSet):
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
         )
-
-    # TODO: verify these OK
-    # def from_records(): ...
-    # def from_dict(): ...
-    # def drop(): ...

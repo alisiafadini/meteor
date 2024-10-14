@@ -72,8 +72,6 @@ def test_canonicalize_amplitudes(
             inplace=inplace,
         )
 
-    print(canonicalized[test_diffmap_columns.phase])
-
     assert (canonicalized[test_diffmap_columns.amplitude] >= 0.0).all(), "not all amps positive"
     assert (canonicalized[test_diffmap_columns.phase] >= -180.0).all(), "not all phases > -180"
     assert (canonicalized[test_diffmap_columns.phase] <= 180.0).all(), "not all phases < +180"

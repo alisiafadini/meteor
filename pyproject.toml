@@ -86,6 +86,7 @@ exclude = [
     "ARG",      # unused function args -> fixtures
     "PLR2004",  # magic value used in comparison
     "FBT001",   # allow positional bools as function args
+    "SLF001",   # access private methods
 ]
 
 [tool.ruff.lint.pydocstyle]

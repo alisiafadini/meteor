@@ -12,13 +12,16 @@ def test_setitem(noise_free_map: Map, noisy_map: Map) -> None:
     noisy_map.phases = noise_free_map.phases
     noisy_map.uncertainties = noise_free_map.uncertainties
 
+
 def test_unallowed_setitem(noise_free_map: Map) -> None:
     with pytest.raises(KeyError):
         noise_free_map["unallowed_column_name"] = noise_free_map.amplitudes
 
+
 def test_insert_disabled(noise_free_map: Map) -> None:
     with pytest.raises(NotImplementedError):
         noise_free_map.insert("foo")
+
 
 def test_set_uncertainties(noise_free_map: Map) -> None:
     uncertainties = noise_free_map.uncertainties
@@ -26,21 +29,22 @@ def test_set_uncertainties(noise_free_map: Map) -> None:
 
     noise_free_map.drop(noise_free_map._uncertainty_column, axis=1, inplace=True)
     assert not noise_free_map.has_uncertainties
-    assert noise_free_map.uncertainties is None
+    with pytest.raises(AttributeError):
+        _ = noise_free_map.uncertainties
 
     noise_free_map.uncertainties = uncertainties
     pd.testing.assert_series_equal(noise_free_map.uncertainties, uncertainties)
 
 
-def test_complex(noise_free_map: Map) -> None:
-    c_array = noise_free_map.complex
+def test_complex_amplitudes(noise_free_map: Map) -> None:
+    c_array = noise_free_map.complex_amplitudes
     assert isinstance(c_array, np.ndarray)
     assert np.issubdtype(c_array.dtype, np.complexfloating)
 
 
 def test_to_structurefactor(noise_free_map: Map) -> None:
     c_dataseries = noise_free_map.to_structurefactor()
-    c_array = noise_free_map.complex
+    c_array = noise_free_map.complex_amplitudes
     np.testing.assert_almost_equal(c_dataseries.to_numpy(), c_array)
 
 
@@ -62,7 +66,7 @@ def test_from_dataset(noise_free_map: Map) -> None:
 
 def from_structurefactor(noise_free_map: Map) -> None:
     # first interface, complex array
-    map2 = Map.from_structurefactor(noise_free_map.complex, index=noise_free_map.index)
+    map2 = Map.from_structurefactor(noise_free_map.complex_amplitudes, index=noise_free_map.index)
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
     # second interface, complex DataSeries
