@@ -135,11 +135,9 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
     uncertainties = rs.DataSeries(uncertainties, index=ds.index)
     ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
-    rsmap = Map(
+    return Map(
         ds,
         amplitude_column=test_diffmap_columns.amplitude,
         phase_column=test_diffmap_columns.phase,
         uncertainty_column=test_diffmap_columns.uncertainty,
     )
-
-    return rsmap

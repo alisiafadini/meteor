@@ -127,7 +127,8 @@ class Map(rs.DataSet):
     def uncertainties(self) -> rs.DataSeries:
         if self.has_uncertainties:
             return self[self._uncertainty_column]
-        raise AttributeError("uncertainties not set for Map object")
+        msg = "uncertainties not set for Map object"
+        raise AttributeError(msg)
 
     @uncertainties.setter
     def uncertainties(self, values: rs.DataSeries) -> None:
@@ -136,8 +137,9 @@ class Map(rs.DataSet):
             self[self._uncertainty_column] = values
         else:
             position = len(self.columns)
-            if not position == 2:
-                raise RuntimeError("Misconfigured columns")
+            if position != 2:  # noqa: PLR2004, should be 2: just amplitudes & phases
+                msg = "Misconfigured columns"
+                raise RuntimeError(msg)
             super().insert(position, self._uncertainty_column, values, allow_duplicates=False)
 
     @property
