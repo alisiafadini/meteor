@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from reciprocalspaceship.utils import canonicalize_phases
 from pandas.testing import assert_index_equal
+from reciprocalspaceship.utils import canonicalize_phases
 
 if TYPE_CHECKING:
     import pandas as pd

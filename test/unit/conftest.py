@@ -32,9 +32,9 @@ def test_map_columns() -> MapColumns:
 @pytest.fixture
 def test_diffmap_columns() -> MapColumns:
     return MapColumns(
-        amplitude="DF",
-        phase="DPHI",
-        uncertainty="SIGDF",
+        amplitude="F",
+        phase="PHI",
+        uncertainty="SIGF",
     )
 
 
@@ -83,9 +83,7 @@ def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
 
     uncertainties = noise_sigma * np.ones_like(map_coefficients.phases)
     uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
-    uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
-
-    map_coefficients.set_uncertainties(uncertainties)
+    map_coefficients.uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
 
     return map_coefficients
 
@@ -112,7 +110,6 @@ def very_noisy_map() -> Map:
 
 @pytest.fixture
 def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
-
     hall = rs.utils.generate_reciprocal_asu(UNIT_CELL, SPACE_GROUP, RESOLUTION, anomalous=False)
     sigma = 1.0
 
@@ -138,7 +135,7 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
     uncertainties = rs.DataSeries(uncertainties, index=ds.index)
     ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
-    rsmap = Map.from_dataset(
+    rsmap = Map(
         ds,
         amplitude_column=test_diffmap_columns.amplitude,
         phase_column=test_diffmap_columns.phase,
