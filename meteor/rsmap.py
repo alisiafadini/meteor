@@ -24,6 +24,7 @@ SpaceGroupType = Type[int | str | gemmi.SpaceGroup]
 
 
 # TODO: docstring for this class
+# TODO: audit __init__ in light of https://github.com/rs-station/reciprocalspaceship/blob/main/reciprocalspaceship/dataset.py
 class Map(rs.DataSet):
     _amplitude_column = "F"
     _phase_column = "PHI"
