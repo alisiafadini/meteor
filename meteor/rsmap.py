@@ -23,6 +23,7 @@ CellType = Type[tuple[float, float, float, float, float, float] | gemmi.UnitCell
 SpaceGroupType = Type[int | str | gemmi.SpaceGroup]
 
 
+# TODO: docstring for this class
 class Map(rs.DataSet):
     _amplitude_column = "F"
     _phase_column = "PHI"
