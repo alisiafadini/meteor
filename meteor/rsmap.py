@@ -8,14 +8,15 @@ import reciprocalspaceship as rs
 from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
-    complex_array_to_rs_dataseries,
     rs_dataseries_to_complex_array,
+    complex_array_to_rs_dataseries,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import numpy as np
+    import pandas as pd
 
 
 class MissingUncertaintiesError(AttributeError): ...
@@ -31,7 +32,6 @@ def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
 
 
 # TODO: docstring for this class
-# TODO: audit __init__ in light of https://github.com/rs-station/reciprocalspaceship/blob/main/reciprocalspaceship/dataset.py
 class Map(rs.DataSet):
     def __init__(
         self,
@@ -124,9 +124,11 @@ class Map(rs.DataSet):
         msg = "column assignment not allowed for Map objects"
         raise NotImplementedError(msg)
 
-    def drop(self, *args, **kwargs) -> None:  # noqa: ARG002
-        msg = "columns are fixed for Map objects"
-        raise NotImplementedError(msg)
+    def drop(self, labels=None, *, axis=0, columns=None, **kwargs) -> Map | None:
+        if (axis == 1) or (columns is not None):
+            msg = "columns are fixed for Map objects"
+            raise NotImplementedError(msg)
+        return super().drop(labels=labels, axis=axis, columns=columns, **kwargs)
 
     @property
     def amplitudes(self) -> rs.DataSeries:
@@ -211,21 +213,15 @@ class Map(rs.DataSet):
         ccp4_map.update_ccp4_header()
         return ccp4_map
 
-    # TODO: clean this up
     @classmethod
     def from_structurefactor(
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
-        index,
-        **kwargs,
+        index: pd.Index,
     ) -> Map:
-        amplitudes, phases = complex_array_to_rs_dataseries(
-            complex_structure_factors=complex_structurefactor, index=index
-        )
-        dataset = rs.DataSet(
-            rs.concat([amplitudes, phases], axis=1), columns=["F", "PHI"], index=index, **kwargs
-        )
+        amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
+        dataset = rs.concat([amplitudes, phases], axis=1)
         return cls(dataset)
 
     @classmethod

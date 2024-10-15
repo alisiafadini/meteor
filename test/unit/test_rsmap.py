@@ -5,12 +5,24 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
+from meteor.utils import filter_common_indices
 
 
 def test_copy(noise_free_map: Map) -> None:
     copy_map = noise_free_map.copy()
     assert isinstance(copy_map, Map)
     pd.testing.assert_frame_equal(copy_map, noise_free_map)
+
+
+def test_filter_common_indices_with_maps(noise_free_map: Map) -> None:
+    m1 = noise_free_map
+    m2 = noise_free_map.copy()
+    m2.drop([m1.index[0]], axis=0, inplace=True)  # remove an index
+    assert len(m1) != len(m2)
+    f1, f2 = filter_common_indices(m1, m2)
+    pd.testing.assert_index_equal(f1.index, f2.index)
+    assert len(f1.columns) == 3
+    assert len(f2.columns) == 3
 
 
 def test_setitem(noise_free_map: Map, noisy_map: Map) -> None:
@@ -72,12 +84,7 @@ def test_from_dataset(noise_free_map: Map) -> None:
 
 
 def from_structurefactor(noise_free_map: Map) -> None:
-    # first interface, complex array
     map2 = Map.from_structurefactor(noise_free_map.complex_amplitudes, index=noise_free_map.index)
-    pd.testing.assert_frame_equal(noise_free_map, map2)
-
-    # second interface, complex DataSeries
-    map2 = Map.from_structurefactor(noise_free_map.to_structurefactor())
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
 

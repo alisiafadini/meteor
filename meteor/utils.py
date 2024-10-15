@@ -142,6 +142,7 @@ def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSer
 
 def complex_array_to_rs_dataseries(
     complex_structure_factors: np.ndarray,
+    *,
     index: pd.Index,
 ) -> tuple[rs.DataSeries, rs.DataSeries]:
     """
@@ -174,11 +175,19 @@ def complex_array_to_rs_dataseries(
         )
         raise ShapeMismatchError(msg)
 
-    amplitudes = rs.DataSeries(np.abs(complex_structure_factors), index=index)
-    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())
+    amplitudes = rs.DataSeries(
+        np.abs(complex_structure_factors),
+        index=index,
+        dtype=rs.StructureFactorAmplitudeDtype(),
+        name="F",
+    )
 
-    phases = rs.DataSeries(np.rad2deg(np.angle(complex_structure_factors)), index=index)
-    phases = phases.astype(rs.PhaseDtype())
+    phases = rs.DataSeries(
+        np.angle(complex_structure_factors, deg=True), 
+        index=index,
+        dtype=rs.PhaseDtype(),
+        name="PHI",
+    )
 
     return amplitudes, phases
 

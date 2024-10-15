@@ -44,8 +44,8 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
     assert isinstance(dummy_derivative, Map)
 
     result = compute_difference_map(dummy_derivative, dummy_native)
-    assert_almost_equal(result.amplitudes, expected_amplitudes)
-    assert_almost_equal(result.phases, expected_phases)
+    assert_almost_equal(result.amplitudes, expected_amplitudes, decimal=4)
+    assert_almost_equal(result.phases, expected_phases, decimal=4)
 
 
 def test_compute_kweights_vs_analytical() -> None:

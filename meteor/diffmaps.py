@@ -43,17 +43,21 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     _assert_is_map(derivative, require_uncertainties=False)
     _assert_is_map(native, require_uncertainties=False)
-    derivative, native = filter_common_indices(derivative, native)
+    
+    derivative, native = filter_common_indices(derivative, native)  # type: ignore[assignment]
+    if len(derivative) == 0 or len(native) == 0:
+        msg = "cannot find any HKL incdices in common between `derivative` and `native`"
+        raise IndexError(msg)
 
     delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
     delta = Map.from_structurefactor(delta_complex, index=derivative.index)
-
-    # TODO: should this be part of from_structurefactor?
+    print(delta)
     delta.cell = native.cell
     delta.spacegroup = native.spacegroup
 
     if derivative.has_uncertainties and native.has_uncertainties:
-        delta.uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
+        prop_uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
+        delta.set_uncertainties(prop_uncertainties)
 
     return delta
 
@@ -116,7 +120,7 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
     difference_map = compute_difference_map(derivative, native)
     weights = compute_kweights(difference_map, k_parameter=k_parameter)
 
-    # TODO: shouldn't we modify the uncertainties as well?
+    # TODO: confirm, shouldn't we modify the uncertainties as well?
     difference_map.amplitudes *= weights
     difference_map.uncertainties *= weights
 
