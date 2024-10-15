@@ -7,6 +7,12 @@ import reciprocalspaceship as rs
 from meteor.rsmap import Map
 
 
+def test_copy(noise_free_map: Map) -> None:
+    copy_map = noise_free_map.copy()
+    assert isinstance(copy_map, Map)
+    pd.testing.assert_frame_equal(copy_map, noise_free_map)
+
+
 def test_setitem(noise_free_map: Map, noisy_map: Map) -> None:
     noisy_map.amplitudes = noise_free_map.amplitudes
     noisy_map.phases = noise_free_map.phases
@@ -23,17 +29,16 @@ def test_insert_disabled(noise_free_map: Map) -> None:
         noise_free_map.insert("foo")
 
 
-def test_set_uncertainties(noise_free_map: Map) -> None:
-    uncertainties = noise_free_map.uncertainties
-    assert noise_free_map.has_uncertainties
+def test_set_uncertainties() -> None:
+    test_map =  Map.from_dict({"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])})
 
-    noise_free_map.drop(noise_free_map._uncertainty_column, axis=1, inplace=True)
-    assert not noise_free_map.has_uncertainties
+    assert not test_map.has_uncertainties
     with pytest.raises(AttributeError):
-        _ = noise_free_map.uncertainties
+        _ = test_map.uncertainties
 
-    noise_free_map.uncertainties = uncertainties
-    pd.testing.assert_series_equal(noise_free_map.uncertainties, uncertainties)
+    test_map.uncertainties = rs.DataSeries([1.0, 1.0, 1.0]).astype(rs.StandardDeviationDtype())
+    assert test_map.has_uncertainties
+    assert len(test_map.uncertainties) == 3
 
 
 def test_complex_amplitudes(noise_free_map: Map) -> None:

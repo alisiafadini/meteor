@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
-from .rsmap import Map
+from .rsmap import Map, _assert_is_map
 from .settings import TV_MAP_SAMPLING
-from .utils import fitler_common_indices
+from .utils import filter_common_indices
 from .validate import ScalarMaximizer, negentropy
 
 if TYPE_CHECKING:
@@ -41,13 +41,22 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     If uncertainty columns are provided for both native and derivative data,
     it also propagates the uncertainty of the difference in amplitudes.
     """
-    derivative, native = fitler_common_indices(derivative, native)
+    _assert_is_map(derivative, require_uncertainties=False)
+    _assert_is_map(native, require_uncertainties=False)
+    derivative, native = filter_common_indices(derivative, native)
 
     delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
     delta = Map.from_structurefactor(delta_complex, index=derivative.index)
 
+    # TODO: should this be part of from_structurefactor?
+    delta.cell = native.cell
+    delta.spacegroup = native.spacegroup
+
+    print("*** HERE0", derivative.has_uncertainties, native.has_uncertainties)
     if derivative.has_uncertainties and native.has_uncertainties:
+        print("*** HERE1")
         delta.uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
+    print("*** HERE2")
 
     return delta
 
@@ -62,7 +71,7 @@ def compute_kweights(
 
     Parameters
     ----------
-    delta: Map
+    difference_map: Map
         A map of structure factor differences (DeltaF).
     k_parameter: float
         A scaling factor applied to the squared `df` values in the weight calculation.
@@ -73,6 +82,8 @@ def compute_kweights(
         A series of computed weights, where higher uncertainties and larger differences lead to
         lower weights.
     """
+    _assert_is_map(difference_map, require_uncertainties=True)
+    
     inverse_weights = (
         1
         + (difference_map.uncertainties**2 / (difference_map.uncertainties**2).mean())
@@ -102,10 +113,17 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
     diffmap: Map
         the k-weighted difference map
     """
-    diffmap = compute_difference_map(native, derivative)
-    weights = compute_kweights(diffmap, k_parameter=k_parameter)
-    diffmap.amplitudes *= weights
-    return diffmap
+    _assert_is_map(derivative, require_uncertainties=True)
+    _assert_is_map(native, require_uncertainties=True)
+
+    difference_map = compute_difference_map(derivative, native)
+    weights = compute_kweights(difference_map, k_parameter=k_parameter)
+
+    # TODO: shouldn't we modify the uncertainties as well?
+    difference_map.amplitudes *= weights
+    difference_map.uncertainties *= weights
+
+    return difference_map
 
 
 def max_negentropy_kweighted_difference_map(
@@ -138,10 +156,15 @@ def max_negentropy_kweighted_difference_map(
     opt_k_parameter: float
         optimized k-weighting parameter
     """
+    _assert_is_map(derivative, require_uncertainties=True)
+    _assert_is_map(native, require_uncertainties=True)
 
     def negentropy_objective(k_parameter: float) -> float:
+        assert derivative.has_uncertainties, "inside"
+        assert native.has_uncertainties, "inside"
+        print("here -1")
         kweighted_dataset = compute_kweighted_difference_map(
-            native, derivative, k_parameter=k_parameter
+            derivative, native, k_parameter=k_parameter
         )
         k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=TV_MAP_SAMPLING)
         k_weighted_map_array = np.array(k_weighted_map.grid)
@@ -152,7 +175,7 @@ def max_negentropy_kweighted_difference_map(
     opt_k_parameter = maximizer.argument_optimum
 
     kweighted_dataset = compute_kweighted_difference_map(
-        native, derivative, k_parameter=opt_k_parameter
+        derivative, native, k_parameter=opt_k_parameter
     )
 
     return kweighted_dataset, opt_k_parameter

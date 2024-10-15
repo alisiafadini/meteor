@@ -25,7 +25,7 @@ class MapColumns:
     uncertainty: str | None = None
 
 
-def fitler_common_indices(
+def filter_common_indices(
     df1: pd.DataFrame, df2: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     common_indices = df1.index.intersection(df2.index)

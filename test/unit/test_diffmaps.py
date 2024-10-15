@@ -3,6 +3,8 @@ import pandas as pd
 import pytest
 import reciprocalspaceship as rs
 
+from numpy.testing import assert_almost_equal
+
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
@@ -44,72 +46,35 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
     assert isinstance(dummy_derivative, Map)
 
     result = compute_difference_map(dummy_derivative, dummy_native)
-    np.testing.assert_almost_equal(result.amplitudes, expected_amplitudes)
-    np.testing.assert_almost_equal(result.phases, expected_phases)
+    assert_almost_equal(result.amplitudes, expected_amplitudes)
+    assert_almost_equal(result.phases, expected_phases)
 
 
 def test_compute_kweights_vs_analytical() -> None:
     deltaf = rs.DataSeries([2.0, 3.0, 4.0])
+    phi = rs.DataSeries([0.0, 0.0, 0.0])
     sigdeltaf = rs.DataSeries([1.0, 1.0, 1.0])
     k_parameter = 0.5
 
+    diffmap =  Map.from_dict({"F": deltaf, "PHI": phi, "SIGF": sigdeltaf})
     expected_weights = np.array([0.453, 0.406, 0.354])
-    result = compute_kweights(deltaf, sigdeltaf, k_parameter)
-    np.testing.assert_almost_equal(result.values, expected_weights, decimal=3)
+    result = compute_kweights(diffmap, k_parameter=k_parameter)
+    assert_almost_equal(result.values, expected_weights, decimal=3)
 
 
-def test_compute_kweighted_difference_map_vs_analytical(
-    dummy_dataset: rs.DataSet,
-) -> None:
-    result = compute_kweighted_difference_map(
-        dataset=dummy_dataset,
-        k_parameter=0.5,
-        native_amplitudes_column="NativeAmplitudes",
-        native_phases_column="NativePhases",
-        derivative_amplitudes_column="DerivativeAmplitudes",
-        derivative_phases_column="DerivativePhases",
-        native_uncertainty_column="SigFNative",
-        derivative_uncertainty_column="SigFDeriv",
-    )
+def test_compute_kweighted_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
+    kwt_diffmap = compute_kweighted_difference_map(dummy_derivative, dummy_native, k_parameter=0.5)
+    print("***", kwt_diffmap.uncertainties)
 
     # expected weighted amplitudes calculated by hand
     expected_weighted_amplitudes = np.array([1.3247, 1.8280])
-
-    np.testing.assert_almost_equal(
-        result["DF_KWeighted"].values, expected_weighted_amplitudes, decimal=4
-    )
+    assert_almost_equal(kwt_diffmap.amplitudes, expected_weighted_amplitudes, decimal=4)
 
 
 def test_kweight_optimization(
-    test_map_columns: MapColumns, noise_free_map: rs.DataSet, noisy_map: rs.DataSet
+    noise_free_map: rs.DataSet, noisy_map: rs.DataSet
 ) -> None:
-    noisy_map_columns = {
-        test_map_columns.amplitude: "F_noisy",
-        test_map_columns.phase: "PHIC_noisy",
-        test_map_columns.uncertainty: "SIGF_noisy",
-    }
-
-    combined_dataset = rs.concat(
-        [
-            noise_free_map,
-            noisy_map.rename(columns=noisy_map_columns),
-        ],
-        axis=1,
-    )
-
-    if not isinstance(test_map_columns.uncertainty, str):
-        msg = "test_map_columns.uncertainty undefined"
-        raise TypeError(msg)
-
-    _, max_negent_kweight = max_negentropy_kweighted_difference_map(
-        combined_dataset,
-        native_amplitudes_column=test_map_columns.amplitude,
-        native_phases_column=test_map_columns.phase,
-        native_uncertainty_column=test_map_columns.uncertainty,
-        derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
-        derivative_phases_column=noisy_map_columns[test_map_columns.phase],
-        derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
-    )
+    _, max_negent_kweight = max_negentropy_kweighted_difference_map(noisy_map, noise_free_map)
 
     epsilon = 0.01
     k_parameters_to_scan = [
@@ -118,30 +83,12 @@ def test_kweight_optimization(
         max(0.0, min(1.0, max_negent_kweight + epsilon)),
     ]
     negentropies = []
-
-    if not isinstance(test_map_columns.uncertainty, str):
-        msg = "test_map_columns.uncertainty undefined"
-        raise TypeError(msg)
-
     for k_parameter in k_parameters_to_scan:
         kweighted_diffmap = compute_kweighted_difference_map(
-            dataset=combined_dataset,
+            noisy_map, noise_free_map,
             k_parameter=k_parameter,
-            native_amplitudes_column=test_map_columns.amplitude,
-            native_phases_column=test_map_columns.phase,
-            native_uncertainty_column=test_map_columns.uncertainty,
-            derivative_amplitudes_column=noisy_map_columns[test_map_columns.amplitude],
-            derivative_phases_column=noisy_map_columns[test_map_columns.phase],
-            derivative_uncertainty_column=noisy_map_columns[test_map_columns.uncertainty],
         )
-
-        realspace_map = compute_map_from_coefficients(
-            map_coefficients=kweighted_diffmap,
-            amplitude_label="DF_KWeighted",
-            phase_label="DPHI_KWeighted",
-            map_sampling=3,
-        )
-
+        realspace_map = kweighted_diffmap.to_ccp4_map(map_sampling=3)
         map_negentropy = negentropy(np.array(realspace_map.grid))
         negentropies.append(map_negentropy)
 
