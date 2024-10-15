@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, overload
+from typing import Literal, overload
 
 import gemmi
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 from pandas.testing import assert_index_equal
 from reciprocalspaceship.utils import canonicalize_phases
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 

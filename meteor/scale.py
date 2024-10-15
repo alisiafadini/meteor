@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple
 
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 DTYPES_TO_SCALE = (
     rs.AnomalousDifferenceDtype,

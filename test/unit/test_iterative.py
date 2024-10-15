@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+import gemmi
 import numpy as np
 import pandas as pd
-import pandas.testing as pdt
 import pytest
-import reciprocalspaceship as rs
 from skimage.data import binary_blobs
 from skimage.restoration import denoise_tv_chambolle
 
@@ -15,14 +12,9 @@ from meteor.iterative import (
     _project_derivative_on_experimental_set,
     iterative_tv_phase_retrieval,
 )
-from meteor.testing import assert_phases_allclose
+from meteor.rsmap import Map
 from meteor.tv import TvDenoiseResult
-from meteor.utils import compute_map_from_coefficients
 from meteor.validate import negentropy
-
-if TYPE_CHECKING:
-    import gemmi
-
 
 NP_RNG = np.random.default_rng()
 
@@ -91,51 +83,27 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet) -> None:
+def test_iterative_tv(noise_free_map: Map, very_noisy_map: Map) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
-    result, metadata = iterative_tv_phase_retrieval(
-        noisy_and_noise_free,
-        native_amplitude_column=test_map_columns.amplitude,
-        calculated_phase_column=test_map_columns.phase,
-        derivative_amplitude_column=noisy_map_columns.amplitude,
-        output_derivative_phase_column="PHIC_denoised",
+    denoised_map, metadata = iterative_tv_phase_retrieval(
+        very_noisy_map,
+        noise_free_map,
         tv_weights_to_scan=[0.01, 0.1, 1.0],
         max_iterations=100,
         convergence_tolerance=0.01,
     )
-
-    # make sure output columns that should not be altered are in fact the same
-    assert_phases_allclose(
-        result[test_map_columns.phase], noisy_and_noise_free[test_map_columns.phase]
-    )
-    for label in [test_map_columns.amplitude, noisy_map_columns.amplitude]:
-        pdt.assert_series_equal(result[label], noisy_and_noise_free[label])
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
 
     # test correctness by comparing denoised dataset to noise-free
     map_sampling = 3
-    noise_free_density = compute_map_from_coefficients(
-        map_coefficients=noisy_and_noise_free,
-        amplitude_label=test_map_columns.amplitude,
-        phase_label=test_map_columns.phase,
-        map_sampling=map_sampling,
-    )
-    noisy_density = compute_map_from_coefficients(
-        map_coefficients=noisy_and_noise_free,
-        amplitude_label=noisy_map_columns.amplitude,
-        phase_label=noisy_map_columns.phase,
-        map_sampling=map_sampling,
-    )
-    denoised_density = compute_map_from_coefficients(
-        map_coefficients=result,
-        amplitude_label=noisy_map_columns.amplitude,
-        phase_label="PHIC_denoised",
-        map_sampling=map_sampling,
-    )
+    noise_free_density = noise_free_map.to_ccp4_map(map_sampling=map_sampling)
+    noisy_density = very_noisy_map.to_ccp4_map(map_sampling=3)
+    denoised_density = denoised_map.to_ccp4_map(map_sampling=3)
+
     noisy_error = map_norm(noisy_density, noise_free_density)
     denoised_error = map_norm(denoised_density, noise_free_density)
 

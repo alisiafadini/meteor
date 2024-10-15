@@ -4,16 +4,15 @@ from typing import Callable
 
 import numpy as np
 import pandas as pd
-import reciprocalspaceship as rs
 
 from .rsmap import Map
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
-    canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
-    rs_dataseries_to_complex_array,
 )
+
+DEFAULT_TV_WEIGHTS_TO_SCAN = [0.001, 0.01, 0.1, 1.0]
 
 
 def _project_derivative_on_experimental_set(
@@ -136,12 +135,12 @@ def _complex_derivative_from_iterative_tv(
 
 
 def iterative_tv_phase_retrieval(
-    derivative: Map,
+    initial_derivative: Map,
     native: Map,
     *,
     convergence_tolerance: float = 1e-3,
     max_iterations: int = 100,
-    tv_weights_to_scan: list[float] | None = None,
+    tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN,
 ) -> tuple[Map, pd.DataFrame]:
     """
     Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -166,11 +165,11 @@ def iterative_tv_phase_retrieval(
 
     Parameters
     ----------
-    derivative: Map
-        the derivative amplitudes, phases, uncertainties
+    initial_derivative: Map
+        the derivative amplitudes, and initial guess for the phases
 
     native: Map
-        the native amplitudes, phases, uncertainties
+        the native amplitudes, phases
 
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
@@ -195,8 +194,6 @@ def iterative_tv_phase_retrieval(
     """
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
-    if tv_weights_to_scan is None:
-        tv_weights_to_scan = [0.001, 0.01, 0.1, 1.0]
 
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
         diffmap = Map.from_structurefactor(difference, index=native.index)
@@ -211,34 +208,20 @@ def iterative_tv_phase_retrieval(
 
         return denoised_map.complex_amplitudes, tv_metadata
 
-    # convert the native and derivative datasets to complex arrays
-    native = rs_dataseries_to_complex_array(
-        input_dataset[native_amplitude_column], input_dataset[calculated_phase_column]
-    )
-    initial_derivative = rs_dataseries_to_complex_array(
-        input_dataset[derivative_amplitude_column], input_dataset[calculated_phase_column]
-    )
-
     # estimate the derivative phases using the iterative TV algorithm
     it_tv_complex_derivative, metadata = _complex_derivative_from_iterative_tv(
-        native=native,
-        initial_derivative=initial_derivative,
+        native=native.complex_amplitudes,
+        initial_derivative=initial_derivative.complex_amplitudes,
         tv_denoise_function=tv_denoise_closure,
         convergence_tolerance=convergence_tolerance,
         max_iterations=max_iterations,
     )
     _, derivative_phases = complex_array_to_rs_dataseries(
-        it_tv_complex_derivative, input_dataset.index
+        it_tv_complex_derivative, index=initial_derivative.index
     )
 
     # combine the determined derivative phases with the input to generate a complete output
-    output_dataset = input_dataset.copy()
-    output_dataset[output_derivative_phase_column] = derivative_phases.astype(rs.PhaseDtype())
-    canonicalize_amplitudes(
-        output_dataset,
-        amplitude_label=derivative_amplitude_column,
-        phase_label=output_derivative_phase_column,
-        inplace=True,
-    )
+    output_dataset = initial_derivative.copy()
+    output_dataset.phases = derivative_phases
 
     return output_dataset, metadata

@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
 import numpy as np
+import reciprocalspaceship as rs
 
 from .rsmap import Map, _assert_is_map
 from .settings import TV_MAP_SAMPLING
 from .utils import filter_common_indices
 from .validate import ScalarMaximizer, negentropy
-
-if TYPE_CHECKING:
-    import reciprocalspaceship as rs
 
 DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
@@ -51,7 +49,6 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
 
     delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
     delta = Map.from_structurefactor(delta_complex, index=derivative.index)
-    print(delta)
     delta.cell = native.cell
     delta.spacegroup = native.spacegroup
 
