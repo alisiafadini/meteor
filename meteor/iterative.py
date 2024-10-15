@@ -7,6 +7,7 @@ import pandas as pd
 import reciprocalspaceship as rs
 
 from .tv import TvDenoiseResult, tv_denoise_difference_map
+from .rsmap import Map
 from .utils import (
     average_phase_diff_in_degrees,
     canonicalize_amplitudes,
@@ -135,16 +136,13 @@ def _complex_derivative_from_iterative_tv(
 
 
 def iterative_tv_phase_retrieval(
-    input_dataset: rs.DataSet,
+    derivative: Map,
+    native: Map,
     *,
-    native_amplitude_column: str = "F",
-    derivative_amplitude_column: str = "Fh",
-    calculated_phase_column: str = "PHIC",
-    output_derivative_phase_column: str = "PHICh",
     convergence_tolerance: float = 1e-3,
     max_iterations: int = 100,
     tv_weights_to_scan: list[float] | None = None,
-) -> tuple[rs.DataSet, pd.DataFrame]:
+) -> tuple[Map, pd.DataFrame]:
     """
     Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless
     explicitly annotated |*|.
@@ -168,26 +166,12 @@ def iterative_tv_phase_retrieval(
 
     Parameters
     ----------
-    input_dataset : rs.DataSet
-        The input dataset containing the native and derivative amplitude columns, as well as
-        the calculated phase column.
+    derivative: Map
+        the derivative amplitudes, phases, uncertainties
 
-    native_amplitude_column : str, optional
-        Column name in `input_dataset` representing the amplitudes of the native (dark) structure
-        factors, by default "F".
-
-    derivative_amplitude_column : str, optional
-        Column name in `input_dataset` representing the amplitudes of the derivative (light)
-        structure factors, by default "Fh".
-
-    calculated_phase_column : str, optional
-        Column name in `input_dataset` representing the phases of the native (dark) structure
-        factors, by default "PHIC".
-
-    output_derivative_phase_column : str, optional
-        Column name where the estimated derivative phases will be stored in the output dataset,
-        by default "PHICh".
-
+    native: Map
+        the native amplitudes, phases, uncertainties
+    
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
         then return
@@ -201,7 +185,7 @@ def iterative_tv_phase_retrieval(
 
     Returns
     -------
-    output_dataset: rs.DataSet
+    output_map: Map
         The estimated derivative phases, along with the input amplitudes and input computed phases.
 
     metadata: pd.DataFrame
@@ -215,31 +199,17 @@ def iterative_tv_phase_retrieval(
         tv_weights_to_scan = [0.001, 0.01, 0.1, 1.0]
 
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
-        delta_amp, delta_phase = complex_array_to_rs_dataseries(
-            difference, index=input_dataset.index
-        )
+        diffmap = Map.from_structurefactor(difference, index=native.index)
+        diffmap.cell = native.cell
+        diffmap.spacegroup = native.spacegroup
 
-        # these two names are only used inside this closure
-        delta_amp.name = "DF_for_tv_closure"
-        delta_phase.name = "DPHI_for_tv_closure"
-
-        diffmap = rs.concat([delta_amp, delta_phase], axis=1)
-        diffmap.cell = input_dataset.cell
-        diffmap.spacegroup = input_dataset.spacegroup
-
-        denoised_map_coefficients, tv_metadata = tv_denoise_difference_map(
+        denoised_map, tv_metadata = tv_denoise_difference_map(
             diffmap,
-            difference_map_amplitude_column=delta_amp.name,
-            difference_map_phase_column=delta_phase.name,
             lambda_values_to_scan=tv_weights_to_scan,
             full_output=True,
         )
-
-        denoised_difference = rs_dataseries_to_complex_array(
-            denoised_map_coefficients[delta_amp.name], denoised_map_coefficients[delta_phase.name]
-        )
-
-        return denoised_difference, tv_metadata
+        
+        return denoised_map.complex_amplitudes, tv_metadata
 
     # convert the native and derivative datasets to complex arrays
     native = rs_dataseries_to_complex_array(

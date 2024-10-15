@@ -11,11 +11,12 @@ from .utils import (
     rs_dataseries_to_complex_array,
     complex_array_to_rs_dataseries,
 )
+import numpy as np
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import numpy as np
+    
     import pandas as pd
 
 
@@ -124,11 +125,11 @@ class Map(rs.DataSet):
         msg = "column assignment not allowed for Map objects"
         raise NotImplementedError(msg)
 
-    def drop(self, labels=None, *, axis=0, columns=None, **kwargs) -> Map | None:
+    def drop(self, labels=None, *, axis=0, columns=None, inplace=False, **kwargs):
         if (axis == 1) or (columns is not None):
             msg = "columns are fixed for Map objects"
             raise NotImplementedError(msg)
-        return super().drop(labels=labels, axis=axis, columns=columns, **kwargs)
+        return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
 
     @property
     def amplitudes(self) -> rs.DataSeries:
@@ -188,6 +189,18 @@ class Map(rs.DataSet):
     @property
     def complex_amplitudes(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
+    
+    def get_hkls(self):
+        return self.index.to_frame().to_numpy(dtype=np.int32)
+
+    def compute_dHKL(self) -> rs.DataSeries:
+        dHKL = self.cell.calculate_d_array(self.get_hkls())
+        return rs.DataSeries(dHKL, dtype="R", index=self.index)
+    
+    @property
+    def resolution_limits(self) -> tuple[float, float]:
+        d_hkl = self.compute_dHKL()
+        return np.max(d_hkl), np.min(d_hkl)
 
     def canonicalize_amplitudes(self):
         canonicalize_amplitudes(

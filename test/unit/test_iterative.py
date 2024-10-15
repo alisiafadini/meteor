@@ -92,24 +92,12 @@ def test_complex_derivative_from_iterative_tv() -> None:
 
 
 def test_iterative_tv(
-    noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet, test_map_columns: MapColumns
+    noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet
 ) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
-    noisy_map_columns = MapColumns(
-        amplitude="F_noisy", phase="PHIC_noisy", uncertainty="SIGF_noisy"
-    )
 
-    noisy_column_renaming = {
-        test_map_columns.amplitude: noisy_map_columns.amplitude,
-        test_map_columns.phase: noisy_map_columns.phase,
-        test_map_columns.uncertainty: noisy_map_columns.uncertainty,
-    }
-
-    noisy_and_noise_free = rs.concat(
-        [noise_free_map, very_noisy_map.rename(columns=noisy_column_renaming)], axis=1
-    )
 
     result, metadata = iterative_tv_phase_retrieval(
         noisy_and_noise_free,
