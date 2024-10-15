@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Type
+from typing import TYPE_CHECKING, Any
 
 import gemmi
 import reciprocalspaceship as rs
 
+from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
@@ -15,12 +16,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import numpy as np
-
-
-GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
-
-CellType = Type[tuple[float, float, float, float, float, float] | gemmi.UnitCell]
-SpaceGroupType = Type[int | str | gemmi.SpaceGroup]
 
 
 class MissingUncertaintiesError(AttributeError): ...
@@ -92,7 +87,7 @@ class Map(rs.DataSet):
         return dataseries
 
     def _verify_amplitude_type(
-        self, dataseries: rs.DataSeries, *, fix: bool = False
+        self, dataseries: rs.DataSeries, *, fix: bool = True
     ) -> rs.DataSeries:
         name = "amplitude"
         amplitude_dtypes = [
@@ -103,13 +98,13 @@ class Map(rs.DataSet):
         ]
         return self._verify_type(name, amplitude_dtypes, dataseries, fix=fix)
 
-    def _verify_phase_type(self, dataseries: rs.DataSeries, *, fix: bool = False) -> rs.DataSeries:
+    def _verify_phase_type(self, dataseries: rs.DataSeries, *, fix: bool = True) -> rs.DataSeries:
         name = "phase"
         phase_dtypes = [rs.PhaseDtype()]
         return self._verify_type(name, phase_dtypes, dataseries, fix=fix)
 
     def _verify_uncertainty_type(
-        self, dataseries: rs.DataSeries, *, fix: bool = False
+        self, dataseries: rs.DataSeries, *, fix: bool = True
     ) -> rs.DataSeries:
         name = "uncertainties"
         uncertainty_dtypes = [
@@ -139,7 +134,7 @@ class Map(rs.DataSet):
 
     @amplitudes.setter
     def amplitudes(self, values: rs.DataSeries) -> None:
-        values = self._verify_amplitude_type(values, fix=True)
+        values = self._verify_amplitude_type(values)
         self[self._amplitude_column] = values
 
     @property
@@ -148,7 +143,7 @@ class Map(rs.DataSet):
 
     @phases.setter
     def phases(self, values: rs.DataSeries) -> None:
-        values = self._verify_phase_type(values, fix=True)
+        values = self._verify_phase_type(values)
         self[self._phase_column] = values
 
     @property
@@ -166,10 +161,22 @@ class Map(rs.DataSet):
 
     @uncertainties.setter
     def uncertainties(self, values: rs.DataSeries) -> None:
-        values = self._verify_uncertainty_type(values, fix=True)
         if self.has_uncertainties:
-            self[self._uncertainty_column] = values
+            values = self._verify_uncertainty_type(values)
+            self[self._uncertainty_column] = values  # type: ignore[index]
         else:
+            msg = "uncertainties unset, and Pandas forbids assignment via attributes; "
+            msg += "to initialize, use Map.set_uncertainties(...)"
+            raise AttributeError(msg)
+
+    def set_uncertainties(self, values: rs.DataSeries, column_name: str = "SIGF") -> None:
+        values = self._verify_uncertainty_type(values)
+
+        if self.has_uncertainties:
+            self.uncertainties = values
+        else:
+            # otherwise, create a new column
+            self._uncertainty_column = column_name
             position = len(self.columns)
             if position != 2:  # noqa: PLR2004, should be 2: just amplitudes & phases
                 msg = "Misconfigured columns"

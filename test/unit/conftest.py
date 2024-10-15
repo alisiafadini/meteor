@@ -83,7 +83,7 @@ def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
 
     uncertainties = noise_sigma * np.ones_like(map_coefficients.phases)
     uncertainties = rs.DataSeries(uncertainties, index=map_coefficients.index)
-    map_coefficients.uncertainties = uncertainties.astype(rs.StandardDeviationDtype())
+    map_coefficients.set_uncertainties(uncertainties)
 
     return map_coefficients
 

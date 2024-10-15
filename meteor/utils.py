@@ -12,7 +12,7 @@ from reciprocalspaceship.utils import canonicalize_phases
 if TYPE_CHECKING:
     import pandas as pd
 
-GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 
 
 class ShapeMismatchError(Exception): ...

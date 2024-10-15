@@ -16,7 +16,7 @@ def test_copy(noise_free_map: Map) -> None:
 def test_setitem(noise_free_map: Map, noisy_map: Map) -> None:
     noisy_map.amplitudes = noise_free_map.amplitudes
     noisy_map.phases = noise_free_map.phases
-    noisy_map.uncertainties = noise_free_map.uncertainties
+    noisy_map.set_uncertainties(noise_free_map.uncertainties)  # should work even if already set
 
 
 def test_unallowed_setitem(noise_free_map: Map) -> None:
@@ -31,17 +31,14 @@ def test_insert_disabled(noise_free_map: Map) -> None:
 
 def test_set_uncertainties() -> None:
     test_map = Map.from_dict(
-        {
-            "F": rs.DataSeries([2.0, 3.0, 4.0]).astype(rs.StructureFactorAmplitudeDtype()),
-            "PHI": rs.DataSeries([0.0, 0.0, 0.0]).astype(rs.PhaseDtype()),
-        }
+        {"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])}
     )
 
     assert not test_map.has_uncertainties
     with pytest.raises(AttributeError):
         _ = test_map.uncertainties
 
-    test_map.uncertainties = rs.DataSeries([1.0, 1.0, 1.0]).astype(rs.StandardDeviationDtype())
+    test_map.set_uncertainties(rs.DataSeries([1.0, 1.0, 1.0]))
     assert test_map.has_uncertainties
     assert len(test_map.uncertainties) == 3
 
