@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type, Any
+from typing import TYPE_CHECKING, Any, Type
 
 import gemmi
-import numpy as np
-import pandas as pd
 import reciprocalspaceship as rs
 
 from .utils import (
@@ -16,6 +14,8 @@ from .utils import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import numpy as np
+
 
 GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
 
@@ -26,25 +26,18 @@ SpaceGroupType = Type[int | str | gemmi.SpaceGroup]
 class MissingUncertaintiesError(AttributeError): ...
 
 
-def _assert_is_map(obj: Any, require_uncertainties: bool) -> None:
+def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
     if not isinstance(obj, Map):
         msg = f"expected {obj} to be a rsmap.Map, got {type(obj)}"
         raise TypeError(msg)
-    if require_uncertainties:
-        if not obj.has_uncertainties:
-            msg = f"{obj} Map missing required uncertainty column"
-            raise MissingUncertaintiesError(msg)
-
+    if require_uncertainties and (not obj.has_uncertainties):
+        msg = f"{obj} Map missing required uncertainty column"
+        raise MissingUncertaintiesError(msg)
 
 
 # TODO: docstring for this class
 # TODO: audit __init__ in light of https://github.com/rs-station/reciprocalspaceship/blob/main/reciprocalspaceship/dataset.py
 class Map(rs.DataSet):
-
-    # TODO: these can get out of sync with the column names if the columns are renamed
-    # and what are the consequences of "class" variables like this?
-
-
     def __init__(
         self,
         data: Any,
@@ -54,7 +47,6 @@ class Map(rs.DataSet):
         uncertainty_column: str | None = "SIGF",
         **kwargs,
     ) -> None:
-        
         super().__init__(data=data, **kwargs)
 
         columns_to_keep = [amplitude_column, phase_column]
@@ -80,7 +72,7 @@ class Map(rs.DataSet):
         self.phases = self._verify_phase_type(self.phases, fix=True)
         if self.has_uncertainties:
             self.uncertainties = self._verify_uncertainty_type(self.uncertainties, fix=True)
-        
+
     @property
     def _constructor(self):
         return Map
@@ -89,7 +81,9 @@ class Map(rs.DataSet):
     def _constructor_sliced(self):
         return rs.DataSeries
 
-    def _verify_type(self, name: str, allowed_types: list[Any], dataseries: rs.DataSeries, fix: bool) -> rs.DataSeries:
+    def _verify_type(
+        self, name: str, allowed_types: list[Any], dataseries: rs.DataSeries, *, fix: bool
+    ) -> rs.DataSeries:
         if dataseries.dtype not in allowed_types:
             if fix:
                 return dataseries.astype(rs.StandardDeviationDtype())
@@ -97,7 +91,9 @@ class Map(rs.DataSet):
             raise AssertionError(msg)
         return dataseries
 
-    def _verify_amplitude_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+    def _verify_amplitude_type(
+        self, dataseries: rs.DataSeries, *, fix: bool = False
+    ) -> rs.DataSeries:
         name = "amplitude"
         amplitude_dtypes = [
             rs.StructureFactorAmplitudeDtype(),
@@ -105,21 +101,23 @@ class Map(rs.DataSet):
             rs.NormalizedStructureFactorAmplitudeDtype(),
             rs.AnomalousDifferenceDtype(),
         ]
-        return self._verify_type(name, amplitude_dtypes, dataseries, fix)
+        return self._verify_type(name, amplitude_dtypes, dataseries, fix=fix)
 
-    def _verify_phase_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+    def _verify_phase_type(self, dataseries: rs.DataSeries, *, fix: bool = False) -> rs.DataSeries:
         name = "phase"
         phase_dtypes = [rs.PhaseDtype()]
-        return self._verify_type(name, phase_dtypes, dataseries, fix)
+        return self._verify_type(name, phase_dtypes, dataseries, fix=fix)
 
-    def _verify_uncertainty_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+    def _verify_uncertainty_type(
+        self, dataseries: rs.DataSeries, *, fix: bool = False
+    ) -> rs.DataSeries:
         name = "uncertainties"
         uncertainty_dtypes = [
             rs.StandardDeviationDtype(),
             rs.StandardDeviationFriedelIDtype(),
             rs.StandardDeviationFriedelSFDtype(),
         ]
-        return self._verify_type(name, uncertainty_dtypes, dataseries, fix)
+        return self._verify_type(name, uncertainty_dtypes, dataseries, fix=fix)
 
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
@@ -130,7 +128,7 @@ class Map(rs.DataSet):
     def insert(self, *args, **kwargs) -> None:  # noqa: ARG002
         msg = "column assignment not allowed for Map objects"
         raise NotImplementedError(msg)
-    
+
     def drop(self, *args, **kwargs) -> None:  # noqa: ARG002
         msg = "columns are fixed for Map objects"
         raise NotImplementedError(msg)
@@ -218,7 +216,9 @@ class Map(rs.DataSet):
         amplitudes, phases = complex_array_to_rs_dataseries(
             complex_structure_factors=complex_structurefactor, index=index
         )
-        dataset = rs.DataSet(rs.concat([amplitudes, phases], axis=1), columns=["F", "PHI"], index=index, **kwargs)
+        dataset = rs.DataSet(
+            rs.concat([amplitudes, phases], axis=1), columns=["F", "PHI"], index=index, **kwargs
+        )
         return cls(dataset)
 
     @classmethod

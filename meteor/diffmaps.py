@@ -52,11 +52,8 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     delta.cell = native.cell
     delta.spacegroup = native.spacegroup
 
-    print("*** HERE0", derivative.has_uncertainties, native.has_uncertainties)
     if derivative.has_uncertainties and native.has_uncertainties:
-        print("*** HERE1")
         delta.uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
-    print("*** HERE2")
 
     return delta
 
@@ -83,7 +80,7 @@ def compute_kweights(
         lower weights.
     """
     _assert_is_map(difference_map, require_uncertainties=True)
-    
+
     inverse_weights = (
         1
         + (difference_map.uncertainties**2 / (difference_map.uncertainties**2).mean())
@@ -160,9 +157,6 @@ def max_negentropy_kweighted_difference_map(
     _assert_is_map(native, require_uncertainties=True)
 
     def negentropy_objective(k_parameter: float) -> float:
-        assert derivative.has_uncertainties, "inside"
-        assert native.has_uncertainties, "inside"
-        print("here -1")
         kweighted_dataset = compute_kweighted_difference_map(
             derivative, native, k_parameter=k_parameter
         )

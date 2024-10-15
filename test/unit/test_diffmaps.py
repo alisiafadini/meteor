@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import reciprocalspaceship as rs
-
 from numpy.testing import assert_almost_equal
 
 from meteor.diffmaps import (
@@ -12,7 +11,6 @@ from meteor.diffmaps import (
     max_negentropy_kweighted_difference_map,
 )
 from meteor.rsmap import Map
-from meteor.utils import MapColumns, compute_map_from_coefficients
 from meteor.validate import negentropy
 
 
@@ -56,24 +54,21 @@ def test_compute_kweights_vs_analytical() -> None:
     sigdeltaf = rs.DataSeries([1.0, 1.0, 1.0])
     k_parameter = 0.5
 
-    diffmap =  Map.from_dict({"F": deltaf, "PHI": phi, "SIGF": sigdeltaf})
+    diffmap = Map.from_dict({"F": deltaf, "PHI": phi, "SIGF": sigdeltaf})
     expected_weights = np.array([0.453, 0.406, 0.354])
     result = compute_kweights(diffmap, k_parameter=k_parameter)
     assert_almost_equal(result.values, expected_weights, decimal=3)
 
 
-def test_compute_kweighted_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
+def test_compute_kweighted_difference_map_vs_analytical(
+    dummy_derivative: Map, dummy_native: Map
+) -> None:
     kwt_diffmap = compute_kweighted_difference_map(dummy_derivative, dummy_native, k_parameter=0.5)
-    print("***", kwt_diffmap.uncertainties)
-
-    # expected weighted amplitudes calculated by hand
-    expected_weighted_amplitudes = np.array([1.3247, 1.8280])
+    expected_weighted_amplitudes = np.array([1.3247, 1.8280])  # calculated by hand
     assert_almost_equal(kwt_diffmap.amplitudes, expected_weighted_amplitudes, decimal=4)
 
 
-def test_kweight_optimization(
-    noise_free_map: rs.DataSet, noisy_map: rs.DataSet
-) -> None:
+def test_kweight_optimization(noise_free_map: rs.DataSet, noisy_map: rs.DataSet) -> None:
     _, max_negent_kweight = max_negentropy_kweighted_difference_map(noisy_map, noise_free_map)
 
     epsilon = 0.01
@@ -85,7 +80,8 @@ def test_kweight_optimization(
     negentropies = []
     for k_parameter in k_parameters_to_scan:
         kweighted_diffmap = compute_kweighted_difference_map(
-            noisy_map, noise_free_map,
+            noisy_map,
+            noise_free_map,
             k_parameter=k_parameter,
         )
         realspace_map = kweighted_diffmap.to_ccp4_map(map_sampling=3)
