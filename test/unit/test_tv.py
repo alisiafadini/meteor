@@ -50,14 +50,11 @@ def test_tv_denoise_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
     random_difference_map: rs.DataSet,
-    test_diffmap_columns: MapColumns,
 ) -> None:
     output = tv.tv_denoise_difference_map(
-        difference_map_coefficients=random_difference_map,
+        random_difference_map,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=full_output,
-        difference_map_amplitude_column=test_diffmap_columns.amplitude,
-        difference_map_phase_column=test_diffmap_columns.phase,
     )  # type: ignore[call-overload]
     if full_output:
         assert len(output) == 2
