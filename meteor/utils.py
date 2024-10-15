@@ -38,7 +38,7 @@ def cut_resolution(
     dmax_limit: float | None = None,
     dmin_limit: float | None = None,
 ) -> rs.DataSet:
-    d_hkl = np.array(dataset.compute_dHKL())
+    d_hkl = dataset.compute_dHKL()
     if dmax_limit:
         dataset = dataset.loc[(d_hkl <= dmax_limit)]
     if dmin_limit:
