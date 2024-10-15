@@ -43,46 +43,44 @@ class Map(rs.DataSet):
 
     # TODO: these can get out of sync with the column names if the columns are renamed
     # and what are the consequences of "class" variables like this?
-    _amplitude_column = "F"
-    _phase_column = "PHI"
-    _uncertainty_column = "SIGF"
+
 
     def __init__(
         self,
-        dataset: rs.DataSet,
+        data: Any,
         *,
         amplitude_column: str = "F",
         phase_column: str = "PHI",
-        uncertainty_column: str | None = None,
+        uncertainty_column: str | None = "SIGF",
         **kwargs,
     ) -> None:
-        # add to dataset
-        labels = [amplitude_column, phase_column]
-        if uncertainty_column:
-            labels.append(uncertainty_column)
-        sub_dataset = dataset[labels].copy()
-        super().__init__(sub_dataset, **kwargs)
+        
+        super().__init__(data=data, **kwargs)
 
-        # rename columns
-        self[amplitude_column].rename(self._amplitude_column, inplace=True)
-        self[phase_column].rename(self._phase_column, inplace=True)
-        if uncertainty_column:
-            self[uncertainty_column].rename(self._uncertainty_column, inplace=True)
+        columns_to_keep = [amplitude_column, phase_column]
+        for column in columns_to_keep:
+            if column not in self.columns:
+                msg = "amplitude and phase columns must be in input `data`... "
+                msg += f"looking for {amplitude_column} and {phase_column}, got {self.columns}"
+                raise KeyError(msg)
+
+        self._amplitude_column = amplitude_column
+        self._phase_column = phase_column
+        self._uncertainty_column = uncertainty_column
+        if uncertainty_column and (uncertainty_column in self.columns):
+            columns_to_keep.append(uncertainty_column)
+
+        # TODO: feels dangerous, is this the best way?
+        excess_columns = set(self.columns) - set(columns_to_keep)
+        for column in excess_columns:
+            del self[column]
 
         # ensure types correct
-        self._assert_amplitude_type(self[self._amplitude_column])
-        self._assert_phase_type(self[self._phase_column])
+        self.amplitudes = self._verify_amplitude_type(self.amplitudes, fix=True)
+        self.phases = self._verify_phase_type(self.phases, fix=True)
         if self.has_uncertainties:
-            self._assert_uncertainty_type(self[self._uncertainty_column])
-
-        # touchups
-        canonicalize_amplitudes(
-            self,
-            amplitude_label=self._amplitude_column,
-            phase_label=self._phase_column,
-            inplace=True,
-        )
-
+            self.uncertainties = self._verify_uncertainty_type(self.uncertainties, fix=True)
+        
     @property
     def _constructor(self):
         return Map
@@ -91,32 +89,37 @@ class Map(rs.DataSet):
     def _constructor_sliced(self):
         return rs.DataSeries
 
-    def _assert_amplitude_type(self, dataseries: rs.DataSeries) -> None:
+    def _verify_type(self, name: str, allowed_types: list[Any], dataseries: rs.DataSeries, fix: bool) -> rs.DataSeries:
+        if dataseries.dtype not in allowed_types:
+            if fix:
+                return dataseries.astype(rs.StandardDeviationDtype())
+            msg = f"dtype for passed {name} not allowed, got: {dataseries.dtype} allow {allowed_types}"
+            raise AssertionError(msg)
+        return dataseries
+
+    def _verify_amplitude_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+        name = "amplitude"
         amplitude_dtypes = [
             rs.StructureFactorAmplitudeDtype(),
             rs.FriedelStructureFactorAmplitudeDtype(),
             rs.NormalizedStructureFactorAmplitudeDtype(),
             rs.AnomalousDifferenceDtype(),
         ]
-        if dataseries.dtype not in amplitude_dtypes:
-            msg = f"amplitude dtype not allowed, got: {dataseries.dtype} allow {amplitude_dtypes}"
-            raise AssertionError(msg)
+        return self._verify_type(name, amplitude_dtypes, dataseries, fix)
 
-    def _assert_phase_type(self, dataseries: rs.DataSeries) -> None:
-        allowed_phase_dtypes = [rs.PhaseDtype()]
-        if dataseries.dtype not in allowed_phase_dtypes:
-            msg = f"phase dtype not allowed, got: {dataseries.dtype} allow {allowed_phase_dtypes}"
-            raise AssertionError(msg)
+    def _verify_phase_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+        name = "phase"
+        phase_dtypes = [rs.PhaseDtype()]
+        return self._verify_type(name, phase_dtypes, dataseries, fix)
 
-    def _assert_uncertainty_type(self, dataseries: rs.DataSeries) -> None:
+    def _verify_uncertainty_type(self, dataseries: rs.DataSeries, fix: bool = False) -> rs.DataSeries:
+        name = "uncertainties"
         uncertainty_dtypes = [
             rs.StandardDeviationDtype(),
             rs.StandardDeviationFriedelIDtype(),
             rs.StandardDeviationFriedelSFDtype(),
         ]
-        if dataseries.dtype not in uncertainty_dtypes:
-            msg = f"phase dtype not allowed, got: {dataseries.dtype} allow {uncertainty_dtypes}"
-            raise AssertionError(msg)
+        return self._verify_type(name, uncertainty_dtypes, dataseries, fix)
 
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
@@ -127,6 +130,10 @@ class Map(rs.DataSet):
     def insert(self, *args, **kwargs) -> None:  # noqa: ARG002
         msg = "column assignment not allowed for Map objects"
         raise NotImplementedError(msg)
+    
+    def drop(self, *args, **kwargs) -> None:  # noqa: ARG002
+        msg = "columns are fixed for Map objects"
+        raise NotImplementedError(msg)
 
     @property
     def amplitudes(self) -> rs.DataSeries:
@@ -134,7 +141,7 @@ class Map(rs.DataSet):
 
     @amplitudes.setter
     def amplitudes(self, values: rs.DataSeries) -> None:
-        self._assert_amplitude_type(values)
+        values = self._verify_amplitude_type(values, fix=True)
         self[self._amplitude_column] = values
 
     @property
@@ -143,11 +150,13 @@ class Map(rs.DataSet):
 
     @phases.setter
     def phases(self, values: rs.DataSeries) -> None:
-        self._assert_phase_type(values)
+        values = self._verify_phase_type(values, fix=True)
         self[self._phase_column] = values
 
     @property
     def has_uncertainties(self) -> bool:
+        if self._uncertainty_column is None:
+            return False
         return self._uncertainty_column in self.columns
 
     @property
@@ -159,7 +168,7 @@ class Map(rs.DataSet):
 
     @uncertainties.setter
     def uncertainties(self, values: rs.DataSeries) -> None:
-        self._assert_uncertainty_type(values)
+        values = self._verify_uncertainty_type(values, fix=True)
         if self.has_uncertainties:
             self[self._uncertainty_column] = values
         else:
@@ -172,6 +181,14 @@ class Map(rs.DataSet):
     @property
     def complex_amplitudes(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
+
+    def canonicalize_amplitudes(self):
+        canonicalize_amplitudes(
+            self,
+            amplitude_label=self._amplitude_column,
+            phase_label=self._phase_column,
+            inplace=True,
+        )
 
     def to_gemmi(self) -> rs.DataSet:
         # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet
@@ -189,37 +206,20 @@ class Map(rs.DataSet):
         ccp4_map.update_ccp4_header()
         return ccp4_map
 
+    # TODO: clean this up
     @classmethod
     def from_structurefactor(
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
-        index: pd.Index | None = None,
-        cell: CellType | None = None,
-        spacegroup: SpaceGroupType | None = None,
+        index,
+        **kwargs,
     ) -> Map:
-        if isinstance(complex_structurefactor, np.ndarray):
-            if not isinstance(index, pd.Index):
-                msg = "if `complex_structurefactor` is a numpy array, `index` must be provided"
-                raise TypeError(msg)
-            amplitudes, phases = complex_array_to_rs_dataseries(
-                complex_structure_factors=complex_structurefactor, index=index
-            )
-
-        elif isinstance(complex_structurefactor, rs.DataSeries):
-            amplitudes, phases = super().from_structurefactor(complex_structurefactor)
-
-        else:
-            msg = f"`complex_structurefactor` invalid type: {type(complex_structurefactor)}"
-            raise TypeError(msg)
-
-        dataset = rs.concat(
-            [amplitudes.rename(cls._amplitude_column), phases.rename(cls._phase_column)], axis=1
+        amplitudes, phases = complex_array_to_rs_dataseries(
+            complex_structure_factors=complex_structurefactor, index=index
         )
-        dataset.cell = cell
-        dataset.spacegroup = spacegroup
-
-        return cls(dataset, amplitude_column=cls._amplitude_column, phase_column=cls._phase_column)
+        dataset = rs.DataSet(rs.concat([amplitudes, phases], axis=1), columns=["F", "PHI"], index=index, **kwargs)
+        return cls(dataset)
 
     @classmethod
     def from_ccp4_map(
@@ -266,28 +266,3 @@ class Map(rs.DataSet):
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
         )
-
-    @classmethod
-    def from_dict(cls, data, *, index=None, cell=None, spacegroup=None) -> Map:
-        dataset = rs.DataSet(data=data, index=index, cell=cell, spacegroup=spacegroup)
-
-        for required_column in [cls._amplitude_column, cls._phase_column]:
-            if required_column not in dataset.columns:
-                msg = f"cannot find required key {required_column} in input dict"
-                raise KeyError(msg)
-
-        dataset[cls._amplitude_column] = dataset[cls._amplitude_column].astype(
-            rs.StructureFactorAmplitudeDtype()
-        )
-        dataset[cls._phase_column] = dataset[cls._phase_column].astype(rs.PhaseDtype())
-
-        if cls._uncertainty_column in dataset.columns:
-            dataset[cls._uncertainty_column] = dataset[cls._uncertainty_column].astype(
-                rs.StandardDeviationDtype()
-            )
-            return cls(dataset, uncertainty_column=cls._uncertainty_column)
-
-        return cls(dataset)
-
-    def from_records(self, *args, **kwargs) -> None:
-        raise NotImplementedError

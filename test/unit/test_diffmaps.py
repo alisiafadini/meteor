@@ -24,7 +24,7 @@ def dummy_derivative() -> Map:
         "PHI": np.array([180.0, 0.0]),
         "SIGF": np.array([0.5, 0.5]),
     }
-    return Map.from_dict(derivative, index=index)
+    return Map(derivative, index=index)
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def dummy_native() -> Map:
         "PHI": np.array([0.0, 180.0]),
         "SIGF": np.array([0.5, 0.5]),
     }
-    return Map.from_dict(native, index=index)
+    return Map(native, index=index)
 
 
 def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
