@@ -3,20 +3,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import gemmi
+import numpy as np
 import reciprocalspaceship as rs
 
 from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
-    rs_dataseries_to_complex_array,
     complex_array_to_rs_dataseries,
+    rs_dataseries_to_complex_array,
 )
-import numpy as np
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    
     import pandas as pd
 
 
@@ -33,6 +32,7 @@ def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
 
 
 # TODO: docstring for this class
+# TODO: test coverage audit
 class Map(rs.DataSet):
     def __init__(
         self,
@@ -189,14 +189,14 @@ class Map(rs.DataSet):
     @property
     def complex_amplitudes(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
-    
+
     def get_hkls(self):
         return self.index.to_frame().to_numpy(dtype=np.int32)
 
     def compute_dHKL(self) -> rs.DataSeries:
         dHKL = self.cell.calculate_d_array(self.get_hkls())
         return rs.DataSeries(dHKL, dtype="R", index=self.index)
-    
+
     @property
     def resolution_limits(self) -> tuple[float, float]:
         d_hkl = self.compute_dHKL()

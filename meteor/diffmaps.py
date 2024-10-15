@@ -43,7 +43,7 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     _assert_is_map(derivative, require_uncertainties=False)
     _assert_is_map(native, require_uncertainties=False)
-    
+
     derivative, native = filter_common_indices(derivative, native)  # type: ignore[assignment]
     if len(derivative) == 0 or len(native) == 0:
         msg = "cannot find any HKL incdices in common between `derivative` and `native`"

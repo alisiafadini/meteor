@@ -34,18 +34,13 @@ def filter_common_indices(
     return df1_common, df2_common
 
 
-def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
-    d_hkl = dataset.compute_dHKL()["dHKL"]
-    return d_hkl.max(), d_hkl.min()
-
-
 def cut_resolution(
     dataset: rs.DataSet,
     *,
     dmax_limit: float | None = None,
     dmin_limit: float | None = None,
 ) -> rs.DataSet:
-    d_hkl = dataset.compute_dHKL()["dHKL"]
+    d_hkl = np.array(dataset.compute_dHKL())
     if dmax_limit:
         dataset = dataset.loc[(d_hkl <= dmax_limit)]
     if dmin_limit:
@@ -183,7 +178,7 @@ def complex_array_to_rs_dataseries(
     )
 
     phases = rs.DataSeries(
-        np.angle(complex_structure_factors, deg=True), 
+        np.angle(complex_structure_factors, deg=True),
         index=index,
         dtype=rs.PhaseDtype(),
         name="PHI",

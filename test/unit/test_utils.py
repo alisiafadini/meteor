@@ -7,6 +7,7 @@ from pandas import testing as pdt
 
 from meteor import testing as mt
 from meteor import utils
+from meteor.rsmap import Map
 
 NP_RNG = np.random.default_rng()
 
@@ -23,12 +24,6 @@ def test_filter_common_indices() -> None:
     assert len(filtered_df2) == 2
 
 
-def test_resolution_limits(random_difference_map: rs.DataSet) -> None:
-    dmax, dmin = utils.resolution_limits(random_difference_map)
-    assert dmax == 10.0
-    assert dmin == 1.0
-
-
 @pytest.mark.parametrize(
     ("dmax_limit", "dmin_limit"),
     [
@@ -38,10 +33,8 @@ def test_resolution_limits(random_difference_map: rs.DataSet) -> None:
         (8.0, 2.0),
     ],
 )
-def test_cut_resolution(
-    random_difference_map: rs.DataSet, dmax_limit: float, dmin_limit: float
-) -> None:
-    dmax_before_cut, dmin_before_cut = utils.resolution_limits(random_difference_map)
+def test_cut_resolution(random_difference_map: Map, dmax_limit: float, dmin_limit: float) -> None:
+    dmax_before_cut, dmin_before_cut = random_difference_map.resolution_limits
     expected_dmax_upper_bound: float = max(omit_nones_in_list([dmax_before_cut, dmax_limit]))
     expected_dmin_lower_bound: float = min(omit_nones_in_list([dmin_before_cut, dmin_limit]))
 
@@ -50,7 +43,7 @@ def test_cut_resolution(
     )
     assert len(random_intensities) > 0
 
-    dmax, dmin = utils.resolution_limits(random_intensities)
+    dmax, dmin = random_intensities.resolution_limits
     assert dmax <= expected_dmax_upper_bound
     assert dmin >= expected_dmin_lower_bound
 
@@ -127,10 +120,14 @@ def test_complex_array_to_rs_dataseries() -> None:
     carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
     index = pd.Index(np.arange(4))
 
-    expected_amp = rs.DataSeries(np.ones(4), index=index).astype(rs.StructureFactorAmplitudeDtype())
-    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index).astype(rs.PhaseDtype())
+    expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
+        rs.StructureFactorAmplitudeDtype()
+    )
+    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
+        rs.PhaseDtype()
+    )
 
-    amp, phase = utils.complex_array_to_rs_dataseries(carray, index)
+    amp, phase = utils.complex_array_to_rs_dataseries(carray, index=index)
     pdt.assert_series_equal(amp, expected_amp)
     pdt.assert_series_equal(phase, expected_phase)
 
@@ -139,7 +136,7 @@ def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
     carray = np.array([1.0]) + 1j * np.array([1.0])
     index = pd.Index(np.arange(2))
     with pytest.raises(utils.ShapeMismatchError):
-        utils.complex_array_to_rs_dataseries(carray, index)
+        utils.complex_array_to_rs_dataseries(carray, index=index)
 
 
 def test_complex_array_dataseries_roundtrip() -> None:
@@ -147,7 +144,7 @@ def test_complex_array_dataseries_roundtrip() -> None:
     carray = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
     indices = pd.Index(np.arange(n))
 
-    ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, indices)
+    ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, index=indices)
 
     assert isinstance(ds_amplitudes, rs.DataSeries)
     assert isinstance(ds_phases, rs.DataSeries)
@@ -163,7 +160,7 @@ def test_complex_array_dataseries_roundtrip() -> None:
 
 
 def test_compute_map_from_coefficients(
-    random_difference_map: rs.DataSet, test_diffmap_columns: utils.MapColumns
+    random_difference_map: Map, test_diffmap_columns: utils.MapColumns
 ) -> None:
     diffmap = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
@@ -176,7 +173,7 @@ def test_compute_map_from_coefficients(
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
 def test_map_to_coefficients_round_trip(
-    map_sampling: int, random_difference_map: rs.DataSet, test_diffmap_columns: utils.MapColumns
+    map_sampling: int, random_difference_map: Map, test_diffmap_columns: utils.MapColumns
 ) -> None:
     realspace_map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
@@ -185,7 +182,7 @@ def test_map_to_coefficients_round_trip(
         map_sampling=map_sampling,
     )
 
-    _, dmin = utils.resolution_limits(random_difference_map)
+    _, dmin = random_difference_map.resolution_limits
 
     output_coefficients = utils.compute_coefficients_from_map(
         ccp4_map=realspace_map,
@@ -200,6 +197,7 @@ def test_map_to_coefficients_round_trip(
         phase_label=test_diffmap_columns.phase,
         inplace=True,
     )
+    random_difference_map.canonicalize_amplitudes()
 
     pd.testing.assert_series_equal(
         random_difference_map[test_diffmap_columns.amplitude],

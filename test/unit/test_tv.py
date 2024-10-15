@@ -82,9 +82,7 @@ def test_tv_denoise_map(
 
     for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
-            difference_map_coefficients=noisy_map,
-            difference_map_amplitude_column=test_map_columns.amplitude,
-            difference_map_phase_column=test_map_columns.phase,
+            noisy_map,
             lambda_values_to_scan=[
                 trial_lambda,
             ],
@@ -98,10 +96,8 @@ def test_tv_denoise_map(
     # now run the denoising algorithm and make sure we get a result that's close
     # to the one that minimizes the RMS error to the ground truth
     denoised_map, result = tv.tv_denoise_difference_map(
-        difference_map_coefficients=noisy_map,
+        noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
-        difference_map_amplitude_column=test_map_columns.amplitude,
-        difference_map_phase_column=test_map_columns.phase,
         full_output=True,
     )
 

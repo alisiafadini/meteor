@@ -17,7 +17,7 @@ from meteor.iterative import (
 )
 from meteor.testing import assert_phases_allclose
 from meteor.tv import TvDenoiseResult
-from meteor.utils import MapColumns, compute_map_from_coefficients
+from meteor.utils import compute_map_from_coefficients
 from meteor.validate import negentropy
 
 if TYPE_CHECKING:
@@ -91,13 +91,9 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
-def test_iterative_tv(
-    noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet
-) -> None:
+def test_iterative_tv(noise_free_map: rs.DataSet, very_noisy_map: rs.DataSet) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
-
-
 
     result, metadata = iterative_tv_phase_retrieval(
         noisy_and_noise_free,

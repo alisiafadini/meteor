@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
 
-from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .rsmap import Map
+from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
     canonicalize_amplitudes,
@@ -171,7 +171,7 @@ def iterative_tv_phase_retrieval(
 
     native: Map
         the native amplitudes, phases, uncertainties
-    
+
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
         then return
@@ -208,7 +208,7 @@ def iterative_tv_phase_retrieval(
             lambda_values_to_scan=tv_weights_to_scan,
             full_output=True,
         )
-        
+
         return denoised_map.complex_amplitudes, tv_metadata
 
     # convert the native and derivative datasets to complex arrays

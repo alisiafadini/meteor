@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import Literal, Sequence, overload
 
 import numpy as np
 from skimage.restoration import denoise_tv_chambolle
 
+from .rsmap import Map
 from .settings import (
     TV_LAMBDA_RANGE,
     TV_MAP_SAMPLING,
@@ -13,16 +14,9 @@ from .settings import (
     TV_STOP_TOLERANCE,
 )
 from .utils import (
-    compute_coefficients_from_map,
-    compute_map_from_coefficients,
     numpy_array_to_map,
-    resolution_limits,
 )
 from .validate import ScalarMaximizer, negentropy
-from .rsmap import Map
-
-if TYPE_CHECKING:
-    import reciprocalspaceship as rs
 
 
 @dataclass
@@ -141,10 +135,10 @@ def tv_denoise_difference_map(
         spacegroup=difference_map.spacegroup,
         cell=difference_map.cell,
     )
-    
+
     final_map = Map.from_ccp4_map(
         ccp4_map=final_realspace_map_as_ccp4,
-        high_resolution_limit=difference_map.resolution_limits[1]
+        high_resolution_limit=difference_map.resolution_limits[1],
     )
 
     # sometimes `compute_coefficients_from_map` adds reflections -- systematic absences or

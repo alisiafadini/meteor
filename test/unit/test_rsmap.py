@@ -61,6 +61,12 @@ def test_complex_amplitudes(noise_free_map: Map) -> None:
     assert np.issubdtype(c_array.dtype, np.complexfloating)
 
 
+def test_resolution_limits(random_difference_map: Map) -> None:
+    dmax, dmin = random_difference_map.resolution_limits
+    assert dmax == 10.0
+    assert dmin == 1.0
+
+
 def test_to_structurefactor(noise_free_map: Map) -> None:
     c_dataseries = noise_free_map.to_structurefactor()
     c_array = noise_free_map.complex_amplitudes
