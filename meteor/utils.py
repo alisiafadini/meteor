@@ -24,7 +24,8 @@ class MapColumns:
 
 
 def filter_common_indices(
-    df1: pd.DataFrame, df2: pd.DataFrame
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
@@ -217,7 +218,9 @@ def compute_map_from_coefficients(
     map_coefficients_gemmi_format = map_coefficients.to_gemmi()
     ccp4_map = gemmi.Ccp4Map()
     ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-        amplitude_label, phase_label, sample_rate=map_sampling
+        amplitude_label,
+        phase_label,
+        sample_rate=map_sampling,
     )
     ccp4_map.update_ccp4_header()
 
@@ -235,7 +238,8 @@ def compute_coefficients_from_map(
 
     gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
     data = gemmi_structure_factors.prepare_asu_data(
-        dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER, with_sys_abs=True
+        dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER,
+        with_sys_abs=True,
     )
 
     mtz = gemmi.Mtz(with_base=True)

@@ -128,7 +128,8 @@ def tv_denoise_difference_map(
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_realspace_map_as_array = _tv_denoise_array(
-        map_as_array=realspace_map_array, weight=maximizer.argument_optimum
+        map_as_array=realspace_map_array,
+        weight=maximizer.argument_optimum,
     )
     final_realspace_map_as_ccp4 = numpy_array_to_map(
         final_realspace_map_as_array,

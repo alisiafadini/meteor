@@ -13,7 +13,10 @@ DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 25)
 
 
 def rms_between_coefficients(
-    ds1: rs.DataSet, ds2: rs.DataSet, labels: MapColumns, map_sampling: int = 3
+    ds1: rs.DataSet,
+    ds2: rs.DataSet,
+    labels: MapColumns,
+    map_sampling: int = 3,
 ) -> float:
     map1 = compute_map_from_coefficients(
         map_coefficients=ds1,

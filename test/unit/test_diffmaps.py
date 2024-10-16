@@ -61,7 +61,8 @@ def test_compute_kweights_vs_analytical() -> None:
 
 
 def test_compute_kweighted_difference_map_vs_analytical(
-    dummy_derivative: Map, dummy_native: Map
+    dummy_derivative: Map,
+    dummy_native: Map,
 ) -> None:
     kwt_diffmap = compute_kweighted_difference_map(dummy_derivative, dummy_native, k_parameter=0.5)
     expected_weighted_amplitudes = np.array([1.3247, 1.8280])  # calculated by hand

@@ -17,6 +17,13 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
+    It converts the amplitude and phase pairs from both the native and derivative structure factor
+    sets into complex numbers, computes the difference, and then converts the result back
+    into amplitudes and phases.
+
+    If uncertainty columns are provided for both native and derivative data, it also propagates the
+    uncertainty of the difference in amplitudes.
+
     Parameters
     ----------
     derivative: Map
@@ -28,16 +35,6 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     -------
     diffmap: Map
         map corresponding to the complex difference (derivative - native)
-
-    Notes
-    -----
-    This function computes the complex difference between native and derivative structure factors.
-    It converts the amplitude and phase pairs from both the native and derivative structure factor
-    sets into complex numbers, computes the difference, and then converts the result back
-    into amplitudes and phases.
-
-    If uncertainty columns are provided for both native and derivative data,
-    it also propagates the uncertainty of the difference in amplitudes.
     """
     _assert_is_map(derivative, require_uncertainties=False)
     _assert_is_map(native, require_uncertainties=False)
@@ -159,7 +156,9 @@ def max_negentropy_kweighted_difference_map(
 
     def negentropy_objective(k_parameter: float) -> float:
         kweighted_dataset = compute_kweighted_difference_map(
-            derivative, native, k_parameter=k_parameter
+            derivative,
+            native,
+            k_parameter=k_parameter,
         )
         k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=TV_MAP_SAMPLING)
         k_weighted_map_array = np.array(k_weighted_map.grid)
@@ -170,7 +169,9 @@ def max_negentropy_kweighted_difference_map(
     opt_k_parameter = maximizer.argument_optimum
 
     kweighted_dataset = compute_kweighted_difference_map(
-        derivative, native, k_parameter=opt_k_parameter
+        derivative,
+        native,
+        k_parameter=opt_k_parameter,
     )
 
     return kweighted_dataset, opt_k_parameter

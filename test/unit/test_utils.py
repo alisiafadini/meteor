@@ -39,7 +39,9 @@ def test_cut_resolution(random_difference_map: Map, dmax_limit: float, dmin_limi
     expected_dmin_lower_bound: float = min(omit_nones_in_list([dmin_before_cut, dmin_limit]))
 
     random_intensities = utils.cut_resolution(
-        random_difference_map, dmax_limit=dmax_limit, dmin_limit=dmin_limit
+        random_difference_map,
+        dmax_limit=dmax_limit,
+        dmin_limit=dmin_limit,
     )
     assert len(random_intensities) > 0
 
@@ -50,7 +52,9 @@ def test_cut_resolution(random_difference_map: Map, dmax_limit: float, dmin_limi
 
 @pytest.mark.parametrize("inplace", [False, True])
 def test_canonicalize_amplitudes(
-    inplace: bool, random_difference_map: rs.DataSet, test_diffmap_columns: utils.MapColumns
+    inplace: bool,
+    random_difference_map: rs.DataSet,
+    test_diffmap_columns: utils.MapColumns,
 ) -> None:
     # ensure at least one amplitude is negative, one phase is outside [-180,180)
     index_single_hkl = 0
@@ -121,10 +125,10 @@ def test_complex_array_to_rs_dataseries() -> None:
     index = pd.Index(np.arange(4))
 
     expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
-        rs.StructureFactorAmplitudeDtype()
+        rs.StructureFactorAmplitudeDtype(),
     )
     expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
-        rs.PhaseDtype()
+        rs.PhaseDtype(),
     )
 
     amp, phase = utils.complex_array_to_rs_dataseries(carray, index=index)
@@ -160,7 +164,8 @@ def test_complex_array_dataseries_roundtrip() -> None:
 
 
 def test_compute_map_from_coefficients(
-    random_difference_map: Map, test_diffmap_columns: utils.MapColumns
+    random_difference_map: Map,
+    test_diffmap_columns: utils.MapColumns,
 ) -> None:
     diffmap = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,
@@ -173,7 +178,9 @@ def test_compute_map_from_coefficients(
 
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
 def test_map_to_coefficients_round_trip(
-    map_sampling: int, random_difference_map: Map, test_diffmap_columns: utils.MapColumns
+    map_sampling: int,
+    random_difference_map: Map,
+    test_diffmap_columns: utils.MapColumns,
 ) -> None:
     realspace_map = utils.compute_map_from_coefficients(
         map_coefficients=random_difference_map,

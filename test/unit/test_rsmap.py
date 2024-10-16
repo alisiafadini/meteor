@@ -43,7 +43,7 @@ def test_insert_disabled(noise_free_map: Map) -> None:
 
 def test_set_uncertainties() -> None:
     test_map = Map.from_dict(
-        {"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])}
+        {"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])},
     )
 
     assert not test_map.has_uncertainties

@@ -75,7 +75,12 @@ class Map(rs.DataSet):
         return rs.DataSeries
 
     def _verify_type(
-        self, name: str, allowed_types: list[Any], dataseries: rs.DataSeries, *, fix: bool
+        self,
+        name: str,
+        allowed_types: list[Any],
+        dataseries: rs.DataSeries,
+        *,
+        fix: bool,
     ) -> rs.DataSeries:
         if dataseries.dtype not in allowed_types:
             if fix:
@@ -85,7 +90,10 @@ class Map(rs.DataSet):
         return dataseries
 
     def _verify_amplitude_type(
-        self, dataseries: rs.DataSeries, *, fix: bool = True
+        self,
+        dataseries: rs.DataSeries,
+        *,
+        fix: bool = True,
     ) -> rs.DataSeries:
         name = "amplitude"
         amplitude_dtypes = [
@@ -102,7 +110,10 @@ class Map(rs.DataSet):
         return self._verify_type(name, phase_dtypes, dataseries, fix=fix)
 
     def _verify_uncertainty_type(
-        self, dataseries: rs.DataSeries, *, fix: bool = True
+        self,
+        dataseries: rs.DataSeries,
+        *,
+        fix: bool = True,
     ) -> rs.DataSeries:
         name = "uncertainties"
         uncertainty_dtypes = [
@@ -218,7 +229,9 @@ class Map(rs.DataSet):
         map_coefficients_gemmi_format = self.to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-            self._amplitude_column, self._phase_column, sample_rate=map_sampling
+            self._amplitude_column,
+            self._phase_column,
+            sample_rate=map_sampling,
         )
         ccp4_map.update_ccp4_header()
         return ccp4_map
@@ -246,7 +259,8 @@ class Map(rs.DataSet):
         # to ensure we include the final shell of reflections, add a small buffer to the resolution
         gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
         data = gemmi_structure_factors.prepare_asu_data(
-            dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER, with_sys_abs=True
+            dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER,
+            with_sys_abs=True,
         )
 
         mtz = gemmi.Mtz(with_base=True)

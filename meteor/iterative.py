@@ -125,7 +125,7 @@ def _complex_derivative_from_iterative_tv(
                 "tv_weight": tv_metadata.optimal_lambda,
                 "negentropy_after_tv": tv_metadata.optimal_negentropy,
                 "average_phase_change": phase_change,
-            }
+            },
         )
 
         if num_iterations > max_iterations:
@@ -217,7 +217,8 @@ def iterative_tv_phase_retrieval(
         max_iterations=max_iterations,
     )
     _, derivative_phases = complex_array_to_rs_dataseries(
-        it_tv_complex_derivative, index=initial_derivative.index
+        it_tv_complex_derivative,
+        index=initial_derivative.index,
     )
 
     # combine the determined derivative phases with the input to generate a complete output

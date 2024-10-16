@@ -26,7 +26,8 @@ ScaleParameters = Tuple[float, float, float, float, float, float, float]
 
 
 def _compute_anisotropic_scale_factors(
-    miller_indices: pd.Index, anisotropic_scale_parameters: ScaleParameters
+    miller_indices: pd.Index,
+    anisotropic_scale_parameters: ScaleParameters,
 ) -> np.ndarray:
     miller_indices_as_array = np.array(list(miller_indices))
     squared_miller_indices = np.square(miller_indices_as_array)
@@ -112,7 +113,7 @@ def compute_scale_factors(
 
         uncertainty_weights = np.sqrt(
             np.square(reference_uncertainties.loc[common_miller_indices])
-            + np.square(to_scale_uncertainties.loc[common_miller_indices])
+            + np.square(to_scale_uncertainties.loc[common_miller_indices]),
         )
 
     else:
@@ -123,7 +124,8 @@ def compute_scale_factors(
 
     def compute_residuals(scaling_parameters: ScaleParameters) -> np.ndarray:
         scale_factors = _compute_anisotropic_scale_factors(
-            common_miller_indices, scaling_parameters
+            common_miller_indices,
+            scaling_parameters,
         )
         return uncertainty_weights * (
             scale_factors * common_values_to_scale - common_reference_values
@@ -135,7 +137,8 @@ def compute_scale_factors(
 
     # now be sure to compute the scale factors for all miller indices in `values_to_scale`
     optimized_scale_factors = _compute_anisotropic_scale_factors(
-        values_to_scale.index, optimized_parameters
+        values_to_scale.index,
+        optimized_parameters,
     )
 
     if len(optimized_scale_factors) != len(values_to_scale):

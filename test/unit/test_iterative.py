@@ -54,7 +54,9 @@ def test_projected_derivative(scalar: float) -> None:
     scaled_native = scalar * native
     scaled_difference = scalar * difference
     proj_derivative = _project_derivative_on_experimental_set(
-        native=scaled_native, derivative_amplitudes=np.abs(derivative), difference=scaled_difference
+        native=scaled_native,
+        derivative_amplitudes=np.abs(derivative),
+        difference=scaled_difference,
     )
     np.testing.assert_allclose(proj_derivative, derivative)
 

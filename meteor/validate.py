@@ -117,7 +117,10 @@ class ScalarMaximizer:
             self.values_evaluated.add(argument_test_value)
 
     def optimize_with_golden_algorithm(
-        self, *, bracket: tuple[float, float], tolerance: float = 0.001
+        self,
+        *,
+        bracket: tuple[float, float],
+        tolerance: float = 0.001,
     ):
         """
         Uses the golden-section search algorithm to maximize the objective function within a given
@@ -141,7 +144,10 @@ class ScalarMaximizer:
             return -self.objective(argument_test_value)  # negative: we want max
 
         optimizer_result = minimize_scalar(
-            _objective_with_value_tracking, bracket=bracket, method="golden", tol=tolerance
+            _objective_with_value_tracking,
+            bracket=bracket,
+            method="golden",
+            tol=tolerance,
         )
         if not optimizer_result.success:
             msg = "Golden minimization failed"
