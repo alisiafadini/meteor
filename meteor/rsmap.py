@@ -73,12 +73,13 @@ class Map(rs.DataSet):
             msg += "index of Miller indices, or pass `index=...` to `Map(...)` at instantiation"
             raise IndexError(msg)
 
-        columns_to_keep = [amplitude_column, phase_column]
-        for column in columns_to_keep:
+        for column in [amplitude_column, phase_column]:
             if column not in self.columns:
                 msg = "amplitude and phase columns must be in input `data`... "
                 msg += f"looking for {amplitude_column} and {phase_column}, got {self.columns}"
                 raise KeyError(msg)
+
+        columns_to_keep = [amplitude_column, phase_column, *self._allowed_columns]
 
         self._amplitude_column = amplitude_column
         self._phase_column = phase_column
@@ -294,11 +295,6 @@ class Map(rs.DataSet):
         )
         return cls(dataset)
 
-    def to_gemmi(self) -> gemmi.Mtz:
-        # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet - @tjlane
-        # TODO: can you more intelligently cast to parent?
-        return rs.DataSet(self).to_gemmi()
-
     @classmethod
     def from_gemmi(
         cls,
@@ -357,9 +353,8 @@ class Map(rs.DataSet):
         return cls(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
 
     def write_mtz(self, file_path: str | Path) -> None:
-        # TODO: can you more intelligently cast to parent?
-        # dev note: also modifies the columns; requires cast to DataSet - @tjlane
-        rs.DataSet(self).write_mtz(str(file_path))
+        path_cast_to_str = str(file_path)
+        super().write_mtz(path_cast_to_str)
 
     @classmethod
     def read_mtz_file(

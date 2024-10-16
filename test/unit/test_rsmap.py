@@ -34,6 +34,11 @@ def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
     assert "new_column" not in new_map.columns
 
 
+def test_reset_index(noise_free_map: Map) -> None:
+    modmap = noise_free_map.reset_index()
+    assert len(modmap.columns) == len(noise_free_map.columns) + 3
+
+
 def test_copy(noise_free_map: Map) -> None:
     copy_map = noise_free_map.copy()
     assert isinstance(copy_map, Map)
