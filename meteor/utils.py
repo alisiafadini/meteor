@@ -10,8 +10,6 @@ from pandas import DataFrame, Index
 from pandas.testing import assert_index_equal
 from reciprocalspaceship.utils import canonicalize_phases
 
-from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
-
 
 class ShapeMismatchError(Exception): ...
 
@@ -206,32 +204,3 @@ def numpy_array_to_map(
     ccp4_map.grid.spacegroup = spacegroup
 
     return ccp4_map
-
-
-# TODO: do we need these two methods anymore? or can we just us rsmap.Map?
-def compute_coefficients_from_map(
-    *,
-    ccp4_map: gemmi.Ccp4Map,
-    high_resolution_limit: float,
-    amplitude_label: str,
-    phase_label: str,
-) -> rs.DataSet:
-    # to ensure we include the final shell of reflections, add a small buffer to the resolution
-
-    gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
-    data = gemmi_structure_factors.prepare_asu_data(
-        dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER,
-        with_sys_abs=True,
-    )
-
-    mtz = gemmi.Mtz(with_base=True)
-    mtz.spacegroup = gemmi_structure_factors.spacegroup
-    mtz.set_cell_for_all(gemmi_structure_factors.unit_cell)
-    mtz.add_dataset("FromMap")
-    mtz.add_column(amplitude_label, "F")
-    mtz.add_column(phase_label, "P")
-
-    mtz.set_data(data)
-    mtz.switch_to_asu_hkl()
-
-    return rs.DataSet.from_gemmi(mtz)

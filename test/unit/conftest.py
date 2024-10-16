@@ -71,7 +71,7 @@ def single_carbon_density(
     density_map.grid.setup_from(structure)
     density_map.put_model_density_on_grid(structure[0])
 
-    return density_map
+    return density_map  # TODO: mypy is complaining about this return in CI
 
 
 def single_atom_map_coefficients(*, noise_sigma: float) -> Map:

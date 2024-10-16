@@ -142,7 +142,7 @@ def tv_denoise_difference_map(
         high_resolution_limit=difference_map.resolution_limits[1],
     )
 
-    # sometimes `compute_coefficients_from_map` adds reflections -- systematic absences or
+    # sometimes `from_ccp4_map` adds reflections -- systematic absences or
     # reflections just beyond the resolution limt; remove those
     extra_indices = final_map.index.difference(difference_map.index)
     final_map.drop(extra_indices, axis=0, inplace=True)

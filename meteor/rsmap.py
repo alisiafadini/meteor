@@ -19,6 +19,9 @@ from .utils import (
 class MissingUncertaintiesError(AttributeError): ...
 
 
+class MapMutabilityError(RuntimeError): ...
+
+
 def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
     if not isinstance(obj, Map):
         msg = f"expected {obj} to be a rsmap.Map, got {type(obj)}"
@@ -55,7 +58,7 @@ class Map(rs.DataSet):
         if uncertainty_column and (uncertainty_column in self.columns):
             columns_to_keep.append(uncertainty_column)
 
-        # @tjlane - this feels dangerous, but I cannot find a better way
+        # this feels dangerous, but I cannot find a better way | author: @tjlane
         excess_columns = set(self.columns) - set(columns_to_keep)
         for column in excess_columns:
             del self[column]
@@ -126,23 +129,38 @@ class Map(rs.DataSet):
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
             msg = "column assignment not allowed for Map objects"
-            raise KeyError(msg)
+            raise MapMutabilityError(msg)
         super().__setitem__(key, value)
 
-    def insert(self, loc: int, column: str, value: Any, allow_duplicates: bool = False) -> None:
+    def insert(self, loc: int, column: str, value: Any, *, allow_duplicates: bool = False) -> None:
         allowed_columns = ["H", "K", "L", "dHKL"]
         if column in allowed_columns:
             super().insert(loc, column, value, allow_duplicates=allow_duplicates)
         else:
             msg = "general column assignment not allowed for Map objects"
-            msg += f"special columns allowed: {allowed_columns}"
-            raise ValueError(msg)
+            msg += f"special columns allowed: {allowed_columns}; "
+            msg += "see also Map.set_uncertainties(...)"
+            raise MapMutabilityError(msg)
 
     def drop(self, labels=None, *, axis=0, columns=None, inplace=False, **kwargs):
         if (axis == 1) or (columns is not None):
             msg = "columns are fixed for Map objects"
-            raise ValueError(msg)
+            raise MapMutabilityError(msg)
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
+
+    def get_hkls(self):
+        # TODO: audit this
+        return self.index.to_frame().to_numpy(dtype=np.int32)
+
+    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, inhereted from reciprocalspaceship
+        # TODO: audit this
+        d_hkl = self.cell.calculate_d_array(self.get_hkls())
+        return rs.DataSeries(d_hkl, dtype="R", index=self.index)
+
+    @property
+    def resolution_limits(self) -> tuple[float, float]:
+        d_hkl = self.compute_dHKL()
+        return np.max(d_hkl), np.min(d_hkl)
 
     @property
     def amplitudes(self) -> rs.DataSeries:
@@ -203,18 +221,6 @@ class Map(rs.DataSet):
     def complex_amplitudes(self) -> np.ndarray:
         return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
 
-    def get_hkls(self):
-        return self.index.to_frame().to_numpy(dtype=np.int32)
-
-    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, inhereted from reciprocalspaceship
-        d_hkl = self.cell.calculate_d_array(self.get_hkls())
-        return rs.DataSeries(d_hkl, dtype="R", index=self.index)
-
-    @property
-    def resolution_limits(self) -> tuple[float, float]:
-        d_hkl = self.compute_dHKL()
-        return np.max(d_hkl), np.min(d_hkl)
-
     def canonicalize_amplitudes(self):
         canonicalize_amplitudes(
             self,
@@ -222,10 +228,6 @@ class Map(rs.DataSet):
             phase_label=self._phase_column,
             inplace=True,
         )
-
-    def to_gemmi(self) -> rs.DataSet:
-        # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet
-        return rs.DataSet(self).to_gemmi()
 
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
@@ -287,9 +289,9 @@ class Map(rs.DataSet):
         cls,
         file_path: Path,
         *,
-        amplitude_column: str,
-        phase_column: str,
-        uncertainty_column: str | None = None,
+        amplitude_column: str = "F",
+        phase_column: str = "PHI",
+        uncertainty_column: str | None = "SIGF",
     ) -> Map:
         dataset = super().from_mtz_file(file_path)
         return cls(

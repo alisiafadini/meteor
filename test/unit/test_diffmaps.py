@@ -39,6 +39,10 @@ def dummy_native() -> Map:
     return Map(native, index=index).infer_mtz_dtypes()
 
 
+def test_set_common_crystallographic_metadata() -> None:
+    raise NotImplementedError  # TODO: implement
+
+
 def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
     # Manually calculated expected amplitude and phase differences
     expected_amplitudes = np.array([3.0, 5.0])
@@ -61,7 +65,9 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
     ],
 )
 def test_cell_spacegroup_propogation(
-    diffmap_fxn: Callable, dummy_derivative: Map, dummy_native: Map,
+    diffmap_fxn: Callable,
+    dummy_derivative: Map,
+    dummy_native: Map,
 ) -> None:
     dummy_derivative.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     dummy_derivative.spacegroup = 1  # will cast to gemmi.SpaceGroup

@@ -15,18 +15,16 @@ DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 def set_common_crystallographic_metadata(derivative: Map, native: Map, *, output: Map) -> None:
     if hasattr(native, "cell"):
-        if hasattr(derivative, "cell"):
-            if native.cell != derivative.cell:
-                msg = f"`native.cell` {native.cell} != `derivative.cell` {derivative.cell}"
-                raise AttributeError(msg)
+        if hasattr(derivative, "cell") and (native.cell != derivative.cell):
+            msg = f"`native.cell` {native.cell} != `derivative.cell` {derivative.cell}"
+            raise AttributeError(msg)
         output.cell = native.cell
 
     if hasattr(native, "spacegroup"):
-        if hasattr(derivative, "spacegroup"):
-            if native.spacegroup != derivative.spacegroup:
-                msg = f"`native.spacegroup` {native.spacegroup} != "
-                msg += f"`derivative.spacegroup` {derivative.spacegroup}"
-                raise AttributeError(msg)
+        if hasattr(derivative, "spacegroup") and (native.spacegroup != derivative.spacegroup):
+            msg = f"`native.spacegroup` {native.spacegroup} != "
+            msg += f"`derivative.spacegroup` {derivative.spacegroup}"
+            raise AttributeError(msg)
         output.spacegroup = native.spacegroup
 
 
