@@ -31,9 +31,31 @@ def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
         raise MissingUncertaintiesError(msg)
 
 
-# TODO: docstring for this class
-# TODO: test coverage audit
 class Map(rs.DataSet):
+    """
+    A high-level interface for a crystallographic map of any kind.
+
+    Specifically, this class is based on a reciprocalspaceship `DataSet` (ie. a
+    crystographically-aware pandas `DataFrame`), but is restricted to three and only three
+    special columns corresponding to:
+
+        - (real) `amplitudes`
+        - `phases`
+        - `uncertainties`, ie the standard deviation for a Gaussian around the amplitude mean
+
+    In addition, the class maintains an `index` of Miller indices, as well as the crystallographic
+    metadata supported by `rs.DataSet`, most notably a `cell` and `spacegroup`.
+
+    These structured data enable this class to perform some routine map-based caluclations, such as
+
+        - computing a real-space map, or computing map coefficients from a map
+        - converting between complex Cartesian and polar (amplitude/phase) structure factors
+        - reading and writing mtz and ccp4 map files
+
+    all in a way that automatically facilitates the bookkeeping tasks normally associated with
+    these relatively simple operations.
+    """
+
     def __init__(
         self,
         data: dict | pd.DataFrame | rs.DataSet,
