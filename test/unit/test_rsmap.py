@@ -12,7 +12,10 @@ def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
     dataset = rs.DataSet(noise_free_map).copy()
     assert not isinstance(dataset, Map)
 
+    dataset["new_column"] = dataset["F"].copy()
     new_map = Map(dataset)
+    assert "new_column" in dataset.columns
+    assert "new_column" not in new_map.columns
 
 
 def test_copy(noise_free_map: Map) -> None:
@@ -44,8 +47,11 @@ def test_unallowed_setitem(noise_free_map: Map) -> None:
 
 
 def test_insert_disabled(noise_free_map: Map) -> None:
-    with pytest.raises(NotImplementedError):
-        noise_free_map.insert("foo")
+    position = 0
+    column = "foo"
+    value = [0, 1]
+    with pytest.raises(ValueError):
+        noise_free_map.insert(position, column, value)
 
 
 def test_set_uncertainties() -> None:

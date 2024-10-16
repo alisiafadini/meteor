@@ -63,7 +63,7 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
 def test_cell_spacegroup_propogation(diffmap_fxn: Callable, dummy_derivative: Map, dummy_native: Map) -> None:
 
     dummy_derivative.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    dummy_derivative.spacegroup = 1  # will cast to gemmi
+    dummy_derivative.spacegroup = 1  # will cast to gemmi.SpaceGroup
     dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     dummy_native.spacegroup = 1
 

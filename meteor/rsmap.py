@@ -136,12 +136,12 @@ class Map(rs.DataSet):
         else:
             msg = "general column assignment not allowed for Map objects"
             msg += f"special columns allowed: {allowed_columns}"
-            raise NotImplementedError(msg)
+            raise ValueError(msg)
 
     def drop(self, labels=None, *, axis=0, columns=None, inplace=False, **kwargs):
         if (axis == 1) or (columns is not None):
             msg = "columns are fixed for Map objects"
-            raise NotImplementedError(msg)
+            raise ValueError(msg)
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
 
     @property
