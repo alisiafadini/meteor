@@ -11,7 +11,7 @@ from meteor.diffmaps import (
     compute_kweighted_difference_map,
     compute_kweights,
     max_negentropy_kweighted_difference_map,
-    set_common_crystallographic_metadata
+    set_common_crystallographic_metadata,
 )
 from meteor.rsmap import Map
 from meteor.validate import negentropy
@@ -41,13 +41,12 @@ def dummy_native() -> Map:
 
 
 def test_set_common_crystallographic_metadata(dummy_native: Map) -> None:
-    
     dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     dummy_native.spacegroup = 1
     map1 = dummy_native
     map2 = dummy_native.copy()
     output = dummy_native.copy()
-    
+
     # ensure things are copied when missing initially
     del output._cell
     del output._spacegroup
@@ -55,7 +54,7 @@ def test_set_common_crystallographic_metadata(dummy_native: Map) -> None:
     assert not hasattr(output, "spacegroup")
 
     set_common_crystallographic_metadata(map1, map2, output=output)
-    
+
     assert output.cell == map1.cell
     assert output.spacegroup == map2.spacegroup
 
