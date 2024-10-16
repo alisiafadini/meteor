@@ -6,6 +6,7 @@ from pandas import testing as pdt
 
 from meteor import utils
 from meteor.rsmap import Map
+from meteor.testing import MapColumns
 
 NP_RNG = np.random.default_rng()
 
@@ -50,38 +51,36 @@ def test_cut_resolution(random_difference_map: Map, dmax_limit: float, dmin_limi
 
 @pytest.mark.parametrize("inplace", [False, True])
 def test_canonicalize_amplitudes(
-    inplace: bool,
-    random_difference_map: rs.DataSet,
-    test_diffmap_columns: utils.MapColumns,
+    inplace: bool, random_difference_map: Map, test_map_columns: MapColumns
 ) -> None:
     # ensure at least one amplitude is negative, one phase is outside [-180,180)
     index_single_hkl = 0
-    random_difference_map.loc[index_single_hkl, test_diffmap_columns.amplitude] = -1.0
-    random_difference_map.loc[index_single_hkl, test_diffmap_columns.phase] = -470.0
+    random_difference_map.loc[index_single_hkl, test_map_columns.amplitude] = -1.0
+    random_difference_map.loc[index_single_hkl, test_map_columns.phase] = -470.0
 
     if inplace:
         canonicalized = random_difference_map
         utils.canonicalize_amplitudes(
             canonicalized,
-            amplitude_label=test_diffmap_columns.amplitude,
-            phase_label=test_diffmap_columns.phase,
+            amplitude_label=test_map_columns.amplitude,
+            phase_label=test_map_columns.phase,
             inplace=inplace,
         )
     else:
         canonicalized = utils.canonicalize_amplitudes(
             random_difference_map,
-            amplitude_label=test_diffmap_columns.amplitude,
-            phase_label=test_diffmap_columns.phase,
+            amplitude_label=test_map_columns.amplitude,
+            phase_label=test_map_columns.phase,
             inplace=inplace,
         )
 
-    assert (canonicalized[test_diffmap_columns.amplitude] >= 0.0).all(), "not all amps positive"
-    assert (canonicalized[test_diffmap_columns.phase] >= -180.0).all(), "not all phases > -180"
-    assert (canonicalized[test_diffmap_columns.phase] <= 180.0).all(), "not all phases < +180"
+    assert (canonicalized[test_map_columns.amplitude] >= 0.0).all(), "not all amps positive"
+    assert (canonicalized[test_map_columns.phase] >= -180.0).all(), "not all phases > -180"
+    assert (canonicalized[test_map_columns.phase] <= 180.0).all(), "not all phases < +180"
 
     np.testing.assert_almost_equal(
-        np.array(np.abs(random_difference_map[test_diffmap_columns.amplitude])),
-        np.array(canonicalized[test_diffmap_columns.amplitude]),
+        np.array(np.abs(random_difference_map[test_map_columns.amplitude])),
+        np.array(canonicalized[test_map_columns.amplitude]),
     )
 
 

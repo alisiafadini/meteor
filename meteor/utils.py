@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal, overload
 
 import gemmi
@@ -12,14 +11,6 @@ from reciprocalspaceship.utils import canonicalize_phases
 
 
 class ShapeMismatchError(Exception): ...
-
-
-# TODO: remove
-@dataclass
-class MapColumns:
-    amplitude: str
-    phase: str
-    uncertainty: str | None = None
 
 
 def filter_common_indices(df1: DataFrame, df2: DataFrame) -> tuple[DataFrame, DataFrame]:

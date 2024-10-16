@@ -6,10 +6,8 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
-from meteor.utils import (
-    MapColumns,
-    numpy_array_to_map,
-)
+from meteor.testing import MapColumns
+from meteor.utils import numpy_array_to_map
 
 RESOLUTION = 1.0
 UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
@@ -20,18 +18,8 @@ CARBON2_POSITION = (5.0, 5.2, 5.0)
 NP_RNG = np.random.default_rng()
 
 
-# TODO: eliminate
 @pytest.fixture
 def test_map_columns() -> MapColumns:
-    return MapColumns(
-        amplitude="F",
-        phase="PHI",
-        uncertainty="SIGF",
-    )
-
-
-@pytest.fixture
-def test_diffmap_columns() -> MapColumns:
     return MapColumns(
         amplitude="F",
         phase="PHI",
@@ -110,7 +98,7 @@ def very_noisy_map() -> Map:
 
 
 @pytest.fixture
-def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
+def random_difference_map(test_map_columns: MapColumns) -> Map:
     hall = rs.utils.generate_reciprocal_asu(UNIT_CELL, SPACE_GROUP, RESOLUTION, anomalous=False)
     sigma = 1.0
 
@@ -122,23 +110,23 @@ def random_difference_map(test_diffmap_columns: MapColumns) -> Map:
             "H": h,
             "K": k,
             "L": l,
-            test_diffmap_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
-            test_diffmap_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
+            test_map_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
+            test_map_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=SPACE_GROUP,
         cell=UNIT_CELL,
     ).infer_mtz_dtypes()
 
     ds = ds.set_index(["H", "K", "L"])
-    ds[test_diffmap_columns.amplitude] = ds[test_diffmap_columns.amplitude].astype("SFAmplitude")
+    ds[test_map_columns.amplitude] = ds[test_map_columns.amplitude].astype("SFAmplitude")
 
-    uncertainties = sigma * np.ones_like(ds[test_diffmap_columns.amplitude])
+    uncertainties = sigma * np.ones_like(ds[test_map_columns.amplitude])
     uncertainties = rs.DataSeries(uncertainties, index=ds.index)
-    ds[test_diffmap_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
+    ds[test_map_columns.uncertainty] = uncertainties.astype(rs.StandardDeviationDtype())
 
     return Map(
         ds,
-        amplitude_column=test_diffmap_columns.amplitude,
-        phase_column=test_diffmap_columns.phase,
-        uncertainty_column=test_diffmap_columns.uncertainty,
+        amplitude_column=test_map_columns.amplitude,
+        phase_column=test_map_columns.phase,
+        uncertainty_column=test_map_columns.uncertainty,
     )

@@ -307,7 +307,7 @@ class Map(rs.DataSet):
 
         mtz.set_data(data)
         mtz.switch_to_asu_hkl()
-        dataset = rs.DataSet.from_gemmi(mtz)
+        dataset = super().from_gemmi(mtz)
 
         return cls(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
 

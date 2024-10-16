@@ -98,9 +98,9 @@ def test_resolution_limits(random_difference_map: Map) -> None:
 
 
 def test_get_set_fixed_columns(noise_free_map: Map) -> None:
-    assert isinstance(noise_free_map.amplitudes, rs.DataSet)
-    assert isinstance(noise_free_map.phases, rs.DataSet)
-    assert isinstance(noise_free_map.uncertainties, rs.DataSet)
+    assert isinstance(noise_free_map.amplitudes, rs.DataSeries)
+    assert isinstance(noise_free_map.phases, rs.DataSeries)
+    assert isinstance(noise_free_map.uncertainties, rs.DataSeries)
 
     noise_free_map.amplitudes *= 2.0
     noise_free_map.phases *= 2.0

@@ -4,8 +4,9 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor import scale
+from meteor.rsmap import Map
 from meteor.scale import _compute_anisotropic_scale_factors
-from meteor.utils import MapColumns
+from meteor.testing import MapColumns
 
 
 @pytest.fixture
@@ -77,55 +78,55 @@ def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> 
 
 
 def test_scale_datasets(
-    random_difference_map: rs.DataSet,
-    test_diffmap_columns: MapColumns,
-) -> None:
-    multiple = 2.0
-    doubled_random_difference_map = random_difference_map.copy()
-    doubled_random_difference_map[test_diffmap_columns.amplitude] /= multiple
-
-    scaled = scale.scale_datasets(
-        reference_dataset=random_difference_map,
-        dataset_to_scale=doubled_random_difference_map,
-        column_to_compare=test_diffmap_columns.amplitude,
-        weight_using_uncertainties=False,
-    )
-    np.testing.assert_array_almost_equal(
-        scaled[test_diffmap_columns.amplitude],
-        random_difference_map[test_diffmap_columns.amplitude],
-    )
-    np.testing.assert_array_almost_equal(
-        scaled[test_diffmap_columns.phase],
-        random_difference_map[test_diffmap_columns.phase],
-    )
-
-
-def test_scale_datasets_with_errors(
-    random_difference_map: rs.DataSet,
-    test_diffmap_columns: MapColumns,
+    random_difference_map: Map,
+    test_map_columns: MapColumns,
 ) -> None:
     multiple = 2.0
     doubled_difference_map = random_difference_map.copy()
-    doubled_difference_map[test_diffmap_columns.amplitude] /= multiple
+    doubled_difference_map[test_map_columns.amplitude] /= multiple
 
     scaled = scale.scale_datasets(
         reference_dataset=random_difference_map,
         dataset_to_scale=doubled_difference_map,
-        column_to_compare=test_diffmap_columns.amplitude,
-        uncertainty_column=str(test_diffmap_columns.uncertainty),
+        column_to_compare=test_map_columns.amplitude,
+        weight_using_uncertainties=False,
+    )
+    np.testing.assert_array_almost_equal(
+        scaled[test_map_columns.amplitude],
+        random_difference_map[test_map_columns.amplitude],
+    )
+    np.testing.assert_array_almost_equal(
+        scaled[test_map_columns.phase],
+        random_difference_map[test_map_columns.phase],
+    )
+
+
+def test_scale_datasets_with_errors(
+    random_difference_map: Map,
+    test_map_columns: MapColumns,
+) -> None:
+    multiple = 2.0
+    doubled_difference_map = random_difference_map.copy()
+    doubled_difference_map[test_map_columns.amplitude] /= multiple
+
+    scaled = scale.scale_datasets(
+        reference_dataset=random_difference_map,
+        dataset_to_scale=doubled_difference_map,
+        column_to_compare=test_map_columns.amplitude,
+        uncertainty_column=str(test_map_columns.uncertainty),
         weight_using_uncertainties=True,
     )
     np.testing.assert_array_almost_equal(
-        scaled[test_diffmap_columns.amplitude],
-        random_difference_map[test_diffmap_columns.amplitude],
+        scaled[test_map_columns.amplitude],
+        random_difference_map[test_map_columns.amplitude],
     )
     np.testing.assert_array_almost_equal(
-        scaled[test_diffmap_columns.phase],
-        random_difference_map[test_diffmap_columns.phase],
+        scaled[test_map_columns.phase],
+        random_difference_map[test_map_columns.phase],
     )
 
     # also make sure we scale the uncertainties
     np.testing.assert_array_almost_equal(
-        scaled[test_diffmap_columns.uncertainty] / multiple,
-        random_difference_map[test_diffmap_columns.uncertainty],
+        scaled[test_map_columns.uncertainty] / multiple,
+        random_difference_map[test_map_columns.uncertainty],
     )
