@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import gemmi
 import numpy as np
@@ -55,7 +55,7 @@ class Map(rs.DataSet):
     these relatively simple operations.
     """
 
-    _allowed_columns: set[str] = set(["H", "K", "L"])
+    _allowed_columns: ClassVar[list[str]] = ["H", "K", "L"]
 
     def __init__(
         self,
@@ -166,7 +166,7 @@ class Map(rs.DataSet):
         )
 
     def __setitem__(self, key: str, value) -> None:
-        allowed = set(self.columns).union(self._allowed_columns)
+        allowed = list(self.columns) + self._allowed_columns
         if key not in allowed:
             msg = "column assignment not allowed for Map objects"
             raise MapMutabilityError(msg)
@@ -272,8 +272,6 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
-    # dev note: `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
-    # part of the dataset; having such a (redundant) column is forbidden by `Map` - @tjlane
     @classmethod
     def from_structurefactor(
         cls,
@@ -283,8 +281,10 @@ class Map(rs.DataSet):
         cell: Any = None,
         spacegroup: Any = None,
     ) -> Map:
-        # recprocalspaceship has a `from_structurefactor` method, but it is occasionally
-        # mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
+        # 1. `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
+        #    part of the dataset; having such a (redundant) column is forbidden by `Map`
+        # 2. recprocalspaceship has a `from_structurefactor` method, but it is occasionally
+        #    mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
         amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
         dataset = rs.DataSet(
             rs.concat([amplitudes.rename("F"), phases.rename("PHI")], axis=1),

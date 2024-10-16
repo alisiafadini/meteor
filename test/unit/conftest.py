@@ -32,7 +32,7 @@ def single_carbon_density(
     space_group: gemmi.SpaceGroup,
     unit_cell: gemmi.UnitCell,
     d_min: float,
-) -> gemmi.DensityCalculatorX:
+) -> gemmi.Ccp4Map:
     model = gemmi.Model("single_atom")
     chain = gemmi.Chain("A")
 
@@ -59,7 +59,11 @@ def single_carbon_density(
     density_map.grid.setup_from(structure)
     density_map.put_model_density_on_grid(structure[0])
 
-    return density_map
+    ccp4_map = gemmi.Ccp4Map()
+    ccp4_map.grid = density_map.grid
+    ccp4_map.update_ccp4_header()
+
+    return ccp4_map
 
 
 def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
