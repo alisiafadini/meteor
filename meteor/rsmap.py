@@ -14,6 +14,7 @@ from .utils import (
     complex_array_to_rs_dataseries,
 )
 
+
 class MissingUncertaintiesError(AttributeError): ...
 
 
@@ -256,12 +257,12 @@ class Map(rs.DataSet):
 
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
-    
-    def to_gemmi(self) -> rs.DataSet:	
+
+    def to_gemmi(self) -> rs.DataSet:
         # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet
         # TODO: if we remove this, everything seems to break...
         return rs.DataSet(self).to_gemmi()
-    
+
     def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
         map_coefficients_gemmi_format = self.to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
@@ -273,7 +274,7 @@ class Map(rs.DataSet):
         ccp4_map.update_ccp4_header()
         return ccp4_map
 
-    # dev note: `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already 
+    # dev note: `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
     # part of the dataset; having such a (redundant) column is forbidden by `Map` - @tjlane
     @classmethod
     def from_structurefactor(
@@ -291,7 +292,7 @@ class Map(rs.DataSet):
             rs.concat([amplitudes.rename("F"), phases.rename("PHI")], axis=1),
             index=index,
             cell=cell,
-            spacegroup=spacegroup
+            spacegroup=spacegroup,
         )
         return cls(dataset)
 

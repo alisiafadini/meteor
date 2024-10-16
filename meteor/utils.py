@@ -6,7 +6,6 @@ import gemmi
 import numpy as np
 import reciprocalspaceship as rs
 from pandas import DataFrame, Index
-from pandas.testing import assert_index_equal
 from reciprocalspaceship.utils import canonicalize_phases
 
 

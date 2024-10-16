@@ -32,7 +32,7 @@ def single_carbon_density(
     space_group: gemmi.SpaceGroup,
     unit_cell: gemmi.UnitCell,
     d_min: float,
-) -> gemmi.Ccp4Map:
+) -> gemmi.DensityCalculatorX:
     model = gemmi.Model("single_atom")
     chain = gemmi.Chain("A")
 
@@ -59,7 +59,7 @@ def single_carbon_density(
     density_map.grid.setup_from(structure)
     density_map.put_model_density_on_grid(structure[0])
 
-    return density_map  # TODO: mypy is complaining about this return in CI
+    return density_map
 
 
 def single_atom_map_coefficients(*, noise_sigma: float) -> Map:

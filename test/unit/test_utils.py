@@ -97,7 +97,7 @@ def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
     arr2 = np.ones(3)
     with pytest.raises(utils.ShapeMismatchError):
         utils.average_phase_diff_in_degrees(arr1, arr2)
-        
+
 
 def test_complex_array_to_rs_dataseries() -> None:
     carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
