@@ -33,7 +33,7 @@ def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
 class Map(rs.DataSet):
     def __init__(
         self,
-        data: Any,
+        data: dict | pd.DataFrame | rs.DataSet,
         *,
         amplitude_column: str = "F",
         phase_column: str = "PHI",
@@ -55,7 +55,7 @@ class Map(rs.DataSet):
         if uncertainty_column and (uncertainty_column in self.columns):
             columns_to_keep.append(uncertainty_column)
 
-        # TODO: feels dangerous, is this the best way?
+        # @tjlane - this feels dangerous, but I cannot find a better way
         excess_columns = set(self.columns) - set(columns_to_keep)
         for column in excess_columns:
             del self[column]
@@ -129,9 +129,14 @@ class Map(rs.DataSet):
             raise KeyError(msg)
         super().__setitem__(key, value)
 
-    def insert(self, *args, **kwargs) -> None:  # noqa: ARG002
-        msg = "column assignment not allowed for Map objects"
-        raise NotImplementedError(msg)
+    def insert(self, loc: int, column: str, value: Any, allow_duplicates: bool = False) -> None:
+        allowed_columns = ["H", "K", "L", "dHKL"]
+        if column in allowed_columns:
+            super().insert(loc, column, value, allow_duplicates=allow_duplicates)
+        else:
+            msg = "general column assignment not allowed for Map objects"
+            msg += f"special columns allowed: {allowed_columns}"
+            raise NotImplementedError(msg)
 
     def drop(self, labels=None, *, axis=0, columns=None, inplace=False, **kwargs):
         if (axis == 1) or (columns is not None):

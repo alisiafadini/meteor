@@ -68,7 +68,7 @@ def _complex_derivative_from_iterative_tv(
 
     Parameters
     ----------
-    complex_native: np.ndarray
+    native: np.ndarray
         The complex native structure factors, usually experimental amplitudes and calculated phases
 
     initial_complex_derivative : np.ndarray
@@ -82,10 +82,10 @@ def _complex_derivative_from_iterative_tv(
 
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
-        then return
+        then return. Default 1e-4.
 
     max_iterations: int
-        If this number of iterations is reached, stop early.
+        If this number of iterations is reached, stop early. Default 1000.
 
     Returns
     -------
@@ -138,8 +138,8 @@ def iterative_tv_phase_retrieval(
     initial_derivative: Map,
     native: Map,
     *,
-    convergence_tolerance: float = 1e-3,
-    max_iterations: int = 100,
+    convergence_tolerance: float = 1e-4,
+    max_iterations: int = 1000,
     tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN,
 ) -> tuple[Map, pd.DataFrame]:
     """
@@ -173,10 +173,10 @@ def iterative_tv_phase_retrieval(
 
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
-        then return
+        then return. Default 1e-4.
 
     max_iterations: int
-        If this number of iterations is reached, stop early.
+        If this number of iterations is reached, stop early. Default 1000.
 
     tv_weights_to_scan : list[float], optional
         A list of TV regularization weights (λ values) to be scanned for optimal results,
@@ -194,7 +194,6 @@ def iterative_tv_phase_retrieval(
     """
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
-
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
         diffmap = Map.from_structurefactor(difference, index=native.index)
         diffmap.cell = native.cell

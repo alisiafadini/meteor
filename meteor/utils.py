@@ -5,7 +5,7 @@ from typing import Literal, overload
 
 import gemmi
 import numpy as np
-import pandas as pd
+from pandas import DataFrame, Index
 import reciprocalspaceship as rs
 from pandas.testing import assert_index_equal
 from reciprocalspaceship.utils import canonicalize_phases
@@ -23,13 +23,13 @@ class MapColumns:
     uncertainty: str | None = None
 
 
-def filter_common_indices(
-    df1: pd.DataFrame,
-    df2: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def filter_common_indices(df1: DataFrame, df2: DataFrame) -> tuple[DataFrame, DataFrame]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
     df2_common = df2.loc[common_indices].copy()
+    if len(df1_common) == 0 or len(df2_common) == 0:
+        msg = "cannot find any HKL incdices in common between `df1` and `df2`"
+        raise IndexError(msg)
     return df1_common, df2_common
 
 
@@ -137,7 +137,7 @@ def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSer
 def complex_array_to_rs_dataseries(
     complex_structure_factors: np.ndarray,
     *,
-    index: pd.Index,
+    index: Index,
 ) -> tuple[rs.DataSeries, rs.DataSeries]:
     """
     Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one

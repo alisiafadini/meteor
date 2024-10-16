@@ -8,6 +8,13 @@ from meteor.rsmap import Map
 from meteor.utils import filter_common_indices
 
 
+def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
+    dataset = rs.DataSet(noise_free_map).copy()
+    assert not isinstance(dataset, Map)
+
+    new_map = Map(dataset)
+
+
 def test_copy(noise_free_map: Map) -> None:
     copy_map = noise_free_map.copy()
     assert isinstance(copy_map, Map)

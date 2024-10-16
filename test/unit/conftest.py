@@ -19,7 +19,7 @@ CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 NP_RNG = np.random.default_rng()
 
-
+# TODO: eliminate
 @pytest.fixture
 def test_map_columns() -> MapColumns:
     return MapColumns(

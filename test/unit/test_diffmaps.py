@@ -13,16 +13,19 @@ from meteor.diffmaps import (
 from meteor.rsmap import Map
 from meteor.validate import negentropy
 
+from typing import Callable
+
 
 @pytest.fixture
 def dummy_derivative() -> Map:
-    index = pd.MultiIndex.from_arrays([[1, 1], [1, 2], [1, 3]], names=("H", "K", "L"))
+    # note, index HKL = (5, 5, 5) is unique to this Map, should be ignored downstream
+    index = pd.MultiIndex.from_arrays([[1, 1, 5], [1, 2, 5], [1, 3, 5]], names=("H", "K", "L"))
     derivative = {
-        "F": np.array([2.0, 3.0]),
-        "PHI": np.array([180.0, 0.0]),
-        "SIGF": np.array([0.5, 0.5]),
+        "F": np.array([2.0, 3.0, 1.0]),
+        "PHI": np.array([180.0, 0.0, 1.0]),
+        "SIGF": np.array([0.5, 0.5, 1.0]),
     }
-    return Map(derivative, index=index)
+    return Map(derivative, index=index).infer_mtz_dtypes()
 
 
 @pytest.fixture
@@ -33,7 +36,7 @@ def dummy_native() -> Map:
         "PHI": np.array([0.0, 180.0]),
         "SIGF": np.array([0.5, 0.5]),
     }
-    return Map(native, index=index)
+    return Map(native, index=index).infer_mtz_dtypes()
 
 
 def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
@@ -48,6 +51,37 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
     assert_almost_equal(result.phases, expected_phases, decimal=4)
 
 
+@pytest.mark.parametrize(
+    "diffmap_fxn", 
+    [
+        compute_difference_map,
+        # lambdas to make the call signatures for these functions match `compute_difference_map`
+        lambda d, n: compute_kweighted_difference_map(d, n, k_parameter=0.5),
+        lambda d, n: max_negentropy_kweighted_difference_map(d, n)[0],
+    ]
+)
+def test_cell_spacegroup_propogation(diffmap_fxn: Callable, dummy_derivative: Map, dummy_native: Map) -> None:
+
+    dummy_derivative.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    dummy_derivative.spacegroup = 1  # will cast to gemmi
+    dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    dummy_native.spacegroup = 1
+
+    result = diffmap_fxn(dummy_derivative, dummy_native)
+    assert result.cell == dummy_native.cell
+    assert result.spacegroup == dummy_native.spacegroup
+
+    dummy_native.spacegroup = 19
+    with pytest.raises(AttributeError):
+        result = diffmap_fxn(dummy_derivative, dummy_native)
+
+    dummy_native.spacegroup = 1
+    _ = compute_difference_map(dummy_derivative, dummy_native)
+    dummy_native.cell = (15.0, 15.0, 15.0, 90.0, 90.0, 90.0)
+    with pytest.raises(AttributeError):
+        result = diffmap_fxn(dummy_derivative, dummy_native)
+
+
 def test_compute_kweights_vs_analytical() -> None:
     deltaf = rs.DataSeries([2.0, 3.0, 4.0])
     phi = rs.DataSeries([0.0, 0.0, 0.0])
@@ -56,6 +90,7 @@ def test_compute_kweights_vs_analytical() -> None:
 
     diffmap = Map.from_dict({"F": deltaf, "PHI": phi, "SIGF": sigdeltaf})
     expected_weights = np.array([0.453, 0.406, 0.354])
+
     result = compute_kweights(diffmap, k_parameter=k_parameter)
     assert_almost_equal(result.values, expected_weights, decimal=3)
 
@@ -66,7 +101,9 @@ def test_compute_kweighted_difference_map_vs_analytical(
 ) -> None:
     kwt_diffmap = compute_kweighted_difference_map(dummy_derivative, dummy_native, k_parameter=0.5)
     expected_weighted_amplitudes = np.array([1.3247, 1.8280])  # calculated by hand
+    expected_weighted_uncertainties = np.array([0.3122, 0.2585])
     assert_almost_equal(kwt_diffmap.amplitudes, expected_weighted_amplitudes, decimal=4)
+    assert_almost_equal(kwt_diffmap.uncertainties, expected_weighted_uncertainties, decimal=4)
 
 
 def test_kweight_optimization(noise_free_map: rs.DataSet, noisy_map: rs.DataSet) -> None:

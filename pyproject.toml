@@ -53,15 +53,14 @@ lint.ignore = [
     "D105",   # ignore missing docstrings in magic methods (e.g., __init__)
     "D106",   # ignore missing docstrings in public nested class
     "D107",   # ignore missing docstrings in __init__ method
-    "D200",   # ignore incorrect indentation of docstring (1st line should be empty)
     "D205",   # ignore failure to separate summary line from description in docstring
     "D212",   # ignore multiline docstring summary errors
     "D400",   # periods in docstrings
     "D401",   # ignore docstring should be in imperative mood
     "E501",   # ignore line too long (over 79 characters)
     "TRY003", # ignore external messages in exceptions being too verbose
-    "TD002",  # TODO authorship
-    "TD003",  # TODO issue
+    "TD002",  # to do authorship
+    "TD003",  # to do issue
     "PD002",  # allow inplace modifications in Pandas operations
     "TCH001", # type checking blocks
     "TCH002", # type checking blocks

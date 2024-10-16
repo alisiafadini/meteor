@@ -13,6 +13,23 @@ from .validate import ScalarMaximizer, negentropy
 DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 
+def set_common_crystallographic_metadata(derivative: Map, native: Map, *, output: Map) -> None:
+    if hasattr(native, "cell"):
+        if hasattr(derivative, "cell"):
+            if native.cell != derivative.cell:
+                msg = f"`native.cell` {native.cell} != `derivative.cell` {derivative.cell}"
+                raise AttributeError(msg)
+        output.cell = native.cell
+
+    if hasattr(native, "spacegroup"):
+        if hasattr(derivative, "spacegroup"):
+            if native.spacegroup != derivative.spacegroup:
+                msg = f"`native.spacegroup` {native.spacegroup} != "
+                msg += f"`derivative.spacegroup` {derivative.spacegroup}"
+                raise AttributeError(msg)
+        output.spacegroup = native.spacegroup
+
+
 def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
@@ -40,14 +57,11 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     _assert_is_map(native, require_uncertainties=False)
 
     derivative, native = filter_common_indices(derivative, native)  # type: ignore[assignment]
-    if len(derivative) == 0 or len(native) == 0:
-        msg = "cannot find any HKL incdices in common between `derivative` and `native`"
-        raise IndexError(msg)
 
     delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
-    delta = Map.from_structurefactor(delta_complex, index=derivative.index)
-    delta.cell = native.cell
-    delta.spacegroup = native.spacegroup
+    delta = Map.from_structurefactor(delta_complex, index=native.index)
+
+    set_common_crystallographic_metadata(derivative, native, output=delta)
 
     if derivative.has_uncertainties and native.has_uncertainties:
         prop_uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
@@ -56,11 +70,7 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     return delta
 
 
-def compute_kweights(
-    difference_map: Map,
-    *,
-    k_parameter: float,
-) -> rs.DataSeries:
+def compute_kweights(difference_map: Map, *, k_parameter: float) -> rs.DataSeries:
     """
     Compute weights for each structure factor based on DeltaF and its uncertainty.
 
@@ -108,13 +118,13 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
     diffmap: Map
         the k-weighted difference map
     """
+    # require uncertainties at the beginning
     _assert_is_map(derivative, require_uncertainties=True)
     _assert_is_map(native, require_uncertainties=True)
 
     difference_map = compute_difference_map(derivative, native)
     weights = compute_kweights(difference_map, k_parameter=k_parameter)
 
-    # TODO: confirm, shouldn't we modify the uncertainties as well?
     difference_map.amplitudes *= weights
     difference_map.uncertainties *= weights
 
