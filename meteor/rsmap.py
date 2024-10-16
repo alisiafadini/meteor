@@ -253,7 +253,12 @@ class Map(rs.DataSet):
 
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
-
+    
+    def to_gemmi(self) -> rs.DataSet:	
+        # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet
+        # TODO: if we remove this, everything seems to break...
+        return rs.DataSet(self).to_gemmi()
+    
     def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
         map_coefficients_gemmi_format = self.to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
