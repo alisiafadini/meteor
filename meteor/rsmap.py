@@ -269,22 +269,6 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
-    def to_gemmi(self) -> rs.DataSet:
-        # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet
-        # TODO: if we remove this, everything seems to break...
-        return rs.DataSet(self).to_gemmi()
-
-    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
-        map_coefficients_gemmi_format = self.to_gemmi()
-        ccp4_map = gemmi.Ccp4Map()
-        ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-            self._amplitude_column,
-            self._phase_column,
-            sample_rate=map_sampling,
-        )
-        ccp4_map.update_ccp4_header()
-        return ccp4_map
-
     # dev note: `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
     # part of the dataset; having such a (redundant) column is forbidden by `Map` - @tjlane
     @classmethod
@@ -306,6 +290,38 @@ class Map(rs.DataSet):
             spacegroup=spacegroup,
         )
         return cls(dataset)
+
+    def to_gemmi(self) -> rs.DataSet:
+        # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet - @tjlane
+        # TODO: can you more intelligently cast to parent?
+        return rs.DataSet(self).to_gemmi()
+
+    @classmethod
+    def from_gemmi(
+        cls,
+        gemmi_mtz: gemmi.Mtz,
+        *,
+        amplitude_column: str = "F",
+        phase_column: str = "PHI",
+        uncertainty_column: str | None = "SIGF",
+    ) -> Map:
+        return cls(
+            rs.DataSet(gemmi_mtz),
+            amplitude_column=amplitude_column,
+            phase_column=phase_column,
+            uncertainty_column=uncertainty_column,
+        )
+
+    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
+        map_coefficients_gemmi_format = self.to_gemmi()
+        ccp4_map = gemmi.Ccp4Map()
+        ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
+            self._amplitude_column,
+            self._phase_column,
+            sample_rate=map_sampling,
+        )
+        ccp4_map.update_ccp4_header()
+        return ccp4_map
 
     @classmethod
     def from_ccp4_map(
@@ -337,18 +353,23 @@ class Map(rs.DataSet):
 
         return cls(dataset, amplitude_column=amplitude_column, phase_column=phase_column)
 
+    def write_mtz(self, file_path: str | Path) -> None:
+        # TODO: can you more intelligently cast to parent?
+        # dev note: also modifies the columns; requires cast to DataSet - @tjlane
+        rs.DataSet(self).write_mtz(str(file_path))
+
     @classmethod
-    def from_mtz_file(
+    def read_mtz_file(
         cls,
-        file_path: Path,
+        file_path: str | Path,
         *,
         amplitude_column: str = "F",
         phase_column: str = "PHI",
         uncertainty_column: str | None = "SIGF",
     ) -> Map:
-        dataset = super().from_mtz_file(file_path)
-        return cls(
-            dataset,
+        gemmi_mtz = gemmi.read_mtz_file(str(file_path))
+        return cls.from_gemmi(
+            gemmi_mtz,
             amplitude_column=amplitude_column,
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,

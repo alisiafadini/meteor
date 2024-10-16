@@ -197,17 +197,6 @@ def test_complex_amplitudes() -> None:
     np.testing.assert_almost_equal(rsmap.complex_amplitudes, expected)
 
 
-def test_to_structurefactor(noise_free_map: Map) -> None:
-    c_dataseries = noise_free_map.to_structurefactor()
-    c_array = noise_free_map.complex_amplitudes
-    np.testing.assert_almost_equal(c_dataseries.to_numpy(), c_array)
-
-
-def test_to_ccp4_map(noise_free_map: Map) -> None:
-    ccp4_map = noise_free_map.to_ccp4_map(map_sampling=3)
-    assert ccp4_map.grid.shape == (30, 30, 30)
-
-
 def test_from_dataset(noise_free_map: Map) -> None:
     map_as_dataset = rs.DataSet(noise_free_map)
     map2 = Map(
@@ -219,8 +208,26 @@ def test_from_dataset(noise_free_map: Map) -> None:
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
 
+def test_to_structurefactor(noise_free_map: Map) -> None:
+    c_dataseries = noise_free_map.to_structurefactor()
+    c_array = noise_free_map.complex_amplitudes
+    np.testing.assert_almost_equal(c_dataseries.to_numpy(), c_array)
+
+
 def from_structurefactor(noise_free_map: Map) -> None:
     map2 = Map.from_structurefactor(noise_free_map.complex_amplitudes, index=noise_free_map.index)
+    pd.testing.assert_frame_equal(noise_free_map, map2)
+
+
+def test_to_ccp4_map(noise_free_map: Map) -> None:
+    ccp4_map = noise_free_map.to_ccp4_map(map_sampling=3)
+    assert ccp4_map.grid.shape == (30, 30, 30)
+
+
+def test_gemmi_mtz_roundtrip(noise_free_map: Map) -> None:
+    gemmi_mtz = noise_free_map.to_gemmi()
+    assert isinstance(gemmi_mtz, gemmi.Mtz)
+    map2 = Map.from_gemmi(gemmi_mtz)
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
 
@@ -254,8 +261,8 @@ def test_ccp4_map_round_trip(
     )
 
 
-def test_from_mtz_file(noise_free_map: Map, tmp_path: Path) -> None:
+def test_to_and_from_mtz_file(noise_free_map: Map, tmp_path: Path) -> None:
     file_path = tmp_path / "tmp.mtz"
     noise_free_map.write_mtz(file_path)
-    loaded = Map.from_mtz_file(file_path)
+    loaded = Map.read_mtz_file(file_path)
     pd.testing.assert_frame_equal(noise_free_map, loaded)
