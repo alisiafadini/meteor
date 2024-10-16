@@ -11,6 +11,7 @@ from meteor.diffmaps import (
     compute_kweighted_difference_map,
     compute_kweights,
     max_negentropy_kweighted_difference_map,
+    set_common_crystallographic_metadata
 )
 from meteor.rsmap import Map
 from meteor.validate import negentropy
@@ -39,8 +40,35 @@ def dummy_native() -> Map:
     return Map(native, index=index).infer_mtz_dtypes()
 
 
-def test_set_common_crystallographic_metadata() -> None:
-    raise NotImplementedError  # TODO: implement
+def test_set_common_crystallographic_metadata(dummy_native: Map) -> None:
+    
+    dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    dummy_native.spacegroup = 1
+    map1 = dummy_native
+    map2 = dummy_native.copy()
+    output = dummy_native.copy()
+    
+    # ensure things are copied when missing initially
+    del output._cell
+    del output._spacegroup
+    assert not hasattr(output, "cell")
+    assert not hasattr(output, "spacegroup")
+
+    set_common_crystallographic_metadata(map1, map2, output=output)
+    
+    assert output.cell == map1.cell
+    assert output.spacegroup == map2.spacegroup
+
+    map2.spacegroup = 19
+    with pytest.raises(AttributeError):
+        set_common_crystallographic_metadata(map1, map2, output=output)
+
+    map2.spacegroup = 1
+    set_common_crystallographic_metadata(map1, map2, output=output)
+
+    dummy_native.cell = (15.0, 15.0, 15.0, 90.0, 90.0, 90.0)
+    with pytest.raises(AttributeError):
+        set_common_crystallographic_metadata(map1, map2, output=output)
 
 
 def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:

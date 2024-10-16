@@ -13,19 +13,19 @@ from .validate import ScalarMaximizer, negentropy
 DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 
-def set_common_crystallographic_metadata(derivative: Map, native: Map, *, output: Map) -> None:
-    if hasattr(native, "cell"):
-        if hasattr(derivative, "cell") and (native.cell != derivative.cell):
-            msg = f"`native.cell` {native.cell} != `derivative.cell` {derivative.cell}"
+def set_common_crystallographic_metadata(map1: Map, map2: Map, *, output: Map) -> None:
+    if hasattr(map1, "cell"):
+        if hasattr(map2, "cell") and (map1.cell != map2.cell):
+            msg = f"`map1.cell` {map1.cell} != `map2.cell` {map2.cell}"
             raise AttributeError(msg)
-        output.cell = native.cell
+        output.cell = map1.cell
 
-    if hasattr(native, "spacegroup"):
-        if hasattr(derivative, "spacegroup") and (native.spacegroup != derivative.spacegroup):
-            msg = f"`native.spacegroup` {native.spacegroup} != "
-            msg += f"`derivative.spacegroup` {derivative.spacegroup}"
+    if hasattr(map1, "spacegroup"):
+        if hasattr(map2, "spacegroup") and (map1.spacegroup != map2.spacegroup):
+            msg = f"`map1.spacegroup` {map1.spacegroup} != "
+            msg += f"`map2.spacegroup` {map2.spacegroup}"
             raise AttributeError(msg)
-        output.spacegroup = native.spacegroup
+        output.spacegroup = map1.spacegroup
 
 
 def compute_difference_map(derivative: Map, native: Map) -> Map:
