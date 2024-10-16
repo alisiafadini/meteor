@@ -186,10 +186,11 @@ class Map(rs.DataSet):
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
 
     def get_hkls(self) -> np.ndarray:
-        # TODO: audit this
+        # overwrite reciprocalspaceship's implementation to safely return w/o modifying self
+        # has same behavior, this is under unit testing
         return self.index.to_frame().to_numpy(dtype=np.int32)
 
-    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, inhereted from reciprocalspaceship
+    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, capital letters from reciprocalspaceship
         # TODO: audit this
         d_hkl = self.cell.calculate_d_array(self.get_hkls())
         return rs.DataSeries(d_hkl, dtype="R", index=self.index)

@@ -136,6 +136,12 @@ def test_get_hkls(noise_free_map: Map) -> None:
     assert hkl.shape[1] == 3
 
 
+def test_get_hkls_consistent_with_reciprocalspaceship(noise_free_map: Map) -> None:
+    meteor_hkl = noise_free_map.get_hkls()
+    rs_hkl = rs.DataSet(noise_free_map).get_hkls()
+    np.testing.assert_array_equal(meteor_hkl, rs_hkl)
+
+
 def test_compute_dhkl(noise_free_map: Map) -> None:
     d_hkl = noise_free_map.compute_dHKL()
     assert np.max(d_hkl) == 10.0
