@@ -116,6 +116,12 @@ def complex_array_to_rs_dataseries(
     ------
     ValueError
         if `complex_structure_factors and `index` do not have the same shape
+
+    See Also
+    --------
+    `reciprocalspaceship/utils/structurefactors.from_structurefactor(...)`
+        An equivalent function, that does not require the index and does less index/data
+        checking.
     """
     if complex_structure_factors.shape != index.shape:
         msg = (

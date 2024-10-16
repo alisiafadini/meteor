@@ -14,7 +14,6 @@ from .utils import (
     complex_array_to_rs_dataseries,
 )
 
-
 class MissingUncertaintiesError(AttributeError): ...
 
 
@@ -65,6 +64,11 @@ class Map(rs.DataSet):
         **kwargs,
     ) -> None:
         super().__init__(data=data, **kwargs)
+
+        if not hasattr(self, "index"):
+            msg = "required index not found, please either pass a `DataFrame` or `DataSet` with an "
+            msg += "index of Miller indices, or pass `index=...` to `Map(...)` at instantiation"
+            raise IndexError(msg)
 
         columns_to_keep = [amplitude_column, phase_column]
         for column in columns_to_keep:
@@ -269,15 +273,26 @@ class Map(rs.DataSet):
         ccp4_map.update_ccp4_header()
         return ccp4_map
 
+    # dev note: `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already 
+    # part of the dataset; having such a (redundant) column is forbidden by `Map` - @tjlane
     @classmethod
     def from_structurefactor(
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
         index: pd.Index,
+        cell: Any = None,
+        spacegroup: Any = None,
     ) -> Map:
+        # recprocalspaceship has a `from_structurefactor` method, but it is occasionally
+        # mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
         amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
-        dataset = rs.concat([amplitudes, phases], axis=1)
+        dataset = rs.DataSet(
+            rs.concat([amplitudes.rename("F"), phases.rename("PHI")], axis=1),
+            index=index,
+            cell=cell,
+            spacegroup=spacegroup
+        )
         return cls(dataset)
 
     @classmethod
