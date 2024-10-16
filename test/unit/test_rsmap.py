@@ -51,12 +51,55 @@ def test_filter_common_indices_with_maps(noise_free_map: Map) -> None:
     assert len(f2.columns) == 3
 
 
-def test_verify_types() -> None:
-    # _verify_type
-    # _verify_amplitude_type
-    # _verify_phase_type
-    # _verify_uncertainty_type
-    raise NotImplementedError  # TODO: implement
+def test_verify_type(noise_free_map: Map) -> None:
+    dataseries = rs.DataSeries([1, 2, 3])
+    assert dataseries.dtype == int
+    noise_free_map._verify_type("foo", [int], dataseries, fix=False, cast_fix_to=int)
+
+    with pytest.raises(AssertionError):
+        noise_free_map._verify_type("foo", [float], dataseries, fix=False, cast_fix_to=float)
+
+    output = noise_free_map._verify_type("foo", [float], dataseries, fix=True, cast_fix_to=float)
+    assert output.dtype == float
+
+
+@pytest.mark.parametrize("fix", [False, True])
+def test_verify_types(noise_free_map: Map, fix: bool) -> None:
+    functions_to_test = [
+        noise_free_map._verify_amplitude_type,
+        noise_free_map._verify_phase_type,
+        noise_free_map._verify_uncertainty_type,
+    ]
+
+    expected_fixed_types = [
+        rs.StructureFactorAmplitudeDtype(),
+        rs.PhaseDtype(),
+        rs.StandardDeviationDtype(),
+    ]
+
+    dataseries_to_use = [
+        noise_free_map.amplitudes,
+        noise_free_map.phases,
+        noise_free_map.uncertainties,
+        rs.DataSeries(np.arange(10)),
+    ]
+
+    # success_matrix[i][j] = functions_to_test[i] expected to pass on dataseries_to_use[j]
+    success_matrix = [
+        [True, False, False, False],
+        [False, True, False, False],
+        [False, False, True, False],
+    ]
+
+    for i, fxn in enumerate(functions_to_test):
+        for j, ds in enumerate(dataseries_to_use):
+            if success_matrix[i][j] or fix:
+                output = fxn(ds, fix=fix)  # should pass
+                if fix:
+                    assert output.dtype == expected_fixed_types[i]
+            else:
+                with pytest.raises(AssertionError):
+                    fxn(ds, fix=fix)
 
 
 def test_setitem(noise_free_map: Map, noisy_map: Map) -> None:

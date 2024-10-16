@@ -106,14 +106,15 @@ class Map(rs.DataSet):
     def _verify_type(
         self,
         name: str,
-        allowed_types: list[Any],
+        allowed_types: list[type],
         dataseries: rs.DataSeries,
         *,
         fix: bool,
+        cast_fix_to: type,
     ) -> rs.DataSeries:
         if dataseries.dtype not in allowed_types:
             if fix:
-                return dataseries.astype(rs.StandardDeviationDtype())
+                return dataseries.astype(cast_fix_to)
             msg = f"dtype for passed {name} not allowed, got: {dataseries.dtype} allow {allowed_types}"
             raise AssertionError(msg)
         return dataseries
@@ -131,12 +132,20 @@ class Map(rs.DataSet):
             rs.NormalizedStructureFactorAmplitudeDtype(),
             rs.AnomalousDifferenceDtype(),
         ]
-        return self._verify_type(name, amplitude_dtypes, dataseries, fix=fix)
+        return self._verify_type(
+            name,
+            amplitude_dtypes,
+            dataseries,
+            fix=fix,
+            cast_fix_to=rs.StructureFactorAmplitudeDtype(),
+        )
 
     def _verify_phase_type(self, dataseries: rs.DataSeries, *, fix: bool = True) -> rs.DataSeries:
         name = "phase"
         phase_dtypes = [rs.PhaseDtype()]
-        return self._verify_type(name, phase_dtypes, dataseries, fix=fix)
+        return self._verify_type(
+            name, phase_dtypes, dataseries, fix=fix, cast_fix_to=rs.PhaseDtype()
+        )
 
     def _verify_uncertainty_type(
         self,
@@ -150,7 +159,9 @@ class Map(rs.DataSet):
             rs.StandardDeviationFriedelIDtype(),
             rs.StandardDeviationFriedelSFDtype(),
         ]
-        return self._verify_type(name, uncertainty_dtypes, dataseries, fix=fix)
+        return self._verify_type(
+            name, uncertainty_dtypes, dataseries, fix=fix, cast_fix_to=rs.StandardDeviationDtype()
+        )
 
     def __setitem__(self, key: str, value) -> None:
         if key not in self.columns:
