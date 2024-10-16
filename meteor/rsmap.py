@@ -55,7 +55,11 @@ class Map(rs.DataSet):
     these relatively simple operations.
     """
 
+    # these columns are always allowed
     _allowed_columns: ClassVar[list[str]] = ["H", "K", "L"]
+
+    # in addition, __init__ specifies 3 columns special that can be named dynamically to support:
+    # amplitudes, phases, uncertainties; all other columns are forbidden
 
     def __init__(
         self,
