@@ -1,11 +1,9 @@
-import gemmi
 import numpy as np
 import pandas as pd
 import pytest
 import reciprocalspaceship as rs
 from pandas import testing as pdt
 
-from meteor import testing as mt
 from meteor import utils
 from meteor.rsmap import Map
 
@@ -161,57 +159,3 @@ def test_complex_array_dataseries_roundtrip() -> None:
 
     carray2 = utils.rs_dataseries_to_complex_array(ds_amplitudes, ds_phases)
     np.testing.assert_almost_equal(carray, carray2, decimal=5)
-
-
-def test_compute_map_from_coefficients(
-    random_difference_map: Map,
-    test_diffmap_columns: utils.MapColumns,
-) -> None:
-    diffmap = utils.compute_map_from_coefficients(
-        map_coefficients=random_difference_map,
-        amplitude_label=test_diffmap_columns.amplitude,
-        phase_label=test_diffmap_columns.phase,
-        map_sampling=1,
-    )
-    assert isinstance(diffmap, gemmi.Ccp4Map)
-
-
-@pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
-def test_map_to_coefficients_round_trip(
-    map_sampling: int,
-    random_difference_map: Map,
-    test_diffmap_columns: utils.MapColumns,
-) -> None:
-    realspace_map = utils.compute_map_from_coefficients(
-        map_coefficients=random_difference_map,
-        amplitude_label=test_diffmap_columns.amplitude,
-        phase_label=test_diffmap_columns.phase,
-        map_sampling=map_sampling,
-    )
-
-    _, dmin = random_difference_map.resolution_limits
-
-    output_coefficients = utils.compute_coefficients_from_map(
-        ccp4_map=realspace_map,
-        high_resolution_limit=dmin,
-        amplitude_label=test_diffmap_columns.amplitude,
-        phase_label=test_diffmap_columns.phase,
-    )
-
-    utils.canonicalize_amplitudes(
-        output_coefficients,
-        amplitude_label=test_diffmap_columns.amplitude,
-        phase_label=test_diffmap_columns.phase,
-        inplace=True,
-    )
-    random_difference_map.canonicalize_amplitudes()
-
-    pd.testing.assert_series_equal(
-        random_difference_map[test_diffmap_columns.amplitude],
-        output_coefficients[test_diffmap_columns.amplitude],
-        atol=1e-3,
-    )
-    mt.assert_phases_allclose(
-        random_difference_map[test_diffmap_columns.phase].to_numpy(),
-        output_coefficients[test_diffmap_columns.phase].to_numpy(),
-    )

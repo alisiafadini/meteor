@@ -8,8 +8,8 @@ from skimage.restoration import denoise_tv_chambolle
 
 from .rsmap import Map
 from .settings import (
+    MAP_SAMPLING,
     TV_LAMBDA_RANGE,
-    TV_MAP_SAMPLING,
     TV_MAX_NUM_ITER,
     TV_STOP_TOLERANCE,
 )
@@ -113,7 +113,7 @@ def tv_denoise_difference_map(
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
     >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
     """
-    realspace_map = difference_map.to_ccp4_map(map_sampling=TV_MAP_SAMPLING)
+    realspace_map = difference_map.to_ccp4_map(map_sampling=MAP_SAMPLING)
     realspace_map_array = np.array(realspace_map.grid)
 
     def negentropy_objective(tv_lambda: float):
@@ -155,7 +155,7 @@ def tv_denoise_difference_map(
         tv_result = TvDenoiseResult(
             optimal_lambda=maximizer.argument_optimum,
             optimal_negentropy=maximizer.objective_maximum,
-            map_sampling_used_for_tv=TV_MAP_SAMPLING,
+            map_sampling_used_for_tv=MAP_SAMPLING,
             lambdas_scanned=maximizer.values_evaluated,
         )
         return final_map, tv_result

@@ -6,7 +6,7 @@ import numpy as np
 import reciprocalspaceship as rs
 
 from .rsmap import Map, _assert_is_map
-from .settings import TV_MAP_SAMPLING
+from .settings import MAP_SAMPLING
 from .utils import filter_common_indices
 from .validate import ScalarMaximizer, negentropy
 
@@ -170,7 +170,7 @@ def max_negentropy_kweighted_difference_map(
             native,
             k_parameter=k_parameter,
         )
-        k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=TV_MAP_SAMPLING)
+        k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=MAP_SAMPLING)
         k_weighted_map_array = np.array(k_weighted_map.grid)
         return negentropy(k_weighted_map_array)
 

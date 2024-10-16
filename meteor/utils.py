@@ -5,8 +5,8 @@ from typing import Literal, overload
 
 import gemmi
 import numpy as np
-from pandas import DataFrame, Index
 import reciprocalspaceship as rs
+from pandas import DataFrame, Index
 from pandas.testing import assert_index_equal
 from reciprocalspaceship.utils import canonicalize_phases
 
@@ -16,6 +16,7 @@ from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 class ShapeMismatchError(Exception): ...
 
 
+# TODO: remove
 @dataclass
 class MapColumns:
     amplitude: str
@@ -208,25 +209,6 @@ def numpy_array_to_map(
 
 
 # TODO: do we need these two methods anymore? or can we just us rsmap.Map?
-def compute_map_from_coefficients(
-    *,
-    map_coefficients: rs.DataSet,
-    amplitude_label: str,
-    phase_label: str,
-    map_sampling: int,
-) -> gemmi.Ccp4Map:
-    map_coefficients_gemmi_format = map_coefficients.to_gemmi()
-    ccp4_map = gemmi.Ccp4Map()
-    ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-        amplitude_label,
-        phase_label,
-        sample_rate=map_sampling,
-    )
-    ccp4_map.update_ccp4_header()
-
-    return ccp4_map
-
-
 def compute_coefficients_from_map(
     *,
     ccp4_map: gemmi.Ccp4Map,

@@ -5,6 +5,7 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
+from meteor.testing import assert_phases_allclose
 from meteor.utils import filter_common_indices
 
 
@@ -111,3 +112,27 @@ def test_from_ccp4_map(ccp4_map: gemmi.Ccp4Map) -> None:
     resolution = 1.0
     rsmap = Map.from_ccp4_map(ccp4_map, high_resolution_limit=resolution)
     assert len(rsmap) > 0
+
+
+@pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
+def test_ccp4_map_round_trip(
+    map_sampling: int,
+    random_difference_map: Map,
+) -> None:
+    realspace_map = random_difference_map.to_ccp4_map(map_sampling=map_sampling)
+
+    _, dmin = random_difference_map.resolution_limits
+    output_coefficients = Map.from_ccp4_map(realspace_map, high_resolution_limit=dmin)
+
+    random_difference_map.canonicalize_amplitudes()
+    output_coefficients.canonicalize_amplitudes()
+
+    pd.testing.assert_series_equal(
+        random_difference_map.amplitudes,
+        output_coefficients.amplitudes,
+        atol=1e-3,
+    )
+    assert_phases_allclose(
+        random_difference_map.phases.to_numpy(),
+        output_coefficients.phases.to_numpy(),
+    )

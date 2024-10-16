@@ -192,6 +192,7 @@ def iterative_tv_phase_retrieval(
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
+
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
     def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:

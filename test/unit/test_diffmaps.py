@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,8 +14,6 @@ from meteor.diffmaps import (
 )
 from meteor.rsmap import Map
 from meteor.validate import negentropy
-
-from typing import Callable
 
 
 @pytest.fixture
@@ -52,16 +52,17 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
 
 
 @pytest.mark.parametrize(
-    "diffmap_fxn", 
+    "diffmap_fxn",
     [
         compute_difference_map,
         # lambdas to make the call signatures for these functions match `compute_difference_map`
         lambda d, n: compute_kweighted_difference_map(d, n, k_parameter=0.5),
         lambda d, n: max_negentropy_kweighted_difference_map(d, n)[0],
-    ]
+    ],
 )
-def test_cell_spacegroup_propogation(diffmap_fxn: Callable, dummy_derivative: Map, dummy_native: Map) -> None:
-
+def test_cell_spacegroup_propogation(
+    diffmap_fxn: Callable, dummy_derivative: Map, dummy_native: Map,
+) -> None:
     dummy_derivative.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
     dummy_derivative.spacegroup = 1  # will cast to gemmi.SpaceGroup
     dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
