@@ -89,41 +89,6 @@ def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> flo
     return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
 
 
-# TODO: the following two functions are duplicated in reciprocalspaceship
-# https://github.com/rs-station/reciprocalspaceship/blob/ceae60e293bfdb3e969d0e3e2b53fa3a2b9e34f9/reciprocalspaceship/utils/structurefactors.py#L8
-def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
-    """
-    Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
-
-    Parameters
-    ----------
-    amplitudes: DataSeries
-        with StructureFactorAmplitudeDtype
-    phases: DataSeries
-        with PhaseDtype
-
-    Returns
-    -------
-    complex_structure_factors: np.ndarray
-        with dtype complex128
-
-    Raises
-    ------
-    ValueError
-        if the indices of `amplitudes` and `phases` do not match
-    """
-    try:
-        assert_index_equal(amplitudes.index, phases.index)
-    except AssertionError as exptn:
-        msg = (
-            "Indices for `amplitudes` and `phases` don't match. To safely cast to a single complex",
-            " array, pass DataSeries with a common set of indices. One possible way: ",
-            "Series.align(other, join='inner', axis=0).",
-        )
-        raise ShapeMismatchError(msg) from exptn
-    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
-
-
 def complex_array_to_rs_dataseries(
     complex_structure_factors: np.ndarray,
     *,

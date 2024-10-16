@@ -12,7 +12,6 @@ from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
-    rs_dataseries_to_complex_array,
 )
 
 
@@ -241,7 +240,7 @@ class Map(rs.DataSet):
 
     @property
     def complex_amplitudes(self) -> np.ndarray:
-        return rs_dataseries_to_complex_array(amplitudes=self.amplitudes, phases=self.phases)
+        return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
 
     def canonicalize_amplitudes(self):
         canonicalize_amplitudes(

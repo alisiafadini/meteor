@@ -127,10 +127,22 @@ def test_set_uncertainties() -> None:
     assert len(test_map.uncertainties) == 3
 
 
-def test_complex_amplitudes(noise_free_map: Map) -> None:
+def test_complex_amplitudes_smoke(noise_free_map: Map) -> None:
     c_array = noise_free_map.complex_amplitudes
     assert isinstance(c_array, np.ndarray)
     assert np.issubdtype(c_array.dtype, np.complexfloating)
+
+
+def test_complex_amplitudes() -> None:
+    index = pd.Index(np.arange(4))
+    amp = rs.DataSeries(np.ones(4), index=index, name="F")
+    phase = rs.DataSeries(np.arange(4) * 90.0, index=index, name="PHI")
+
+    ds = rs.concat([amp, phase], axis=1)
+    rsmap = Map(ds)
+
+    expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+    np.testing.assert_almost_equal(rsmap.complex_amplitudes, expected)
 
 
 def test_to_structurefactor(noise_free_map: Map) -> None:
