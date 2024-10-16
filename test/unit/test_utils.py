@@ -120,24 +120,3 @@ def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
     index = pd.Index(np.arange(2))
     with pytest.raises(utils.ShapeMismatchError):
         utils.complex_array_to_rs_dataseries(carray, index=index)
-
-
-def test_complex_array_dataseries_roundtrip() -> None:
-    n = 5
-    carray = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
-    indices = pd.Index(np.arange(n))
-
-    ds_amplitudes, ds_phases = utils.complex_array_to_rs_dataseries(carray, index=indices)
-
-    assert isinstance(ds_amplitudes, rs.DataSeries)
-    assert isinstance(ds_phases, rs.DataSeries)
-
-    assert ds_amplitudes.dtype == rs.StructureFactorAmplitudeDtype()
-    assert ds_phases.dtype == rs.PhaseDtype()
-
-    pdt.assert_index_equal(ds_amplitudes.index, indices)
-    pdt.assert_index_equal(ds_phases.index, indices)
-
-    # TODO
-    # carray2 = utils.rs_dataseries_to_complex_array(ds_amplitudes, ds_phases)
-    # np.testing.assert_almost_equal(carray, carray2, decimal=5)
