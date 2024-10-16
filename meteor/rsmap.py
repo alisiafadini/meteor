@@ -55,6 +55,8 @@ class Map(rs.DataSet):
     these relatively simple operations.
     """
 
+    _allowed_columns: set[str] = set(["H", "K", "L"])
+
     def __init__(
         self,
         data: dict | pd.DataFrame | rs.DataSet,
@@ -164,18 +166,18 @@ class Map(rs.DataSet):
         )
 
     def __setitem__(self, key: str, value) -> None:
-        if key not in self.columns:
+        allowed = set(self.columns).union(self._allowed_columns)
+        if key not in allowed:
             msg = "column assignment not allowed for Map objects"
             raise MapMutabilityError(msg)
         super().__setitem__(key, value)
 
     def insert(self, loc: int, column: str, value: Any, *, allow_duplicates: bool = False) -> None:
-        allowed_columns = ["H", "K", "L", "dHKL"]
-        if column in allowed_columns:
+        if column in self._allowed_columns:
             super().insert(loc, column, value, allow_duplicates=allow_duplicates)
         else:
             msg = "general column assignment not allowed for Map objects"
-            msg += f"special columns allowed: {allowed_columns}; "
+            msg += f"special columns allowed: {self._allowed_columns}; "
             msg += "see also Map.set_uncertainties(...)"
             raise MapMutabilityError(msg)
 
@@ -186,12 +188,12 @@ class Map(rs.DataSet):
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
 
     def get_hkls(self) -> np.ndarray:
-        # overwrite reciprocalspaceship's implementation to safely return w/o modifying self
-        # has same behavior, this is under unit testing
+        # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
         return self.index.to_frame().to_numpy(dtype=np.int32)
 
-    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, capital letters from reciprocalspaceship
-        # TODO: audit this
+    def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
+        # rs adds a "dHKL" column to the DataFrame
+        # that could be enabled by adding "dHKL" to _allowed_columns - @tjlane
         d_hkl = self.cell.calculate_d_array(self.get_hkls())
         return rs.DataSeries(d_hkl, dtype="R", index=self.index)
 
