@@ -185,7 +185,7 @@ class Map(rs.DataSet):
             raise MapMutabilityError(msg)
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
 
-    def get_hkls(self):
+    def get_hkls(self) -> np.ndarray:
         # TODO: audit this
         return self.index.to_frame().to_numpy(dtype=np.int32)
 
@@ -291,7 +291,7 @@ class Map(rs.DataSet):
         )
         return cls(dataset)
 
-    def to_gemmi(self) -> rs.DataSet:
+    def to_gemmi(self) -> gemmi.Mtz:
         # the parent DataSet.to_gemmi() modifies columns, so we need to cast to DataSet - @tjlane
         # TODO: can you more intelligently cast to parent?
         return rs.DataSet(self).to_gemmi()
