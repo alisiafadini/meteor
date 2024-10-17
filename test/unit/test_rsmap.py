@@ -54,7 +54,27 @@ def test_reset_index(noise_free_map: Map) -> None:
 def test_copy(noise_free_map: Map) -> None:
     copy_map = noise_free_map.copy()
     assert isinstance(copy_map, Map)
+    assert copy_map is not noise_free_map
     pd.testing.assert_frame_equal(copy_map, noise_free_map)
+
+    # ensure deep copy
+    assert copy_map.values is not noise_free_map.values  # noqa: PD011, want to ensure deep copy
+    assert np.all(noise_free_map["F"] == copy_map["F"])
+    copy_map["F"] += 1.0
+    assert np.all(noise_free_map["F"] != copy_map["F"])
+
+
+def test_copy_non_standard_names(noise_free_map: Map) -> None:
+    ds = rs.DataSet(noise_free_map).rename(columns={"F": "amps", "PHI": "phases"})
+    non_std_map = Map(ds, amplitude_column="amps", phase_column="phases")
+    copy_map = non_std_map.copy()
+
+    assert isinstance(copy_map, Map)
+    assert copy_map is not non_std_map
+    assert copy_map.values is not non_std_map.values  # noqa: PD011, want to ensure deep copy
+    assert "amps" in copy_map.columns
+    assert "phases" in copy_map.columns
+    pd.testing.assert_frame_equal(copy_map, non_std_map)
 
 
 def test_filter_common_indices_with_maps(noise_free_map: Map) -> None:

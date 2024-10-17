@@ -64,7 +64,7 @@ def canonicalize_amplitudes(
     inplace: bool = False,
 ) -> rs.DataSet | None:
     if not inplace:
-        dataset = dataset.copy(deep=True)
+        dataset = dataset.copy()
 
     negative_amplitude_indices = dataset[amplitude_label] < 0.0
     dataset[amplitude_label] = np.abs(dataset[amplitude_label])
