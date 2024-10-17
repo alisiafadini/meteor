@@ -7,18 +7,7 @@ import pandas as pd
 import reciprocalspaceship as rs
 import scipy.optimize as opt
 
-DTYPES_TO_SCALE = (
-    rs.AnomalousDifferenceDtype,
-    rs.FriedelIntensityDtype,
-    rs.FriedelStructureFactorAmplitudeDtype,
-    rs.IntensityDtype,
-    rs.NormalizedStructureFactorAmplitudeDtype,
-    rs.StandardDeviationDtype,
-    rs.StandardDeviationFriedelIDtype,
-    rs.StandardDeviationFriedelSFDtype,
-    rs.StructureFactorAmplitudeDtype,
-)
-""" automatically scale these types when they appear in an rs.DataSet """
+from .rsmap import Map
 
 
 ScaleParameters = Tuple[float, float, float, float, float, float, float]
@@ -149,88 +138,71 @@ def compute_scale_factors(
     return optimized_scale_factors
 
 
-def scale_datasets(
+def scale_maps(
     *,
-    reference_dataset: rs.DataSet,
-    dataset_to_scale: rs.DataSet,
-    column_to_compare: str = "F",
-    uncertainty_column: str = "SIGF",
+    reference_map: Map,
+    map_to_scale: Map,
     weight_using_uncertainties: bool = True,
-) -> rs.DataSet:
+) -> Map:
     """
     Scale a dataset to align it with a reference dataset using anisotropic scaling.
 
-    This function scales the dataset (`dataset_to_scale`) by comparing it to a reference dataset
-    (`reference_dataset`) based on a specified column. The scaling applies an anisotropic model of
+    This function scales the dataset (`map_to_scale`) by comparing it to a reference dataset
+    (`reference_map`) based on a specified column. The scaling applies an anisotropic model of
     the form:
 
         C * exp{ -(h**2 B11 + k**2 B22 + l**2 B33 +
                     2hk B12 + 2hl  B13 +  2kl B23) }
 
-    The parameters Bxy are fit using least squares, optionally with uncertainty weighting.
+    The parameters Bxy are fit using least squares, optionally with uncertainty (inverse variance)
+    weighting.
 
-    NB! All intensity, amplitude, and standard deviation columns in `dataset_to_scale` will be
+    NB! All intensity, amplitude, and standard deviation columns in `map_to_scale` will be
     modified (scaled). To access the scale parameters directly, use
     `meteor.scale.compute_scale_factors`.
 
     Parameters
     ----------
-    reference_dataset : rs.DataSet
-        The reference dataset, containing a column with the values to which `dataset_to_scale` is
-        compared.
-    dataset_to_scale : rs.DataSet
-        The dataset to be scaled. It must contain the same columns as `reference_dataset`.
-    column_to_compare : str, optional (default: "F")
-        The column in both datasets that is used for the comparison and scaling.
-    uncertainty_column : str, optional (default: "SIGF")
-        The column in both datasets containing uncertainty values for weighting. Used only if
-        `weight_using_uncertainties` is True.
+    reference_map : Map
+        The reference dataset map.
+    map_to_scale : Map
+        The map dataset to be scaled.
     weight_using_uncertainties : bool, optional (default: True)
         Whether or not to weight the scaling by uncertainty values. If True, uncertainty values are
         extracted from the `uncertainty_column` in both datasets.
 
     Returns
     -------
-    rs.DataSet
-        A copy of `dataset_to_scale`, with the specified columns scaled to match the reference
-        dataset.
+    scaled_map: Map
+        A copy of `map_to_scale`, with the amplitudes and uncertainties scaled anisotropically to
+        best match `reference_map`.
 
     See Also
     --------
-    compute_scale_factors : function to compute scale factors directly
+    compute_scale_factors : function to compute the scale factors directly
 
     Citations:
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
-    if weight_using_uncertainties:
+
+    if weight_using_uncertainties and reference_map.has_uncertainties and map_to_scale.has_uncertainties:
         scale_factors = compute_scale_factors(
-            reference_values=reference_dataset[column_to_compare],
-            values_to_scale=dataset_to_scale[column_to_compare],
-            reference_uncertainties=reference_dataset[uncertainty_column],
-            to_scale_uncertainties=dataset_to_scale[uncertainty_column],
+            reference_values=reference_map.amplitudes,
+            values_to_scale=map_to_scale.amplitudes,
+            reference_uncertainties=reference_map.uncertainties,
+            to_scale_uncertainties=map_to_scale.uncertainties,
         )
+
     else:
         scale_factors = compute_scale_factors(
-            reference_values=reference_dataset[column_to_compare],
-            values_to_scale=dataset_to_scale[column_to_compare],
-            reference_uncertainties=None,
-            to_scale_uncertainties=None,
+            reference_values=reference_map.amplitudes,
+            values_to_scale=map_to_scale.amplitudes
         )
 
-    scaled_dataset = dataset_to_scale.copy()
-    columns_to_scale = [
-        column_name
-        for column_name, column_dtype in dataset_to_scale.dtypes.items()
-        if isinstance(column_dtype, DTYPES_TO_SCALE)
-    ]
-    if column_to_compare not in columns_to_scale:
-        msg = (
-            f"the `column_to_compare` {column_to_compare} not flagged by dtype as a column to scale"
-        )
-        raise TypeError(msg)
+    scaled_map: Map = map_to_scale.copy()
+    scaled_map.amplitudes *= scale_factors
+    if scaled_map.has_uncertainties:
+        scaled_map.uncertainties *= scale_factors
 
-    for column in columns_to_scale:
-        scaled_dataset[column] *= scale_factors
-
-    return scaled_dataset
+    return scaled_map
