@@ -274,6 +274,28 @@ def test_from_ccp4_map(ccp4_map: gemmi.Ccp4Map) -> None:
     assert len(rsmap) > 0
 
 
+def test_from_numpy(noise_free_map: Map) -> None:
+    _, resolution = noise_free_map.resolution_limits
+    array = np.array(noise_free_map.to_ccp4_map(map_sampling=3).grid)
+    new_map = Map.from_numpy_map(
+        array,
+        spacegroup=noise_free_map.spacegroup,
+        cell=noise_free_map.cell,
+        high_resolution_limit=resolution,
+    )
+
+    pd.testing.assert_series_equal(new_map.amplitudes, noise_free_map.amplitudes, atol=1e-4)
+    assert_phases_allclose(new_map.phases, noise_free_map.phases)
+
+    with pytest.raises(ValueError, match="`map_grid`"):
+        Map.from_numpy_map(
+            array[0, :, :],  # only has 2 dimensions
+            spacegroup=noise_free_map.spacegroup,
+            cell=noise_free_map.cell,
+            high_resolution_limit=resolution,
+        )
+
+
 @pytest.mark.parametrize("map_sampling", [1, 2, 2.25, 3, 5])
 def test_ccp4_map_round_trip(
     map_sampling: int,

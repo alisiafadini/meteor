@@ -12,6 +12,7 @@ from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
+    numpy_array_to_map,
 )
 
 
@@ -306,6 +307,23 @@ class Map(rs.DataSet):
             amplitude_column=amplitude_column,
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
+        )
+
+    @classmethod
+    def from_numpy_map(
+        cls, map_grid: np.ndarray, *, spacegroup: Any, cell: Any, high_resolution_limit: float
+    ) -> Map:
+        if len(map_grid.shape) != 3:  # noqa: PLR2004 - three is a magic number of dimensions
+            msg = "`map_grid` should be a 3D array representing a realspace map"
+            raise ValueError(msg)
+        ccp4 = numpy_array_to_map(
+            map_grid,
+            spacegroup=spacegroup,
+            cell=cell,
+        )
+        return cls.from_ccp4_map(
+            ccp4_map=ccp4,
+            high_resolution_limit=high_resolution_limit,
         )
 
     def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
