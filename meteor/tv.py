@@ -13,9 +13,6 @@ from .settings import (
     TV_MAX_NUM_ITER,
     TV_STOP_TOLERANCE,
 )
-from .utils import (
-    numpy_array_to_map,
-)
 from .validate import ScalarMaximizer, negentropy
 
 
@@ -29,6 +26,8 @@ class TvDenoiseResult:
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
+    if weight <= 0.0:
+        return map_as_array
     return denoise_tv_chambolle(
         map_as_array,
         weight=weight,
@@ -131,16 +130,16 @@ def tv_denoise_difference_map(
         map_as_array=realspace_map_array,
         weight=maximizer.argument_optimum,
     )
-    final_realspace_map_as_ccp4 = numpy_array_to_map(
+    final_map = Map.from_3d_numpy_map(
         final_realspace_map_as_array,
         spacegroup=difference_map.spacegroup,
         cell=difference_map.cell,
-    )
-
-    final_map = Map.from_ccp4_map(
-        ccp4_map=final_realspace_map_as_ccp4,
         high_resolution_limit=difference_map.resolution_limits[1],
     )
+
+    # propogate uncertainties
+    if difference_map.has_uncertainties:
+        final_map.set_uncertainties(difference_map.uncertainties)
 
     # sometimes `from_ccp4_map` adds reflections -- systematic absences or
     # reflections just beyond the resolution limt; remove those

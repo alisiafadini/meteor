@@ -12,6 +12,7 @@ from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
+    numpy_array_to_map,
 )
 
 
@@ -249,11 +250,14 @@ class Map(rs.DataSet):
         else:
             # otherwise, create a new column
             self._uncertainty_column = column_name
-            position = len(self.columns)
-            if position != 2:  # noqa: PLR2004, should be 2: just amplitudes & phases
+            number_of_columns = len(self.columns)
+            number_of_columns_with_just_amplitudes_and_phases = 2
+            if number_of_columns != number_of_columns_with_just_amplitudes_and_phases:
                 msg = "Misconfigured columns"
                 raise RuntimeError(msg)
-            super().insert(position, self._uncertainty_column, values, allow_duplicates=False)
+            super().insert(
+                number_of_columns, self._uncertainty_column, values, allow_duplicates=False
+            )
 
     @property
     def complex_amplitudes(self) -> np.ndarray:
@@ -306,6 +310,48 @@ class Map(rs.DataSet):
             amplitude_column=amplitude_column,
             phase_column=phase_column,
             uncertainty_column=uncertainty_column,
+        )
+
+    @classmethod
+    def from_3d_numpy_map(
+        cls, map_grid: np.ndarray, *, spacegroup: Any, cell: Any, high_resolution_limit: float
+    ) -> Map:
+        """
+        Create a `Map` from a 3d grid of voxel values stored in a numpy array.
+
+        Parameters
+        ----------
+        map_grid: np.ndarray
+            The array, laid out in Gemmi format
+        spacegroup: Any
+            Specifies which spacegroup, can be an int, gemmi.SpaceGroup, ...
+        cell
+            Specifies cell, can be a tuple, gemmi.Cell, ...
+        high_resolution_limit: float
+            The resolution of the map, irregardless of the sampling; we need this to infer the map
+            sampling
+
+        Returns
+        -------
+        map: Map
+            The map coefficients
+
+        See Also
+        --------
+        For information about Gemmi data layout: https://gemmi.readthedocs.io/en/latest/grid.html
+        """
+        number_of_dimensions_in_universe = 3
+        if len(map_grid.shape) != number_of_dimensions_in_universe:
+            msg = "`map_grid` should be a 3D array representing a realspace map"
+            raise ValueError(msg)
+        ccp4 = numpy_array_to_map(
+            map_grid,
+            spacegroup=spacegroup,
+            cell=cell,
+        )
+        return cls.from_ccp4_map(
+            ccp4_map=ccp4,
+            high_resolution_limit=high_resolution_limit,
         )
 
     def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
