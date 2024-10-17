@@ -46,6 +46,13 @@ def test_amplitude_and_phase_required(noise_free_map: Map) -> None:
         Map(ds)
 
 
+def test_loc_indexing(random_difference_map: Map) -> None:
+    ds = rs.DataSet(random_difference_map).rename(columns={"F": "amps", "PHI": "phases"})
+    non_std_map = Map(ds, amplitude_column="amps", phase_column="phases")
+    indx = [(0,0,1), (1,2,3)]
+    assert non_std_map.loc[indx] is not None
+
+
 def test_reset_index(noise_free_map: Map) -> None:
     modmap = noise_free_map.reset_index()
     assert len(modmap.columns) == len(noise_free_map.columns) + 3
