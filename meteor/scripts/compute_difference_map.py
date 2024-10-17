@@ -1,13 +1,13 @@
-import argparse
-
 import reciprocalspaceship as rs
-
+from meteor.rsmap import Map, _assert_is_map
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
     max_negentropy_kweighted_difference_map,
 )
-from meteor.scale import scale_datasets
+
+from meteor.scale import scale_maps
+import argparse
 
 
 def parse_args():
@@ -18,19 +18,21 @@ def parse_args():
 
     parser.add_argument(
         "--native_mtz",
-        nargs=3,
-        metavar=("filename", "amplitude_label", "uncertainty_label"),
+        nargs=4,
+        metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
         required=True,
-        help=("Native MTZ file and associated amplitude and uncertainty labels."),
+        help=(
+            "Native MTZ file and associated amplitude, uncertainty labels, and phase label."
+        ),
     )
 
     parser.add_argument(
         "--derivative_mtz",
         nargs=4,
-        metavar=("filename", "amplitude_label", "uncertainty_label", "[phase_label]"),
+        metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
         required=True,
         help=(
-            "Derivative MTZ file and associated amplitude, uncertainty labels, and optional phase label."
+            "Derivative MTZ file and associated amplitude, uncertainty labels, and phase label."
         ),
     )
 
@@ -58,151 +60,89 @@ def parse_args():
         help="Use uncertainties to scale (default: True)",
     )
 
-    parser.add_argument(
+    k_weight_group = parser.add_mutually_exclusive_group()
+
+    k_weight_group.add_argument(
         "--k_weight_with_fixed_parameter",
         type=float,
         default=None,
         help="Use k-weighting with a fixed parameter (float between 0 and 1.0)",
     )
 
-    parser.add_argument(
+    k_weight_group.add_argument(
         "--k_weight_with_parameter_optimization",
-        type=bool,
-        default=False,
+        action="store_true",  # This will set the flag to True when specified
         help="Use k-weighting with parameter optimization (default: False)",
     )
 
     return parser.parse_args()
 
 
-def validate_args(args):
-    """Ensure that the k_weight_with_fixed_parameter is valid if provided."""
-    if args.k_weight_with_fixed_parameter is not None and not (
-        0.0 <= args.k_weight_with_fixed_parameter <= 1.0
-    ):
-        msg = "The --k_weight_with_fixed_parameter must be between 0 and 1.0."
-        raise ValueError(msg)
-    return args
-
-
-def ensure_column_consistency(dataset, original_label, target_label):
-    """
-    Ensure that the target_label exists in the dataset.
-    If original_label and target_label are different, copy the column.
-    """
-    if original_label != target_label:
-        if original_label in dataset:
-            dataset[target_label] = dataset[original_label]
-        else:
-            msg = f"Column {original_label} not found in the dataset."
-            raise ValueError(msg)
-    return dataset
-
-
 def compute_difference_map_wrapper(
-    dataset,
-    native_amp,
-    native_unc,
-    derivative_amp,
-    derivative_phase,
-    derivative_unc,
-    calc_native_phase,
+    derivative_map,
+    native_map,
     use_k_weighting=False,
     k_param=None,
     optimize_k=False,
 ):
     """Wrapper for computing either a standard difference map or a k-weighted difference map."""
-    map_args = {
-        "dataset": dataset,
-        "native_amplitudes_column": native_amp,
-        "native_phases_column": calc_native_phase,
-        "native_uncertainty_column": native_unc,
-        "derivative_amplitudes_column": derivative_amp,
-        "derivative_phases_column": derivative_phase,
-        "derivative_uncertainty_column": derivative_unc,
-    }
-
     if use_k_weighting:
         if optimize_k:
-            result, opt_k = max_negentropy_kweighted_difference_map(**map_args)
+            result, opt_k = max_negentropy_kweighted_difference_map(
+                derivative_map, native_map
+            )
             print(f"Optimal k-parameter determined: {opt_k}")  # noqa: T201
             return result
-        return compute_kweighted_difference_map(k_parameter=k_param, **map_args)
-    return compute_difference_map(**map_args)
+        return compute_kweighted_difference_map(
+            derivative_map, native_map, k_parameter=k_param
+        )
+    return compute_difference_map(derivative_map, native_map)
 
 
 def main():
-    """Main script function."""
+    # Parse command-line arguments
     args = parse_args()
 
-    # Load native MTZ
-    native_mtz_filename, native_amplitude_label, native_uncertainty_label = (
-        args.native_mtz
-    )
-    native_ds = rs.read_mtz(native_mtz_filename)
-
-    # Load derivative MTZ (handle optional phase column)
-    derivative_mtz_args = args.derivative_mtz
-    (
-        derivative_mtz_filename,
-        derivative_amplitude_label,
-        derivative_uncertainty_label,
-    ) = derivative_mtz_args[:3]
-    derivative_phi_label = (
-        derivative_mtz_args[3] if len(derivative_mtz_args) == 4 else None
-    )
-    derivative_ds = rs.read_mtz(derivative_mtz_filename)
-
-    # Load calculated native MTZ
-    calc_native_mtz_filename, calc_amplitude_label, calc_phase_label = (
-        args.calc_native_mtz
-    )
-    calc_native_ds = rs.read_mtz(calc_native_mtz_filename)
-
-    # Ensure amplitude labels are consistent between datasets
-    native_ds = ensure_column_consistency(
-        native_ds, native_amplitude_label, calc_amplitude_label
+    # Create the native map from the native MTZ file
+    native_map = Map.read_mtz_file(
+        args.native_mtz[0],
+        amplitude_column=args.native_mtz[1],
+        uncertainty_column=args.native_mtz[2],
+        phase_column=args.native_mtz[3],
     )
 
-    derivative_ds = ensure_column_consistency(
-        derivative_ds, derivative_amplitude_label, calc_amplitude_label
+    # Create the derivative map from the derivative MTZ file
+    derivative_map = Map.read_mtz_file(
+        args.derivative_mtz[0],
+        amplitude_column=args.derivative_mtz[1],
+        uncertainty_column=args.derivative_mtz[2],
+        phase_column=args.derivative_mtz[3],
     )
 
-    # Scaling the native dataset to the calculated native
-    scaled_native_ds = scale_datasets(
-        reference_dataset=calc_native_ds,
-        dataset_to_scale=native_ds,
-        column_to_compare=native_amplitude_label,
-        uncertainty_column=(
-            native_uncertainty_label if args.use_uncertainties_to_scale else None
-        ),
-        weight_using_uncertainties=args.use_uncertainties_to_scale,
+    # Create the calculated native map from the calculated native MTZ file
+    calc_native_map = Map.read_mtz_file(
+        args.calc_native_mtz[0],
+        amplitude_column=args.calc_native_mtz[1],
+        phase_column=args.calc_native_mtz[2],
     )
 
-    # Scaling the derivative dataset to the calculated native
-    scaled_derivative_ds = scale_datasets(
-        reference_dataset=calc_native_ds,
-        dataset_to_scale=derivative_ds,
-        column_to_compare=derivative_amplitude_label,
-        uncertainty_column=(
-            derivative_uncertainty_label if args.use_uncertainties_to_scale else None
-        ),
-        weight_using_uncertainties=args.use_uncertainties_to_scale,
+    # Scale both to common map calculated from native model
+    native_map_scaled = scale_maps(
+        reference_map=calc_native_map,
+        map_to_scale=native_map,
+        weight_using_uncertainties=False,
     )
 
-    # Combine scaled native and scaled derivative datasets
-    combined_ds = scaled_native_ds.combine(scaled_derivative_ds)
+    derivative_map_scaled = scale_maps(
+        reference_map=calc_native_map,
+        map_to_scale=derivative_map,
+        weight_using_uncertainties=False,  # FC do not have uncertainties
+    )
 
-    diffmap_ds = compute_difference_map_wrapper(
-        combined_ds,
-        native_amp=native_amplitude_label,
-        native_unc=native_uncertainty_label if native_uncertainty_label else None,
-        derivative_amp=derivative_amplitude_label,
-        derivative_phase=derivative_phi_label,
-        derivative_unc=(
-            derivative_uncertainty_label if derivative_uncertainty_label else None
-        ),
-        calc_native_phase=calc_phase_label,
+    # Calculate diffmap
+    diffmap = compute_difference_map_wrapper(
+        derivative_map_scaled,
+        native_map_scaled,
         use_k_weighting=args.k_weight_with_fixed_parameter
         or args.k_weight_with_parameter_optimization,
         k_param=args.k_weight_with_fixed_parameter,
@@ -210,9 +150,7 @@ def main():
     )
 
     print("Writing output file...")  # noqa: T201
-    diffmap_ds.write_mtz(args.output)
-
-    print("Process complete.")  # noqa: T201
+    diffmap.write_mtz(args.output)
 
 
 if __name__ == "__main__":
