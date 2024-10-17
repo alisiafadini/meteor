@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -106,8 +105,9 @@ class Map(rs.DataSet):
                 amplitude_column=self._amplitude_column,
                 phase_column=self._phase_column,
                 uncertainty_column=self._uncertainty_column,
-                **kwargs
+                **kwargs,
             )
+
         return constructor_fxn
 
     @property
@@ -195,28 +195,6 @@ class Map(rs.DataSet):
             msg = "columns are fixed for Map objects"
             raise MapMutabilityError(msg)
         return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
-
-    # def copy(self, *, deep: bool = True) -> Map:
-    #     # somewhat nasty method to ensure that non-standard column names are propogated OK
-    #     # the need for this could be removed, and in general the code simplified, if we simply
-    #     # were strict and required the columns to be named "F", "PHI", "SIGF"
-    #     #
-    #     # plus: in pandas 2.2.2, there are numerous calls with copy(deep=None) is this a bug?
-    #     # expected a bool. Here we always return deep copy, don't warn if deep=None - @tjlane
-    #     if deep is False:
-    #         warnings.warn(
-    #             "`Map` object has no shallow copy, returning deep copy instead",
-    #             UserWarning,
-    #             stacklevel=1,
-    #         )
-
-    #     _uncertainty_column = self._uncertainty_column if self.has_uncertainties else None
-    #     return type(self)(
-    #         self,
-    #         amplitude_column=self._amplitude_column,
-    #         phase_column=self._phase_column,
-    #         uncertainty_column=_uncertainty_column,
-    #     )
 
     def get_hkls(self) -> np.ndarray:
         # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
