@@ -34,6 +34,18 @@ def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
     assert "new_column" not in new_map.columns
 
 
+def test_amplitude_and_phase_required(noise_free_map: Map) -> None:
+    ds = rs.DataSet(noise_free_map)
+    Map(ds)  # should be no problem
+
+    with pytest.raises(KeyError):
+        Map(ds, phase_column="does_not_exist")
+
+    del ds["F"]
+    with pytest.raises(KeyError):
+        Map(ds)
+
+
 def test_reset_index(noise_free_map: Map) -> None:
     modmap = noise_free_map.reset_index()
     assert len(modmap.columns) == len(noise_free_map.columns) + 3

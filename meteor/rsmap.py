@@ -72,11 +72,6 @@ class Map(rs.DataSet):
     ) -> None:
         super().__init__(data=data, **kwargs)
 
-        if not hasattr(self, "index"):
-            msg = "required index not found, please either pass a `DataFrame` or `DataSet` with an "
-            msg += "index of Miller indices, or pass `index=...` to `Map(...)` at instantiation"
-            raise IndexError(msg)
-
         for column in [amplitude_column, phase_column]:
             if column not in self.columns:
                 msg = "amplitude and phase columns must be in input `data`... "
