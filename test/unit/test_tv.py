@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Sequence
 
 import numpy as np
+import pandas as pd
 import pytest
-import reciprocalspaceship as rs
 
 from meteor import tv
 from meteor.rsmap import Map
@@ -28,14 +28,14 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
     "lambda_values_to_scan",
     [
         None,
-        [0.01],
+        [-1.0, 0.0, 1.0],
     ],
 )
 @pytest.mark.parametrize("full_output", [False, True])
 def test_tv_denoise_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
-    random_difference_map: rs.DataSet,
+    random_difference_map: Map,
 ) -> None:
     output = tv.tv_denoise_difference_map(
         random_difference_map,
@@ -44,10 +44,22 @@ def test_tv_denoise_map_smoke(
     )  # type: ignore[call-overload]
     if full_output:
         assert len(output) == 2
-        assert isinstance(output[0], rs.DataSet)
+        assert isinstance(output[0], Map)
         assert isinstance(output[1], tv.TvDenoiseResult)
     else:
-        assert isinstance(output, rs.DataSet)
+        assert isinstance(output, Map)
+
+
+def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
+    weight = 0.0
+    output = tv.tv_denoise_difference_map(
+        random_difference_map,
+        lambda_values_to_scan=[weight],
+        full_output=False,
+    )
+    random_difference_map.canonicalize_amplitudes()
+    output.canonicalize_amplitudes()
+    pd.testing.assert_frame_equal(random_difference_map, output, rtol=1e-3)
 
 
 @pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])

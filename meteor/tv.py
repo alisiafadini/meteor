@@ -137,6 +137,10 @@ def tv_denoise_difference_map(
         high_resolution_limit=difference_map.resolution_limits[1],
     )
 
+    # propogate uncertainties
+    if difference_map.has_uncertainties:
+        final_map.set_uncertainties(difference_map.uncertainties)
+
     # sometimes `from_ccp4_map` adds reflections -- systematic absences or
     # reflections just beyond the resolution limt; remove those
     extra_indices = final_map.index.difference(difference_map.index)
