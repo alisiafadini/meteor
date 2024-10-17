@@ -9,7 +9,6 @@ import scipy.optimize as opt
 
 from .rsmap import Map
 
-
 ScaleParameters = Tuple[float, float, float, float, float, float, float]
 """ 7x float tuple to hold anisotropic scaling parameters """
 
@@ -185,8 +184,11 @@ def scale_maps(
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
-
-    if weight_using_uncertainties and reference_map.has_uncertainties and map_to_scale.has_uncertainties:
+    if (
+        weight_using_uncertainties
+        and reference_map.has_uncertainties
+        and map_to_scale.has_uncertainties
+    ):
         scale_factors = compute_scale_factors(
             reference_values=reference_map.amplitudes,
             values_to_scale=map_to_scale.amplitudes,
@@ -196,8 +198,7 @@ def scale_maps(
 
     else:
         scale_factors = compute_scale_factors(
-            reference_values=reference_map.amplitudes,
-            values_to_scale=map_to_scale.amplitudes
+            reference_values=reference_map.amplitudes, values_to_scale=map_to_scale.amplitudes
         )
 
     scaled_map: Map = map_to_scale.copy()

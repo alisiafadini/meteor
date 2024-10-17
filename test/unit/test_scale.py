@@ -6,7 +6,6 @@ import reciprocalspaceship as rs
 from meteor import scale
 from meteor.rsmap import Map
 from meteor.scale import _compute_anisotropic_scale_factors
-from meteor.testing import MapColumns
 
 
 @pytest.fixture
@@ -100,5 +99,3 @@ def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None
         scaled.uncertainties / multiple,
         random_difference_map.uncertainties,
     )
-
-
