@@ -1,32 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, overload
+from typing import Literal, overload
 
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from pandas.testing import assert_index_equal
-
-if TYPE_CHECKING:
-    import pandas as pd
-
-GEMMI_HIGH_RESOLUTION_BUFFER = 1e-6
+from pandas import DataFrame, Index
+from reciprocalspaceship.utils import canonicalize_phases
 
 
 class ShapeMismatchError(Exception): ...
 
 
-@dataclass
-class MapColumns:
-    amplitude: str
-    phase: str
-    uncertainty: str | None = None
-
-
-def resolution_limits(dataset: rs.DataSet) -> tuple[float, float]:
-    d_hkl = dataset.compute_dHKL()["dHKL"]
-    return d_hkl.max(), d_hkl.min()
+def filter_common_indices(df1: DataFrame, df2: DataFrame) -> tuple[DataFrame, DataFrame]:
+    common_indices = df1.index.intersection(df2.index)
+    df1_common = df1.loc[common_indices].copy()
+    df2_common = df2.loc[common_indices].copy()
+    if len(df1_common) == 0 or len(df2_common) == 0:
+        msg = "cannot find any HKL incdices in common between `df1` and `df2`"
+        raise IndexError(msg)
+    return df1_common, df2_common
 
 
 def cut_resolution(
@@ -35,7 +28,7 @@ def cut_resolution(
     dmax_limit: float | None = None,
     dmin_limit: float | None = None,
 ) -> rs.DataSet:
-    d_hkl = dataset.compute_dHKL()["dHKL"]
+    d_hkl = dataset.compute_dHKL()
     if dmax_limit:
         dataset = dataset.loc[(d_hkl <= dmax_limit)]
     if dmin_limit:
@@ -77,7 +70,7 @@ def canonicalize_amplitudes(
     dataset[amplitude_label] = np.abs(dataset[amplitude_label])
     dataset.loc[negative_amplitude_indices, phase_label] += 180.0
 
-    dataset.canonicalize_phases(inplace=True)
+    dataset[phase_label] = canonicalize_phases(dataset[phase_label])
 
     if not inplace:
         return dataset
@@ -95,42 +88,10 @@ def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> flo
     return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
 
 
-def rs_dataseries_to_complex_array(amplitudes: rs.DataSeries, phases: rs.DataSeries) -> np.ndarray:
-    """
-    Convert structure factors from polar (amplitude/phase) to Cartisian (x + iy).
-
-    Parameters
-    ----------
-    amplitudes: DataSeries
-        with StructureFactorAmplitudeDtype
-    phases: DataSeries
-        with PhaseDtype
-
-    Returns
-    -------
-    complex_structure_factors: np.ndarray
-        with dtype complex128
-
-    Raises
-    ------
-    ValueError
-        if the indices of `amplitudes` and `phases` do not match
-    """
-    try:
-        assert_index_equal(amplitudes.index, phases.index)
-    except AssertionError as exptn:
-        msg = (
-            "Indices for `amplitudes` and `phases` don't match. To safely cast to a single complex",
-            " array, pass DataSeries with a common set of indices. One possible way: ",
-            "Series.align(other, join='inner', axis=0).",
-        )
-        raise ShapeMismatchError(msg) from exptn
-    return amplitudes.to_numpy() * np.exp(1j * np.deg2rad(phases.to_numpy()))
-
-
 def complex_array_to_rs_dataseries(
     complex_structure_factors: np.ndarray,
-    index: pd.Index,
+    *,
+    index: Index,
 ) -> tuple[rs.DataSeries, rs.DataSeries]:
     """
     Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one
@@ -154,6 +115,12 @@ def complex_array_to_rs_dataseries(
     ------
     ValueError
         if `complex_structure_factors and `index` do not have the same shape
+
+    See Also
+    --------
+    `reciprocalspaceship/utils/structurefactors.from_structurefactor(...)`
+        An equivalent function, that does not require the index and does less index/data
+        checking.
     """
     if complex_structure_factors.shape != index.shape:
         msg = (
@@ -162,11 +129,19 @@ def complex_array_to_rs_dataseries(
         )
         raise ShapeMismatchError(msg)
 
-    amplitudes = rs.DataSeries(np.abs(complex_structure_factors), index=index)
-    amplitudes = amplitudes.astype(rs.StructureFactorAmplitudeDtype())
+    amplitudes = rs.DataSeries(
+        np.abs(complex_structure_factors),
+        index=index,
+        dtype=rs.StructureFactorAmplitudeDtype(),
+        name="F",
+    )
 
-    phases = rs.DataSeries(np.rad2deg(np.angle(complex_structure_factors)), index=index)
-    phases = phases.astype(rs.PhaseDtype())
+    phases = rs.DataSeries(
+        np.angle(complex_structure_factors, deg=True),
+        index=index,
+        dtype=rs.PhaseDtype(),
+        name="PHI",
+    )
 
     return amplitudes, phases
 
@@ -190,47 +165,3 @@ def numpy_array_to_map(
     ccp4_map.grid.spacegroup = spacegroup
 
     return ccp4_map
-
-
-def compute_map_from_coefficients(
-    *,
-    map_coefficients: rs.DataSet,
-    amplitude_label: str,
-    phase_label: str,
-    map_sampling: int,
-) -> gemmi.Ccp4Map:
-    map_coefficients_gemmi_format = map_coefficients.to_gemmi()
-    ccp4_map = gemmi.Ccp4Map()
-    ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
-        amplitude_label, phase_label, sample_rate=map_sampling
-    )
-    ccp4_map.update_ccp4_header()
-
-    return ccp4_map
-
-
-def compute_coefficients_from_map(
-    *,
-    ccp4_map: gemmi.Ccp4Map,
-    high_resolution_limit: float,
-    amplitude_label: str,
-    phase_label: str,
-) -> rs.DataSet:
-    # to ensure we include the final shell of reflections, add a small buffer to the resolution
-
-    gemmi_structure_factors = gemmi.transform_map_to_f_phi(ccp4_map.grid, half_l=False)
-    data = gemmi_structure_factors.prepare_asu_data(
-        dmin=high_resolution_limit - GEMMI_HIGH_RESOLUTION_BUFFER, with_sys_abs=True
-    )
-
-    mtz = gemmi.Mtz(with_base=True)
-    mtz.spacegroup = gemmi_structure_factors.spacegroup
-    mtz.set_cell_for_all(gemmi_structure_factors.unit_cell)
-    mtz.add_dataset("FromMap")
-    mtz.add_column(amplitude_label, "F")
-    mtz.add_column(phase_label, "P")
-
-    mtz.set_data(data)
-    mtz.switch_to_asu_hkl()
-
-    return rs.DataSet.from_gemmi(mtz)

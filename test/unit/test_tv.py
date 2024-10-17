@@ -7,29 +7,15 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor import tv
-from meteor.utils import MapColumns, compute_map_from_coefficients
+from meteor.rsmap import Map
 
 DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 25)
 
 
-def rms_between_coefficients(
-    ds1: rs.DataSet, ds2: rs.DataSet, labels: MapColumns, map_sampling: int = 3
-) -> float:
-    map1 = compute_map_from_coefficients(
-        map_coefficients=ds1,
-        amplitude_label=labels.amplitude,
-        phase_label=labels.phase,
-        map_sampling=map_sampling,
-    )
-    map2 = compute_map_from_coefficients(
-        map_coefficients=ds2,
-        amplitude_label=labels.amplitude,
-        phase_label=labels.phase,
-        map_sampling=map_sampling,
-    )
-
-    map1_array = np.array(map1.grid)
-    map2_array = np.array(map2.grid)
+def rms_between_coefficients(map1: Map, map2: Map) -> float:
+    map_sampling = 3
+    map1_array = np.array(map1.to_ccp4_map(map_sampling=map_sampling).grid)
+    map2_array = np.array(map2.to_ccp4_map(map_sampling=map_sampling).grid)
 
     # standardize
     map1_array /= map1_array.std()
@@ -50,14 +36,11 @@ def test_tv_denoise_map_smoke(
     lambda_values_to_scan: None | Sequence[float],
     full_output: bool,
     random_difference_map: rs.DataSet,
-    test_diffmap_columns: MapColumns,
 ) -> None:
     output = tv.tv_denoise_difference_map(
-        difference_map_coefficients=random_difference_map,
+        random_difference_map,
         lambda_values_to_scan=lambda_values_to_scan,
         full_output=full_output,
-        difference_map_amplitude_column=test_diffmap_columns.amplitude,
-        difference_map_phase_column=test_diffmap_columns.phase,
     )  # type: ignore[call-overload]
     if full_output:
         assert len(output) == 2
@@ -70,12 +53,11 @@ def test_tv_denoise_map_smoke(
 @pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
 def test_tv_denoise_map(
     lambda_values_to_scan: None | Sequence[float],
-    noise_free_map: rs.DataSet,
-    noisy_map: rs.DataSet,
-    test_map_columns: MapColumns,
+    noise_free_map: Map,
+    noisy_map: Map,
 ) -> None:
-    def rms_to_noise_free(test_map: rs.DataSet) -> float:
-        return rms_between_coefficients(test_map, noise_free_map, test_map_columns)
+    def rms_to_noise_free(test_map: Map) -> float:
+        return rms_between_coefficients(test_map, noise_free_map)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know the ground truth, work around this to test all possible results.
@@ -85,9 +67,7 @@ def test_tv_denoise_map(
 
     for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
-            difference_map_coefficients=noisy_map,
-            difference_map_amplitude_column=test_map_columns.amplitude,
-            difference_map_phase_column=test_map_columns.phase,
+            noisy_map,
             lambda_values_to_scan=[
                 trial_lambda,
             ],
@@ -101,10 +81,8 @@ def test_tv_denoise_map(
     # now run the denoising algorithm and make sure we get a result that's close
     # to the one that minimizes the RMS error to the ground truth
     denoised_map, result = tv.tv_denoise_difference_map(
-        difference_map_coefficients=noisy_map,
+        noisy_map,
         lambda_values_to_scan=lambda_values_to_scan,
-        difference_map_amplitude_column=test_map_columns.amplitude,
-        difference_map_phase_column=test_map_columns.phase,
         full_output=True,
     )
 

@@ -1,4 +1,15 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 import numpy as np
+
+
+@dataclass
+class MapColumns:
+    amplitude: str
+    phase: str
+    uncertainty: str | None = None
 
 
 def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol=1e-3):

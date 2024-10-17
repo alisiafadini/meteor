@@ -38,37 +38,35 @@ lint.select = [
 ]
 lint.ignore = [
     #### modules
-    "ANN", # flake8-annotations
-    "COM", # flake8-commas
-    "C90", # mccabe complexity
-    "DJ",  # django
-    "EXE", # flake8-executable
-    "T10", # debugger
-    "TID", # flake8-tidy-imports
+    "ANN", # flake8-annotations: ignore annotation-related errors
+    "C90", # mccabe complexity: ignore code complexity checks
+    "DJ",  # django: ignore Django-specific linting rules
+    "EXE", # flake8-executable: ignore file execution permission errors
+    "T10", # debugger: ignore debugger-related code (e.g., `pdb`)
 
     #### specific rules
-    "D100",   # ignore missing docs
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    "D200",
-    "D205",
-    "D212",
-    "D400",
-    "D401",
-    "D415",
-    "E402",   # false positives for local imports
-    "E501",   # line too long
-    "TRY003", # external messages in exceptions are too verbose
-    "TD002",
-    "TD003",
-    "FIX002", # too verbose descriptions of todos
-    "ISC001",
-    "PLR0913", # TEMPORARYLY DISABLED too many arguments in function definition
+    "D100",   # ignore missing docstrings in module
+    "D101",   # ignore missing docstrings in class
+    "D102",   # ignore missing docstrings in public method
+    "D103",   # ignore missing docstrings in function
+    "D104",   # ignore missing docstrings in package
+    "D105",   # ignore missing docstrings in magic methods (e.g., __init__)
+    "D106",   # ignore missing docstrings in public nested class
+    "D107",   # ignore missing docstrings in __init__ method
+    "D205",   # ignore failure to separate summary line from description in docstring
+    "D212",   # ignore multiline docstring summary errors
+    "D400",   # periods in docstrings
+    "D401",   # ignore docstring should be in imperative mood
+    "E501",   # ignore line too long (over 79 characters)
+    "TRY003", # ignore external messages in exceptions being too verbose
+    "TD002",  # to do authorship
+    "TD003",  # to do issue
+    "PD002",  # allow inplace modifications in Pandas operations
+    "TCH001", # type checking blocks
+    "TCH002", # type checking blocks
+    "TCH003", # type checking blocks
+    "COM812", # missing trailing comma, conflicts
+    "ISC001", # string line concat, conflicts
 ]
 exclude = [
     "build/",
@@ -86,6 +84,7 @@ exclude = [
     "ARG",      # unused function args -> fixtures
     "PLR2004",  # magic value used in comparison
     "FBT001",   # allow positional bools as function args
+    "SLF001",   # access private methods
 ]
 
 [tool.ruff.lint.pydocstyle]

@@ -1,243 +1,138 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
 import numpy as np
+import reciprocalspaceship as rs
 
-from .settings import TV_MAP_SAMPLING
-from .utils import (
-    complex_array_to_rs_dataseries,
-    compute_map_from_coefficients,
-    rs_dataseries_to_complex_array,
-)
+from .rsmap import Map, _assert_is_map
+from .settings import MAP_SAMPLING
+from .utils import filter_common_indices
 from .validate import ScalarMaximizer, negentropy
-
-if TYPE_CHECKING:
-    import reciprocalspaceship as rs
 
 DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 
-def compute_difference_map(
-    dataset: rs.DataSet,
-    *,
-    native_amplitudes_column: str,
-    native_phases_column: str,
-    native_uncertainty_column: str | None = None,
-    derivative_amplitudes_column: str,
-    derivative_phases_column: str | None = None,
-    derivative_uncertainty_column: str | None = None,
-    output_amplitudes_column: str = "DF",
-    output_phases_column: str = "DPHI",
-    output_uncertainties_column: str = "SIGDF",
-) -> rs.DataSet:
+def set_common_crystallographic_metadata(map1: Map, map2: Map, *, output: Map) -> None:
+    if hasattr(map1, "cell"):
+        if hasattr(map2, "cell") and (map1.cell != map2.cell):
+            msg = f"`map1.cell` {map1.cell} != `map2.cell` {map2.cell}"
+            raise AttributeError(msg)
+        output.cell = map1.cell
+
+    if hasattr(map1, "spacegroup"):
+        if hasattr(map2, "spacegroup") and (map1.spacegroup != map2.spacegroup):
+            msg = f"`map1.spacegroup` {map1.spacegroup} != "
+            msg += f"`map2.spacegroup` {map2.spacegroup}"
+            raise AttributeError(msg)
+        output.spacegroup = map1.spacegroup
+
+
+def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
-    Parameters
-    ----------
-    dataset : rs.DataSet
-        The dataset containing the native and derivative structure factor data.
-    native_amplitudes_column : str
-        Column name for the native amplitudes.
-    native_phases_column : str
-        Column name for the native phases.
-    native_uncertainty_column : str, optional
-        Column name for the native uncertainties (optional). If provided, it will be used to compute
-        uncertainty for the difference map.
-    derivative_amplitudes_column : str
-        Column name for the derivative amplitudes.
-    derivative_phases_column : str, optional
-        Column name for the derivative phases. If not provided, native phases
-        will be used in its place.
-    derivative_uncertainty_column : str, optional
-        Column name for the derivative uncertainties (optional). If provided, it will be used to
-        compute uncertainty for the difference map.
-    output_amplitudes_column : str, optional
-        Column name for the output difference amplitudes. Default is "DF".
-    output_phases_column : str, optional
-        Column name for the output difference phases. Default is "DPHI".
-    output_uncertainties_column : str, optional
-        Column name for the output uncertainties. Default is "SIGDF". This will only be used if
-        both native and derivative uncertainties are provided.
-
-    Returns
-    -------
-    rs.DataSet
-        A copy of the input dataset with added columns for the difference amplitudes,
-        phases, and uncertainties, if specified at input.
-
-    Notes
-    -----
-    This function computes the complex difference between native and derivative structure factors.
     It converts the amplitude and phase pairs from both the native and derivative structure factor
     sets into complex numbers, computes the difference, and then converts the result back
     into amplitudes and phases.
 
-    If uncertainty columns are provided for both native and derivative data,
-    it also propagates the uncertainty of the difference in amplitudes.
+    If uncertainty columns are provided for both native and derivative data, it also propagates the
+    uncertainty of the difference in amplitudes.
+
+    Parameters
+    ----------
+    derivative: Map
+        the derivative amplitudes, phases, uncertainties
+    native: Map
+        the native amplitudes, phases, uncertainties
+
+    Returns
+    -------
+    diffmap: Map
+        map corresponding to the complex difference (derivative - native)
     """
-    dataset = dataset.copy()
+    _assert_is_map(derivative, require_uncertainties=False)
+    _assert_is_map(native, require_uncertainties=False)
 
-    # Convert native and derivative amplitude/phase pairs to complex arrays
-    native_complex = rs_dataseries_to_complex_array(
-        dataset[native_amplitudes_column], dataset[native_phases_column]
-    )
+    derivative, native = filter_common_indices(derivative, native)  # type: ignore[assignment]
 
-    if derivative_phases_column is not None:
-        derivative_complex = rs_dataseries_to_complex_array(
-            dataset[derivative_amplitudes_column], dataset[derivative_phases_column]
-        )
-    else:
-        # If no derivative phases are provided, assume they are the same as native phases
-        derivative_complex = rs_dataseries_to_complex_array(
-            dataset[derivative_amplitudes_column], dataset[native_phases_column]
-        )
+    delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
+    delta = Map.from_structurefactor(delta_complex, index=native.index)
 
-    # compute complex differences & convert back to amplitude and phase DataSeries
-    delta_complex = derivative_complex - native_complex
-    delta_amplitudes, delta_phases = complex_array_to_rs_dataseries(delta_complex, dataset.index)
+    set_common_crystallographic_metadata(derivative, native, output=delta)
 
-    dataset[output_amplitudes_column] = delta_amplitudes
-    dataset[output_phases_column] = delta_phases
+    if derivative.has_uncertainties and native.has_uncertainties:
+        prop_uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
+        delta.set_uncertainties(prop_uncertainties)
 
-    if (derivative_uncertainty_column is not None) and (native_uncertainty_column is not None):
-        sigdelta_amplitudes = np.sqrt(
-            dataset[derivative_uncertainty_column] ** 2 + dataset[native_uncertainty_column] ** 2
-        )
-        dataset[output_uncertainties_column] = sigdelta_amplitudes
-
-    return dataset
+    return delta
 
 
-def compute_kweights(
-    delta_amplitudes: rs.DataSeries,
-    delta_uncertainties: rs.DataSeries,
-    k_parameter: float,
-) -> rs.DataSeries:
+def compute_kweights(difference_map: Map, *, k_parameter: float) -> rs.DataSeries:
     """
     Compute weights for each structure factor based on DeltaF and its uncertainty.
 
     Parameters
     ----------
-    delta_amplitudes: rs.DataSeries
-        The series representing the structure factor differences (DeltaF).
-
-    sigdelta_amplitudes: rs.DataSeries
-        Representing the uncertainties (sigma) of the structure factor differences.
-
+    difference_map: Map
+        A map of structure factor differences (DeltaF).
     k_parameter: float
         A scaling factor applied to the squared `df` values in the weight calculation.
 
     Returns
     -------
-    rs.DataSeries:
+    weights: rs.DataSeries
         A series of computed weights, where higher uncertainties and larger differences lead to
         lower weights.
     """
-    w = (
+    _assert_is_map(difference_map, require_uncertainties=True)
+
+    inverse_weights = (
         1
-        + (delta_uncertainties**2 / (delta_uncertainties**2).mean())
-        + k_parameter * (delta_amplitudes**2 / (delta_amplitudes**2).mean())
+        + (difference_map.uncertainties**2 / (difference_map.uncertainties**2).mean())
+        + k_parameter * (difference_map.amplitudes**2 / (difference_map.amplitudes**2).mean())
     )
-    return 1.0 / w
+    return 1.0 / inverse_weights
 
 
-def compute_kweighted_difference_map(
-    dataset: rs.DataSet,
-    *,
-    k_parameter: float,
-    native_amplitudes_column: str,
-    native_phases_column: str,
-    native_uncertainty_column: str,
-    derivative_amplitudes_column: str,
-    derivative_phases_column: str | None = None,
-    derivative_uncertainty_column: str,
-    output_amplitudes_column: str = "DF_KWeighted",
-    output_phases_column: str = "DPHI_KWeighted",
-    output_uncertainties_column: str = "SIGDF_KWeighted",
-) -> rs.DataSet:
+def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_parameter: float) -> Map:
     """
-    Compute k-weighted differences between native and derivative structure factor datasets.
+    Compute k-weighted derivative - native structure factor map.
+
+    This function first computes the standard difference map using `compute_difference_map`.
+    Then, it applies k-weighting to the amplitude differences based on the provided `k_parameter`.
+
+    Assumes amplitudes have already been scaled prior to invoking this function.
 
     Parameters
     ----------
-    dataset : rs.DataSet
-        The dataset containing native and derivative structure factor data.
-    k_parameter : float
-        Weighting factor applied to the amplitude differences.
-    native_amplitudes_column : str
-        Column name for native amplitudes.
-    native_phases_column : str
-        Column name for native phases.
-    native_uncertainty_column : str
-        Column name for native uncertainties.
-    derivative_amplitudes_column : str
-        Column name for derivative amplitudes.
-    derivative_phases_column : str, optional
-        Column name for derivative phases. If not provided, native phases will be used.
-    derivative_uncertainty_column : str
-        Column name for derivative uncertainties.
-    output_amplitudes_column : str, optional
-        Column name for k-weighted amplitude differences. Default is "DF_KWeighted".
-    output_phases_column : str, optional
-        Column name for k-weighted phase differences. Default is "DPHI_KWeighted".
-    output_uncertainties_column : str, optional
-        Column name for uncertainties in the k-weighted differences. Default is "SIGDF_KWeighted".
+    derivative: Map
+        the derivative amplitudes, phases, uncertainties
+    native: Map
+        the native amplitudes, phases, uncertainties
 
     Returns
     -------
-    rs.DataSet
-        A dataset containing the k-weighted amplitude and phase differences, with uncertainties.
-
-    Notes
-    -----
-    This function first computes the standard difference map using `compute_difference_map`.
-    Then, it applies k-weighting to the amplitude differences based on the provided `k_parameter`.
-    Assumes amplitudes have already been scaled prior to invoking this function.
+    diffmap: Map
+        the k-weighted difference map
     """
-    # this label is only used internally in this function
-    diffmap_amplitudes = "__INTERNAL_DF_LABEL"
+    # require uncertainties at the beginning
+    _assert_is_map(derivative, require_uncertainties=True)
+    _assert_is_map(native, require_uncertainties=True)
 
-    diffmap_dataset = compute_difference_map(
-        dataset=dataset,
-        native_amplitudes_column=native_amplitudes_column,
-        native_phases_column=native_phases_column,
-        native_uncertainty_column=native_uncertainty_column,
-        derivative_amplitudes_column=derivative_amplitudes_column,
-        derivative_phases_column=derivative_phases_column,
-        derivative_uncertainty_column=derivative_uncertainty_column,
-        output_amplitudes_column=diffmap_amplitudes,
-        output_phases_column=output_phases_column,
-        output_uncertainties_column=output_uncertainties_column,
-    )
+    difference_map = compute_difference_map(derivative, native)
+    weights = compute_kweights(difference_map, k_parameter=k_parameter)
 
-    weights = compute_kweights(
-        diffmap_dataset[diffmap_amplitudes],
-        diffmap_dataset[output_uncertainties_column],
-        k_parameter,
-    )
+    difference_map.amplitudes *= weights
+    difference_map.uncertainties *= weights
 
-    output_ds = dataset.copy()
-    output_ds[output_amplitudes_column] = diffmap_dataset[diffmap_amplitudes] * weights
-    output_ds[output_phases_column] = diffmap_dataset[output_phases_column]
-    output_ds[output_uncertainties_column] = diffmap_dataset[output_uncertainties_column]
-
-    return output_ds
+    return difference_map
 
 
 def max_negentropy_kweighted_difference_map(
-    dataset: rs.DataSet,
+    derivative: Map,
+    native: Map,
     *,
-    native_amplitudes_column: str,
-    native_phases_column: str,
-    native_uncertainty_column: str,
-    derivative_amplitudes_column: str,
-    derivative_phases_column: str | None = None,
-    derivative_uncertainty_column: str,
-    output_amplitudes_column: str = "DF_KWeighted",
-    output_phases_column: str = "DPHI_KWeighted",
-    output_uncertainties_column: str = "SIGDF_KWeighted",
     k_parameter_values_to_scan: np.ndarray | Sequence[float] = DEFAULT_KPARAMS_TO_SCAN,
 ) -> rs.DataSet:
     """
@@ -249,20 +144,10 @@ def max_negentropy_kweighted_difference_map(
 
     Parameters
     ----------
-    dataset : rs.DataSet
-        The input dataset containing columns for native and derivative amplitudes/phases.
-    native_amplitudes_column : str
-        Column label for native amplitudes in the dataset.
-    derivative_amplitudes_column : str
-        Column label for derivative amplitudes in the dataset.
-    native_phases_column : str, optional
-        Column label for native phases.
-    derivative_phases_column : str, optional
-        Column label for derivative phases, by default None.
-    uncertainty_native_column : str
-        Column label for uncertainties of native amplitudes.
-    uncertainty_deriv_column : str
-        Column label for uncertainties of derivative amplitudes.
+    derivative: Map
+        the derivative amplitudes, phases, uncertainties
+    native: Map
+        the native amplitudes, phases, uncertainties
     k_parameter_values_to_scan : np.ndarray | Sequence[float]
         The values to scan to optimize the k-weighting parameter, by default is 0.00, 0.01 ... 1.00
 
@@ -274,51 +159,27 @@ def max_negentropy_kweighted_difference_map(
     opt_k_parameter: float
         optimized k-weighting parameter
     """
+    _assert_is_map(derivative, require_uncertainties=True)
+    _assert_is_map(native, require_uncertainties=True)
 
     def negentropy_objective(k_parameter: float) -> float:
         kweighted_dataset = compute_kweighted_difference_map(
-            dataset,
+            derivative,
+            native,
             k_parameter=k_parameter,
-            native_amplitudes_column=native_amplitudes_column,
-            native_phases_column=native_phases_column,
-            native_uncertainty_column=native_uncertainty_column,
-            derivative_amplitudes_column=derivative_amplitudes_column,
-            derivative_phases_column=derivative_phases_column,
-            derivative_uncertainty_column=derivative_uncertainty_column,
-            output_amplitudes_column=output_amplitudes_column,
-            output_phases_column=output_phases_column,
-            output_uncertainties_column=output_uncertainties_column,
         )
-
-        k_weighted_map = compute_map_from_coefficients(
-            map_coefficients=kweighted_dataset,
-            amplitude_label=output_amplitudes_column,
-            phase_label=output_phases_column,
-            map_sampling=TV_MAP_SAMPLING,
-        )
-
+        k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=MAP_SAMPLING)
         k_weighted_map_array = np.array(k_weighted_map.grid)
-
         return negentropy(k_weighted_map_array)
 
-    # optimize k_parameter using negentropy objective
     maximizer = ScalarMaximizer(objective=negentropy_objective)
     maximizer.optimize_over_explicit_values(arguments_to_scan=k_parameter_values_to_scan)
-
     opt_k_parameter = maximizer.argument_optimum
 
     kweighted_dataset = compute_kweighted_difference_map(
-        dataset,
+        derivative,
+        native,
         k_parameter=opt_k_parameter,
-        native_amplitudes_column=native_amplitudes_column,
-        native_phases_column=native_phases_column,
-        native_uncertainty_column=native_uncertainty_column,
-        derivative_amplitudes_column=derivative_amplitudes_column,
-        derivative_phases_column=derivative_phases_column,
-        derivative_uncertainty_column=derivative_uncertainty_column,
-        output_amplitudes_column=output_amplitudes_column,
-        output_phases_column=output_phases_column,
-        output_uncertainties_column=output_uncertainties_column,
     )
 
     return kweighted_dataset, opt_k_parameter
