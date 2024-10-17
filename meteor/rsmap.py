@@ -73,17 +73,17 @@ class Map(rs.DataSet):
     ) -> None:
         super().__init__(data=data, **kwargs)
 
-        for column in [amplitude_column, phase_column]:
-            if column not in self.columns:
-                msg = "amplitude and phase columns must be in input `data`... "
-                msg += f"looking for {amplitude_column} and {phase_column}, got {self.columns}"
-                raise KeyError(msg)
-
-        columns_to_keep = [amplitude_column, phase_column, *self._allowed_columns]
-
         self._amplitude_column = amplitude_column
         self._phase_column = phase_column
         self._uncertainty_column = uncertainty_column
+
+        for column in [self._amplitude_column, self._phase_column]:
+            if column not in self.columns:
+                msg = "amplitude and phase columns must be in input `data`... "
+                msg += f"looking for `{column}`, found `{self.columns}`"
+                raise KeyError(msg)
+
+        columns_to_keep = [*self._allowed_columns, amplitude_column, phase_column]
         if uncertainty_column and (uncertainty_column in self.columns):
             columns_to_keep.append(uncertainty_column)
 
@@ -100,7 +100,16 @@ class Map(rs.DataSet):
 
     @property
     def _constructor(self):
-        return Map
+        def constructor_fxn(*args, **kwargs):
+            return Map(
+                *args,
+                amplitude_column=self._amplitude_column,
+                phase_column=self._phase_column,
+                uncertainty_column=self._uncertainty_column,
+                **kwargs,
+            )
+
+        return constructor_fxn
 
     @property
     def _constructor_sliced(self):
