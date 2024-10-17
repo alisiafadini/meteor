@@ -205,6 +205,15 @@ def test_set_uncertainties() -> None:
     assert len(test_map.uncertainties) == 3
 
 
+def test_misconfigured_columns() -> None:
+    test_map = Map.from_dict(
+        {"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])},
+    )
+    del test_map["F"]
+    with pytest.raises(RuntimeError):
+        test_map.set_uncertainties(rs.DataSeries([2.0, 3.0, 4.0]))
+
+
 def test_complex_amplitudes_smoke(noise_free_map: Map) -> None:
     c_array = noise_free_map.complex_amplitudes
     assert isinstance(c_array, np.ndarray)
