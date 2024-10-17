@@ -23,6 +23,13 @@ def test_filter_common_indices() -> None:
     assert len(filtered_df2) == 2
 
 
+def test_filter_common_indices_empty_intersection() -> None:
+    df1 = pd.DataFrame({"A": [1, 2, 3]}, index=[0, 1, 2])
+    df2 = pd.DataFrame({"B": [4, 5, 6]}, index=[4, 5, 6])
+    with pytest.raises(IndexError):
+        _, _ = utils.filter_common_indices(df1, df2)
+
+
 @pytest.mark.parametrize(
     ("dmax_limit", "dmin_limit"),
     [

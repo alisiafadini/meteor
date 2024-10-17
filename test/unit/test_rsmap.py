@@ -188,6 +188,7 @@ def test_has_uncertainties(noise_free_map: Map) -> None:
     assert not noise_free_map.has_uncertainties
 
 
+@pytest.mark.filterwarnings("ignore:Pandas doesn't allow columns to be created via a new attribute")
 def test_set_uncertainties() -> None:
     test_map = Map.from_dict(
         {"F": rs.DataSeries([2.0, 3.0, 4.0]), "PHI": rs.DataSeries([0.0, 0.0, 0.0])},
@@ -197,6 +198,7 @@ def test_set_uncertainties() -> None:
     with pytest.raises(AttributeError):
         _ = test_map.uncertainties
 
+    # this would normally generate the suppressed warning, but we are more strict and raise
     with pytest.raises(AttributeError):
         test_map.uncertainties = rs.DataSeries([2.0, 3.0, 4.0])
 
