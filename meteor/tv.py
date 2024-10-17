@@ -130,7 +130,7 @@ def tv_denoise_difference_map(
         map_as_array=realspace_map_array,
         weight=maximizer.argument_optimum,
     )
-    final_map = Map.from_numpy_map(
+    final_map = Map.from_3d_numpy_map(
         final_realspace_map_as_array,
         spacegroup=difference_map.spacegroup,
         cell=difference_map.cell,
