@@ -222,8 +222,6 @@ class Map(rs.DataSet):
 
     @property
     def has_uncertainties(self) -> bool:
-        if self._uncertainty_column is None:
-            return False
         return self._uncertainty_column in self.columns
 
     @property

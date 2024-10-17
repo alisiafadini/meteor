@@ -197,6 +197,9 @@ def test_set_uncertainties() -> None:
     with pytest.raises(AttributeError):
         _ = test_map.uncertainties
 
+    with pytest.raises(AttributeError):
+        test_map.uncertainties = rs.DataSeries([2.0, 3.0, 4.0])
+
     test_map.set_uncertainties(rs.DataSeries([1.0, 1.0, 1.0]))
     assert test_map.has_uncertainties
     assert len(test_map.uncertainties) == 3
