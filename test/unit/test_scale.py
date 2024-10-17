@@ -99,3 +99,23 @@ def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None
         scaled.uncertainties / multiple,
         random_difference_map.uncertainties,
     )
+
+
+def test_scale_maps_no_uncertainties_error(random_difference_map: Map) -> None:
+    no_uncertainties: Map = random_difference_map.copy()
+    del no_uncertainties[no_uncertainties._uncertainty_column]
+
+    with pytest.raises(ValueError, match="requested `weight_using_uncertainties=True`"):
+        _ = scale.scale_maps(
+            reference_map=random_difference_map,
+            map_to_scale=no_uncertainties,
+            weight_using_uncertainties=True,
+        )
+
+    # swap order of maps to test both arguments
+    with pytest.raises(ValueError, match="requested `weight_using_uncertainties=True`"):
+        _ = scale.scale_maps(
+            reference_map=no_uncertainties,
+            map_to_scale=random_difference_map,
+            weight_using_uncertainties=True,
+        )
