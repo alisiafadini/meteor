@@ -77,6 +77,8 @@ def parse_args():
         help="Use k-weighting with parameter optimization (default: False)",
     )
 
+    # TODO add type of lambda screen input
+
     return parser.parse_args()
 
 
@@ -154,12 +156,13 @@ def main():
     # Now TV denoise
 
     denoised_map, tv_result = tv_denoise_difference_map(
-        diffmap, full_output=True, lambda_values_to_scan=np.linspace(1e-8, 0.1, 100)
+        diffmap, full_output=True, lambda_values_to_scan=np.linspace(1e-8, 0.05, 10)
     )
     # denoised_map, tv_result = tv_denoise_difference_map(diffmap, full_output=True)
-    print(tv_result)
 
-    print("Writing output file...")  # noqa: T201
+    print(
+        "Writing output file with optimal lambda weight of ", tv_result.optimal_lambda
+    )  # noqa: T201
     denoised_map.write_mtz(args.output)
 
 
