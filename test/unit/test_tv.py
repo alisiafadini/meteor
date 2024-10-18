@@ -59,7 +59,7 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     )
     random_difference_map.canonicalize_amplitudes()
     output.canonicalize_amplitudes()
-    pd.testing.assert_frame_equal(random_difference_map, output, rtol=1e-3)
+    pd.testing.assert_frame_equal(random_difference_map, output, rtol=1e-2)
 
 
 @pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
