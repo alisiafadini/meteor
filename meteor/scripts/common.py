@@ -2,6 +2,7 @@ import argparse
 from dataclasses import dataclass
 
 import structlog
+from pathlib import Path
 
 from meteor.rsmap import Map
 from meteor.scale import scale_maps
@@ -78,13 +79,19 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help="Use k-weighting with parameter optimization (default: False)",
         )
 
+    def add_map_arguments(self, map_name: str, *, description: str):
+        map_group = self.add_argument_group(map_name, description=description)
+        self.add_argument("filename", type=Path, required=True)
+        self.add_argument("--amplitude-label", type=str, default="F")
+
+
 
 def _log_map_read(map_name: str, args_obj) -> None:
     phases = args_obj[2] if len(args_obj) == 3 else None
     log.info("Read map", name=map_name, amps=args_obj[1], stds=args_obj[2], phases=phases)
 
 
-def load_and_scale_mapset(args) -> MapSet:
+def load_and_scale_mapset(args: argparse.Namespace) -> MapSet:
     # Create the native map from the native MTZ file
     native_map = Map.read_mtz_file(
         args.native_mtz[0],
