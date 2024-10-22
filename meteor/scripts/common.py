@@ -6,8 +6,18 @@ from pathlib import Path
 
 from meteor.rsmap import Map
 from meteor.scale import scale_maps
+from enum import StrEnum, auto
+import re
 
 log = structlog.get_logger()
+
+FLOAT_REGEX = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
+
+
+class KweightMode(StrEnum):
+    no_weighting = auto()
+    fixed_value = auto()
+    optimize = auto()
 
 
 # TODO: better name!
@@ -22,67 +32,63 @@ class DiffmapArgParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.add_argument(
-            "--native_mtz",
-            nargs=4,
-            metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
-            required=True,
-            help=("Native MTZ file and associated amplitude, uncertainty labels, and phase label."),
-        )
+        # TODO: add descriptions
+        self.add_map_arguments("native", description="...")
+        self.add_map_arguments("derivative", description="...")
+        self.add_calc_map_arguments("calculated", description="...")
 
         self.add_argument(
-            "--derivative_mtz",
-            nargs=4,
-            metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
-            required=True,
-            help=(
-                "Derivative MTZ file and associated amplitude, uncertainty labels, and phase label."
-            ),
-        )
-
-        self.add_argument(
-            "--calc_native_mtz",
-            nargs=3,
-            metavar=("filename", "calc_amplitude_label", "calc_phase_label"),
-            required=True,
-            help=(
-                "Calculated native MTZ file and associated calculated amplitude and phase labels."
-            ),
-        )
-
-        self.add_argument(
-            "--output",
+            "-o",
+            "--mtzout",
             type=str,
             default="meteor_difference_map.mtz",
-            help="Output file name",
+            help="Specify output MTZ file name/path.",
         )
 
         self.add_argument(
-            "--use_uncertainties_to_scale",
-            type=bool,
-            default=True,
-            help="Use uncertainties to scale (default: True)",
+            "--kweight",
+            type=str,
+            default="auto",
+            help="Choose the k-weighting behavior. Options: `auto` (choose best negentropy value), `none`, or pass a float for a fixed k-weight.",
         )
 
-        k_weight_group = self.add_mutually_exclusive_group()
 
-        k_weight_group.add_argument(
-            "--k_weight_with_fixed_parameter",
-            type=float,
-            default=None,
-            help="Use k-weighting with a fixed parameter (float between 0 and 1.0)",
-        )
-
-        k_weight_group.add_argument(
-            "--k_weight_with_parameter_optimization",
-            action="store_true",  # This will set the flag to True when specified
-            help="Use k-weighting with parameter optimization (default: False)",
-        )
-
+    # this will be replaced in a future PR by a more automated parser
     def add_map_arguments(self, map_name: str, *, description: str):
         map_group = self.add_argument_group(map_name, description=description)
-        self.add_argument("filename", type=Path, required=True)
-        self.add_argument("--amplitude-label", type=str, default="F")
+        map_group.add_argument("filename", type=Path, required=True)
+        map_group.add_argument("--amplitude-label", type=str, default="F", required=True)
+        map_group.add_argument("--uncertainty-label", type=str, default="SIGF")
+        map_group.add_argument("--phase-label", type=str, default="PHI")
+        
+    # this will be replaced in a future PR by calculations from a PDB
+    def add_calc_map_arguments(self, map_name: str, *, description: str):
+        map_group = self.add_argument_group(map_name, description=description)
+        map_group.add_argument("filename", type=Path, required=True)
+        map_group.add_argument("--amplitude-label", type=str, default="FC", required=True)
+        map_group.add_argument("--phase-label", type=str, default="PHIC", required=True)
+
+    @property
+    def fixed_kweight_value(self) -> float | None:
+        args = self.parse_args()
+        regex_group = re.match(FLOAT_REGEX, args.kweight)
+        if regex_group is None:
+            return None
+        return float(regex_group.group(0))
+
+    @property
+    def k_weight_mode(self) -> KweightMode:
+        args = self.parse_args()
+        kweight_arg: str = args.kweight.lower()
+        if kweight_arg in ["none", "no", "false"]:
+            return KweightMode.no_weighting
+        elif kweight_arg in ["auto", "optimize"]:
+            return KweightMode.optimize
+        elif self.fixed_kweight_value is not None:
+            return KweightMode.fixed_value
+        msg = f"`{args.kweight}` invalid for --kweight; choose 'auto', 'none', or pass a float"
+        raise ValueError(msg)
+
 
 
 
