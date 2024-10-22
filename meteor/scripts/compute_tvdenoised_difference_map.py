@@ -156,9 +156,8 @@ def main():
     # Now TV denoise
 
     denoised_map, tv_result = tv_denoise_difference_map(
-        diffmap, full_output=True, lambda_values_to_scan=np.linspace(1e-8, 0.05, 10)
+        diffmap, full_output=True, lambda_values_to_scan=np.linspace(0, 0.1, 100)
     )
-    # denoised_map, tv_result = tv_denoise_difference_map(diffmap, full_output=True)
 
     print(
         "Writing output file with optimal lambda weight of ", tv_result.optimal_lambda

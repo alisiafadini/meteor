@@ -107,8 +107,8 @@ def compute_scale_factors(
     else:
         uncertainty_weights = 1.0
 
-    common_reference_values = reference_values.loc[common_miller_indices]
-    common_values_to_scale = values_to_scale.loc[common_miller_indices]
+    common_reference_values = np.array(reference_values.loc[common_miller_indices])
+    common_values_to_scale = np.array(values_to_scale.loc[common_miller_indices])
 
     def compute_residuals(scaling_parameters: ScaleParameters) -> np.ndarray:
         scale_factors = _compute_anisotropic_scale_factors(
@@ -120,7 +120,9 @@ def compute_scale_factors(
         )
 
     initial_scaling_parameters: ScaleParameters = (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    optimization_result = opt.least_squares(compute_residuals, initial_scaling_parameters)
+    optimization_result = opt.least_squares(
+        compute_residuals, initial_scaling_parameters
+    )
     optimized_parameters: ScaleParameters = optimization_result.x
 
     # now be sure to compute the scale factors for all miller indices in `values_to_scale`
@@ -199,7 +201,8 @@ def scale_maps(
 
     else:
         scale_factors = compute_scale_factors(
-            reference_values=reference_map.amplitudes, values_to_scale=map_to_scale.amplitudes
+            reference_values=reference_map.amplitudes,
+            values_to_scale=map_to_scale.amplitudes,
         )
 
     scaled_map: Map = map_to_scale.copy()

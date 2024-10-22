@@ -116,7 +116,11 @@ def tv_denoise_difference_map(
     realspace_map_array = np.array(realspace_map.grid)
 
     def negentropy_objective(tv_lambda: float):
-        denoised_map = _tv_denoise_array(map_as_array=realspace_map_array, weight=tv_lambda)
+        denoised_map = _tv_denoise_array(
+            map_as_array=realspace_map_array, weight=tv_lambda
+        )
+        negentropy_value = negentropy(denoised_map)
+        print(f"Lambda: {tv_lambda}, Negentropy: {negentropy_value}")
         return negentropy(denoised_map)
 
     maximizer = ScalarMaximizer(objective=negentropy_objective)

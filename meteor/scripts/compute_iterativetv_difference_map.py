@@ -149,8 +149,7 @@ def main():
         native_map_scaled,
         tv_weights_to_scan=[0.01, 0.05, 0.1],
     )
-    print("dev map scaled", derivative_map_scaled)
-    print("new dev map", new_derivative_map)
+
     print(it_tv_metadata)
 
     # compute diffmap
@@ -164,7 +163,7 @@ def main():
     )
 
     denoised_map, tv_result = tv_denoise_difference_map(
-        diff_map, full_output=True, lambda_values_to_scan=np.linspace(0, 0.1, 50)
+        diff_map, full_output=True, lambda_values_to_scan=np.linspace(0, 0.1, 100)
     )
 
     print("Writing output file.. ")  # noqa: T201
