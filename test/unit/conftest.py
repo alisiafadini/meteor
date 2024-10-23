@@ -6,14 +6,13 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
-from meteor.testing import MapColumns
+from meteor.testing import MapColumns, single_carbon_density
 from meteor.utils import numpy_array_to_map
 
 RESOLUTION = 1.0
 UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
 SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
-CARBON2_POSITION = (5.0, 5.2, 5.0)
 
 NP_RNG = np.random.default_rng()
 
@@ -25,45 +24,6 @@ def test_map_columns() -> MapColumns:
         phase="PHI",
         uncertainty="SIGF",
     )
-
-
-def single_carbon_density(
-    carbon_position: tuple[float, float, float],
-    space_group: gemmi.SpaceGroup,
-    unit_cell: gemmi.UnitCell,
-    d_min: float,
-) -> gemmi.Ccp4Map:
-    model = gemmi.Model("single_atom")
-    chain = gemmi.Chain("A")
-
-    residue = gemmi.Residue()
-    residue.name = "X"
-    residue.seqid = gemmi.SeqId("1")
-
-    atom = gemmi.Atom()
-    atom.name = "C"
-    atom.element = gemmi.Element("C")
-    atom.pos = gemmi.Position(*carbon_position)
-
-    residue.add_atom(atom)
-    chain.add_residue(residue)
-    model.add_chain(chain)
-
-    structure = gemmi.Structure()
-    structure.add_model(model)
-    structure.cell = unit_cell
-    structure.spacegroup_hm = space_group.hm
-
-    density_map = gemmi.DensityCalculatorX()
-    density_map.d_min = d_min
-    density_map.grid.setup_from(structure)
-    density_map.put_model_density_on_grid(structure[0])
-
-    ccp4_map = gemmi.Ccp4Map()
-    ccp4_map.grid = density_map.grid
-    ccp4_map.update_ccp4_header()
-
-    return ccp4_map
 
 
 def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
