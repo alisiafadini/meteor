@@ -15,8 +15,8 @@ def check_test_file_exists(path: Path) -> None:
 
 
 @pytest.fixture
-def scaled_test_data_mtz(test_data_dir: Path) -> Path:
-    path = test_data_dir / "scaled-test-data.mtz"
+def scaled_test_data_mtz(data_dir: Path) -> Path:
+    path = data_dir / "scaled-test-data.mtz"
     check_test_file_exists(path)
     return path
 
