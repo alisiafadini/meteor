@@ -28,7 +28,7 @@ def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
     """Closure convienence function to generate more readable code."""
     if weight <= 0.0:
         return map_as_array
-    return denoise_tv_chambolle(
+    return denoise_tv_chambolle(  # type: ignore[no-untyped-call]
         map_as_array,
         weight=weight,
         eps=TV_STOP_TOLERANCE,
@@ -115,7 +115,7 @@ def tv_denoise_difference_map(
     realspace_map = difference_map.to_ccp4_map(map_sampling=MAP_SAMPLING)
     realspace_map_array = np.array(realspace_map.grid)
 
-    def negentropy_objective(tv_lambda: float):
+    def negentropy_objective(tv_lambda: float) -> float:
         denoised_map = _tv_denoise_array(map_as_array=realspace_map_array, weight=tv_lambda)
         return negentropy(denoised_map)
 
@@ -144,7 +144,7 @@ def tv_denoise_difference_map(
     # sometimes `from_ccp4_map` adds reflections -- systematic absences or
     # reflections just beyond the resolution limt; remove those
     extra_indices = final_map.index.difference(difference_map.index)
-    final_map.drop(extra_indices, axis=0, inplace=True)
+    final_map.drop(extra_indices, inplace=True)
     sym_diff = difference_map.index.symmetric_difference(final_map.index)
     if len(sym_diff) > 0:
         msg = "something went wrong, input and output coefficients do not have identical indices"
