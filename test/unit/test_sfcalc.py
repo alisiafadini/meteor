@@ -42,3 +42,9 @@ def test_pdb_to_calculated_map(example_pdb_file: Path) -> None:
 
     assert np.any(calc_map.amplitudes != 0.0)
     assert np.any(calc_map.phases != 0.0)
+
+
+def test_pdb_to_calculated_map_fails_if_pdb_path_wrong() -> None:
+    not_a_valid_path = Path("not-a-valid-path")
+    with pytest.raises(OSError, match="could not find file"):
+        sfcalc.pdb_to_calculated_map(not_a_valid_path, high_resolution_limit=RESOLUTION)
