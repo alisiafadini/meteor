@@ -83,7 +83,7 @@ class ScalarMaximizer:
         A set of argument values that have been evaluated during optimization.
     """
 
-    def __init__(self, *, objective: Callable[[float], float]):
+    def __init__(self, *, objective: Callable[[float], float]) -> None:
         """
         Initializes the Maximizer with the given objective function.
 
@@ -97,13 +97,15 @@ class ScalarMaximizer:
         self.objective_maximum: float = -np.inf
         self.values_evaluated: set[float] = set()
 
-    def _update_optima(self, argument_test_value):
+    def _update_optima(self, argument_test_value: float) -> None:
         objective_value = self.objective(argument_test_value)
         if objective_value > self.objective_maximum:
             self.argument_optimum = argument_test_value
             self.objective_maximum = objective_value
 
-    def optimize_over_explicit_values(self, *, arguments_to_scan: Sequence[float] | np.ndarray):
+    def optimize_over_explicit_values(
+        self, *, arguments_to_scan: Sequence[float] | np.ndarray
+    ) -> None:
         """
         Scans through a list or array of argument values to find the optimum.
 
@@ -121,7 +123,7 @@ class ScalarMaximizer:
         *,
         bracket: tuple[float, float],
         tolerance: float = 0.001,
-    ):
+    ) -> None:
         """
         Uses the golden-section search algorithm to maximize the objective function within a given
         bracket.
@@ -138,7 +140,7 @@ class ScalarMaximizer:
             If the optimization using the golden algorithm fails.
         """
 
-        def _objective_with_value_tracking(argument_test_value):
+        def _objective_with_value_tracking(argument_test_value: float) -> float:
             """Adds the evaluated value to self.values_evaluated"""
             self.values_evaluated.add(argument_test_value)
             return -self.objective(argument_test_value)  # negative: we want max
