@@ -2,7 +2,13 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# large crystallography files -- some of which are used in tests
+# large files are accessed via github LFS
 *.ccp4
+*.map
+*.mtz
+*.pdb
 
 # C extensions
 *.so

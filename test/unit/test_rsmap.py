@@ -87,7 +87,7 @@ def test_copy_non_standard_names(noise_free_map: Map) -> None:
 def test_filter_common_indices_with_maps(noise_free_map: Map) -> None:
     m1 = noise_free_map
     m2 = noise_free_map.copy()
-    m2.drop([m1.index[0]], axis=0, inplace=True)  # remove an index
+    m2.drop([m1.index[0]], inplace=True)  # remove an index
     assert len(m1) != len(m2)
     f1, f2 = filter_common_indices(m1, m2)
     pd.testing.assert_index_equal(f1.index, f2.index)
@@ -165,12 +165,15 @@ def test_insert_disabled(noise_free_map: Map) -> None:
         noise_free_map.insert(position, column, value)
 
 
-def test_drop_columns_disabled(noise_free_map: Map) -> None:
-    noise_free_map.drop([0, 0, 0], axis=0)
-    with pytest.raises(MapMutabilityError):
-        noise_free_map.drop("F", axis=1)
-    with pytest.raises(MapMutabilityError):
-        noise_free_map.drop(columns=["F"])
+@pytest.mark.parametrize("inplace", [False, True])
+def test_drop(noise_free_map: Map, inplace: bool) -> None:
+    index = (-9, -4, 1)
+    assert index in noise_free_map.index
+    if inplace:
+        noise_free_map.drop(index, inplace=inplace)
+    else:
+        noise_free_map = noise_free_map.drop(index, inplace=inplace)
+    assert index not in noise_free_map.index
 
 
 def test_get_hkls(noise_free_map: Map) -> None:

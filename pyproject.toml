@@ -27,6 +27,10 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.mypy]
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
 [[tool.mypy.overrides]]
 module = "reciprocalspaceship.*,gemmi.*,scipy.*,skimage.*"
 ignore_missing_imports = true

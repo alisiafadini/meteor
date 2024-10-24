@@ -41,6 +41,12 @@ def _compute_anisotropic_scale_factors(
     return anisotropic_scale_parameters[0] * np.exp(exponential_argument)
 
 
+def _check_index_consistency(series1: rs.DataSeries, series2: rs.DataSeries) -> None:
+    if not series1.index.equals(series2.index):
+        msg = f"indices of `{series1.name}`, `{series2.name}` differ"
+        raise IndexError(msg)
+
+
 def compute_scale_factors(
     *,
     reference_values: rs.DataSeries,
@@ -87,37 +93,38 @@ def compute_scale_factors(
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
-    common_miller_indices = reference_values.index.intersection(values_to_scale.index)
+    common_miller_indices: pd.Index = reference_values.index.intersection(values_to_scale.index)
+
+    common_reference_values: np.ndarray = reference_values.loc[common_miller_indices].to_numpy()
+    common_values_to_scale: np.ndarray = values_to_scale.loc[common_miller_indices].to_numpy()
 
     # if we are going to weight the scaling using the uncertainty values, then the weights will be
     #    inverse_sigma = 1 / sqrt{ sigmaA ** 2 + sigmaB ** 2 }
-    if reference_uncertainties is not None and to_scale_uncertainties is not None:
-        if not reference_uncertainties.index.equals(reference_values.index):
-            msg = "indices of `reference_uncertainties`, `reference_values` differ, cannot combine"
-            raise IndexError(msg)
-        if not to_scale_uncertainties.index.equals(values_to_scale.index):
-            msg = "indices of `to_scale_uncertainties`, `values_to_scale` differ, cannot combine"
-            raise IndexError(msg)
-
+    uncertainty_weights: np.ndarray
+    if (reference_uncertainties is not None) and (to_scale_uncertainties is not None):
+        _check_index_consistency(reference_values, reference_uncertainties)
+        _check_index_consistency(values_to_scale, to_scale_uncertainties)
         uncertainty_weights = np.sqrt(
-            np.square(reference_uncertainties.loc[common_miller_indices])
-            + np.square(to_scale_uncertainties.loc[common_miller_indices]),
+            np.square(reference_uncertainties.loc[common_miller_indices].to_numpy())
+            + np.square(to_scale_uncertainties.loc[common_miller_indices].to_numpy()),
         )
-
     else:
-        uncertainty_weights = 1.0
-
-    common_reference_values = reference_values.loc[common_miller_indices]
-    common_values_to_scale = values_to_scale.loc[common_miller_indices]
+        uncertainty_weights = np.array(1.0)
 
     def compute_residuals(scaling_parameters: ScaleParameters) -> np.ndarray:
         scale_factors = _compute_anisotropic_scale_factors(
             common_miller_indices,
             scaling_parameters,
         )
-        return uncertainty_weights * (
-            scale_factors * common_values_to_scale - common_reference_values
-        )
+
+        difference_after_scaling = scale_factors * common_values_to_scale - common_reference_values
+        residuals = uncertainty_weights * difference_after_scaling
+
+        if not isinstance(residuals, np.ndarray):
+            msg = "scipy optimizers' behavior is unstable unless `np.ndarray`s are used"
+            raise TypeError(msg)
+
+        return residuals
 
     initial_scaling_parameters: ScaleParameters = (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     optimization_result = opt.least_squares(compute_residuals, initial_scaling_parameters)

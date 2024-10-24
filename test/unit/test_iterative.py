@@ -27,7 +27,7 @@ def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
 def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
     weight = 0.0001
     real_space = np.fft.ifftn(fourier_array).real
-    denoised = denoise_tv_chambolle(real_space, weight=weight)
+    denoised = denoise_tv_chambolle(real_space, weight=weight)  # type: ignore[no-untyped-call]
     result = TvDenoiseResult(
         optimal_lambda=weight,
         optimal_negentropy=0.0,
@@ -62,7 +62,7 @@ def test_projected_derivative(scalar: float) -> None:
 
 
 def test_complex_derivative_from_iterative_tv() -> None:
-    test_image = binary_blobs(length=64)
+    test_image = binary_blobs(length=64)  # type: ignore[no-untyped-call]
 
     constant_image = np.ones_like(test_image) / 2.0
     constant_image_ft = np.fft.fftn(constant_image)

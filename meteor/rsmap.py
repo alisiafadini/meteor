@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, Callable, ClassVar, Literal, overload
 
 import gemmi
 import numpy as np
@@ -69,7 +69,7 @@ class Map(rs.DataSet):
         amplitude_column: str = "F",
         phase_column: str = "PHI",
         uncertainty_column: str | None = "SIGF",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(data=data, **kwargs)
 
@@ -99,8 +99,8 @@ class Map(rs.DataSet):
             self.uncertainties = self._verify_uncertainty_type(self.uncertainties, fix=True)
 
     @property
-    def _constructor(self):
-        def constructor_fxn(*args, **kwargs):
+    def _constructor(self) -> Callable[[Any], Map]:
+        def constructor_fxn(*args: Any, **kwargs: Any) -> Map:
             return Map(
                 *args,
                 amplitude_column=self._amplitude_column,
@@ -112,7 +112,7 @@ class Map(rs.DataSet):
         return constructor_fxn
 
     @property
-    def _constructor_sliced(self):
+    def _constructor_sliced(self) -> Callable[[Any], rs.DataSeries]:
         return rs.DataSeries
 
     def _verify_type(
@@ -175,7 +175,7 @@ class Map(rs.DataSet):
             name, uncertainty_dtypes, dataseries, fix=fix, cast_fix_to=rs.StandardDeviationDtype()
         )
 
-    def __setitem__(self, key: str, value) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:
         allowed = list(self.columns) + self._allowed_columns
         if key not in allowed:
             msg = "column assignment not allowed for Map objects"
@@ -191,11 +191,14 @@ class Map(rs.DataSet):
             msg += "see also Map.set_uncertainties(...)"
             raise MapMutabilityError(msg)
 
-    def drop(self, labels=None, *, axis=0, columns=None, inplace=False, **kwargs):
-        if (axis == 1) or (columns is not None):
-            msg = "columns are fixed for Map objects"
-            raise MapMutabilityError(msg)
-        return super().drop(labels=labels, axis=axis, columns=columns, inplace=inplace, **kwargs)
+    @overload
+    def drop(self, labels: Any = None, *, inplace: Literal[True]) -> None: ...
+
+    @overload
+    def drop(self, labels: Any = None, *, inplace: Literal[False]) -> Map: ...
+
+    def drop(self, labels: Any = None, *, inplace: bool = False) -> None | Map:
+        return super().drop(labels=labels, axis="index", columns=None, inplace=inplace)
 
     def get_hkls(self) -> np.ndarray:
         # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
@@ -272,7 +275,7 @@ class Map(rs.DataSet):
     def complex_amplitudes(self) -> np.ndarray:
         return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
 
-    def canonicalize_amplitudes(self):
+    def canonicalize_amplitudes(self) -> None:
         canonicalize_amplitudes(
             self,
             amplitude_label=self._amplitude_column,
