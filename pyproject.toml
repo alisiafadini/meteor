@@ -12,6 +12,7 @@ dependencies = [
     "gemmi",
     "scikit-image",
     "reciprocalspaceship",
+    "structlog",
     "pytest",
     "pytest-cov",
 ]
