@@ -23,9 +23,7 @@ def parse_args():
         nargs=4,
         metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
         required=True,
-        help=(
-            "Native MTZ file and associated amplitude, uncertainty labels, and phase label."
-        ),
+        help=("Native MTZ file and associated amplitude, uncertainty labels, and phase label."),
     )
 
     parser.add_argument(
@@ -33,9 +31,7 @@ def parse_args():
         nargs=4,
         metavar=("filename", "amplitude_label", "uncertainty_label", "phase_label"),
         required=True,
-        help=(
-            "Derivative MTZ file and associated amplitude, uncertainty labels, and phase label."
-        ),
+        help=("Derivative MTZ file and associated amplitude, uncertainty labels, and phase label."),
     )
 
     parser.add_argument(
@@ -43,9 +39,7 @@ def parse_args():
         nargs=3,
         metavar=("filename", "calc_amplitude_label", "calc_phase_label"),
         required=True,
-        help=(
-            "Calculated native MTZ file and associated calculated amplitude and phase labels."
-        ),
+        help=("Calculated native MTZ file and associated calculated amplitude and phase labels."),
     )
 
     parser.add_argument(
@@ -92,14 +86,10 @@ def compute_difference_map_wrapper(
     """Wrapper for computing either a standard difference map or a k-weighted difference map."""
     if use_k_weighting:
         if optimize_k:
-            result, opt_k = max_negentropy_kweighted_difference_map(
-                derivative_map, native_map
-            )
+            result, opt_k = max_negentropy_kweighted_difference_map(derivative_map, native_map)
             print(f"Optimal k-parameter determined: {opt_k}")  # noqa: T201
             return result
-        return compute_kweighted_difference_map(
-            derivative_map, native_map, k_parameter=k_param
-        )
+        return compute_kweighted_difference_map(derivative_map, native_map, k_parameter=k_param)
     return compute_difference_map(derivative_map, native_map)
 
 
