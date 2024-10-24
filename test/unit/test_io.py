@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from typing import Callable
+
+import pytest
 
 from meteor import io
 
@@ -69,7 +70,9 @@ def test_infer_mtz_label() -> None:
         _ = io._infer_mtz_label(to_search, ["FOO", "BAR"])
 
 
-def validate_find_label_result(function: FIND_LABEL_FUNC_TYPE, labels: list[str], expected_result: str) -> None:
+def validate_find_label_result(
+    function: FIND_LABEL_FUNC_TYPE, labels: list[str], expected_result: str
+) -> None:
     if expected_result == "raise":
         with pytest.raises(io.AmbiguousMtzLabelError):
             _ = function(labels)
@@ -77,26 +80,26 @@ def validate_find_label_result(function: FIND_LABEL_FUNC_TYPE, labels: list[str]
         assert function(labels) == expected_result
 
 
-@pytest.mark.parametrize("labels,expected_result", OBSERVED_INTENSITY_CASES)
+@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_INTENSITY_CASES)
 def test_find_observed_intensity_label(labels: list[str], expected_result: str) -> None:
     validate_find_label_result(io.find_observed_intensity_label, labels, expected_result)
 
 
-@pytest.mark.parametrize("labels,expected_result", OBSERVED_AMPLITUDE_CASES)
+@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_AMPLITUDE_CASES)
 def test_find_observed_amplitude_label(labels: list[str], expected_result: str) -> None:
     validate_find_label_result(io.find_observed_amplitude_label, labels, expected_result)
 
 
-@pytest.mark.parametrize("labels,expected_result", OBSERVED_UNCERTAINTY_CASES)
+@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_UNCERTAINTY_CASES)
 def test_find_observed_uncertainty_label(labels: list[str], expected_result: str) -> None:
     validate_find_label_result(io.find_observed_uncertainty_label, labels, expected_result)
 
 
-@pytest.mark.parametrize("labels,expected_result", COMPUTED_AMPLITUDE_CASES)
+@pytest.mark.parametrize(("labels", "expected_result"), COMPUTED_AMPLITUDE_CASES)
 def test_find_computed_amplitude_label(labels: list[str], expected_result: str) -> None:
     validate_find_label_result(io.find_computed_amplitude_label, labels, expected_result)
 
 
-@pytest.mark.parametrize("labels,expected_result", COMPUTED_PHASE_CASES)
+@pytest.mark.parametrize(("labels", "expected_result"), COMPUTED_PHASE_CASES)
 def test_find_computed_phase_label(labels: list[str], expected_result: str) -> None:
     validate_find_label_result(io.find_computed_phase_label, labels, expected_result)

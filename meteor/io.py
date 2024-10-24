@@ -7,8 +7,6 @@ from __future__ import annotations
 import re
 from typing import Final
 
-# TODO: scour for PHENIX style, add
-
 OBSERVED_INTENSITY_LABELS: Final[list[str]] = [
     "I",  # generic
     "IMEAN",  # CCP4
