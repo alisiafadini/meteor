@@ -40,7 +40,8 @@ def test_negentropy_maximizer_explicit() -> None:
     maximizer.optimize_over_explicit_values(arguments_to_scan=test_values)
     assert_almost_equal(maximizer.argument_optimum, 1.0)
     assert_almost_equal(maximizer.objective_maximum, 0.0)
-    assert set(test_values) == maximizer.values_evaluated
+    assert list(test_values) == maximizer.values_evaluated
+    assert len(maximizer.values_evaluated) == len(maximizer.objective_at_values)
 
 
 def test_negentropy_maximizer_golden() -> None:
@@ -49,3 +50,4 @@ def test_negentropy_maximizer_golden() -> None:
     assert_almost_equal(maximizer.argument_optimum, 1.0, decimal=2)
     assert_almost_equal(maximizer.objective_maximum, 0.0, decimal=2)
     assert len(maximizer.values_evaluated) > 0
+    assert len(maximizer.values_evaluated) == len(maximizer.objective_at_values)
