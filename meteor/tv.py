@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Sequence, overload
 
 import numpy as np
@@ -9,19 +9,20 @@ from skimage.restoration import denoise_tv_chambolle
 from .rsmap import Map
 from .settings import (
     MAP_SAMPLING,
-    TV_LAMBDA_RANGE,
     TV_MAX_NUM_ITER,
     TV_STOP_TOLERANCE,
+    TV_WEIGHT_RANGE,
 )
 from .validate import ScalarMaximizer, negentropy
 
 
 @dataclass
 class TvDenoiseResult:
-    optimal_lambda: float
+    optimal_weight: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
-    lambdas_scanned: set[float] = field(default_factory=set)
+    weights_scanned: list[float]
+    negentropy_at_weights: list[float]
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
@@ -41,7 +42,7 @@ def tv_denoise_difference_map(
     difference_map: Map,
     *,
     full_output: Literal[False],
-    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
+    weights_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> Map: ...
 
 
@@ -50,7 +51,7 @@ def tv_denoise_difference_map(
     difference_map: Map,
     *,
     full_output: Literal[True],
-    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
+    weights_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> tuple[Map, TvDenoiseResult]: ...
 
 
@@ -58,18 +59,18 @@ def tv_denoise_difference_map(
     difference_map: Map,
     *,
     full_output: bool = False,
-    lambda_values_to_scan: Sequence[float] | np.ndarray | None = None,
+    weights_to_scan: Sequence[float] | np.ndarray | None = None,
 ) -> Map | tuple[Map, TvDenoiseResult]:
     """Single-pass TV denoising of a difference map.
 
-    Automatically selects the optimal level of regularization (the TV lambda parameter) by
+    Automatically selects the optimal level of regularization (the TV weight, aka lambda) by
     maximizing the negentropy of the denoised map. Two modes can be used to dictate which
-    candidate values of lambda are assessed:
+    candidate values of weights are assessed:
 
-      1. By default (`lambda_values_to_scan=None`), the golden-section search algorithm selects
-         a lambda value according to the bounds and convergence criteria set in meteor.settings.
-      2. Alternatively, an explicit list of lambda values to assess can be provided using
-        `lambda_values_to_scan`.
+      1. By default (`weights_to_scan=None`), the golden-section search algorithm selects
+         a weights value according to the bounds and convergence criteria set in meteor.settings.
+      2. Alternatively, an explicit list of weights values to assess can be provided using
+        `weights_to_scan`.
 
     Parameters
     ----------
@@ -78,12 +79,12 @@ def tv_denoise_difference_map(
         that will be used to compute the difference map.
     full_output : bool, optional
         If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult`
-         object containing the optimal lambda and the associated negentropy. If `False`, only
+         object containing the optimal weight and the associated negentropy. If `False`, only
          the denoised map coefficients are returned. Default is `False`.
-    lambda_values_to_scan : Sequence[float] | None, optional
-        A sequence of lambda values to explicitly scan for determining the optimal value. If
+    weights_to_scan : Sequence[float] | None, optional
+        A sequence of weight values to explicitly scan for determining the optimal value. If
         `None`, the function uses the golden-section search method to determine the optimal
-        lambda. Default is `None`.
+        weight. Default is `None`.
 
     Returns
     -------
@@ -91,12 +92,12 @@ def tv_denoise_difference_map(
         If `full_output` is `False`, returns a `Map`, the denoised map coefficients.
         If `full_output` is `True`, returns a tuple containing:
         - `Map`: The denoised map coefficients.
-        - `TvDenoiseResult`: An object w/ the optimal lambda and the corresponding negentropy.
+        - `TvDenoiseResult`: An object w/ the optimal weight and the corresponding negentropy.
 
     Raises
     ------
     AssertionError
-        If the golden-section search fails to find an optimal lambda.
+        If the golden-section search fails to find an optimal weight.
 
     Notes
     -----
@@ -110,20 +111,20 @@ def tv_denoise_difference_map(
     -------
     >>> coefficients = Map.read_mtz("./path/to/difference_map.mtz", ...)  # load dataset
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
-    >>> print(f"Optimal Lambda: {result.optimal_lambda}, Negentropy: {result.optimal_negentropy}")
+    >>> print(f"Optimal: {result.optimal_weight}, Negentropy: {result.optimal_negentropy}")
     """
     realspace_map = difference_map.to_ccp4_map(map_sampling=MAP_SAMPLING)
     realspace_map_array = np.array(realspace_map.grid)
 
-    def negentropy_objective(tv_lambda: float) -> float:
-        denoised_map = _tv_denoise_array(map_as_array=realspace_map_array, weight=tv_lambda)
+    def negentropy_objective(tv_weight: float) -> float:
+        denoised_map = _tv_denoise_array(map_as_array=realspace_map_array, weight=tv_weight)
         return negentropy(denoised_map)
 
     maximizer = ScalarMaximizer(objective=negentropy_objective)
-    if lambda_values_to_scan is not None:
-        maximizer.optimize_over_explicit_values(arguments_to_scan=lambda_values_to_scan)
+    if weights_to_scan is not None:
+        maximizer.optimize_over_explicit_values(arguments_to_scan=weights_to_scan)
     else:
-        maximizer.optimize_with_golden_algorithm(bracket=TV_LAMBDA_RANGE)
+        maximizer.optimize_with_golden_algorithm(bracket=TV_WEIGHT_RANGE)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_realspace_map_as_array = _tv_denoise_array(
@@ -152,10 +153,11 @@ def tv_denoise_difference_map(
 
     if full_output:
         tv_result = TvDenoiseResult(
-            optimal_lambda=maximizer.argument_optimum,
+            optimal_weight=maximizer.argument_optimum,
             optimal_negentropy=maximizer.objective_maximum,
             map_sampling_used_for_tv=MAP_SAMPLING,
-            lambdas_scanned=maximizer.values_evaluated,
+            weights_scanned=maximizer.values_evaluated,
+            negentropy_at_weights=maximizer.objective_at_values,
         )
         return final_map, tv_result
 

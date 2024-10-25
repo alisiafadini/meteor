@@ -122,7 +122,7 @@ def _complex_derivative_from_iterative_tv(
         metadata.append(
             {
                 "iteration": num_iterations,
-                "tv_weight": tv_metadata.optimal_lambda,
+                "tv_weight": tv_metadata.optimal_weight,
                 "negentropy_after_tv": tv_metadata.optimal_negentropy,
                 "average_phase_change": phase_change,
             },
@@ -160,7 +160,7 @@ def iterative_tv_phase_retrieval(
             Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]  Fourier space projection onto experimental set
             D_F = Fh' - F
 
-    Where the TV lambda parameter is determined using golden section optimization. The algorithm
+    Where the TV weight parameter is determined using golden section optimization. The algorithm
     iterates until the changes in the derivative phase drop below a specified threshold.
 
     Parameters
@@ -202,7 +202,7 @@ def iterative_tv_phase_retrieval(
 
         denoised_map, tv_metadata = tv_denoise_difference_map(
             diffmap,
-            lambda_values_to_scan=tv_weights_to_scan,
+            weights_to_scan=tv_weights_to_scan,
             full_output=True,
         )
 

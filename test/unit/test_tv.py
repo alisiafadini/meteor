@@ -9,7 +9,7 @@ import pytest
 from meteor import tv
 from meteor.rsmap import Map
 
-DEFAULT_LAMBDA_VALUES_TO_SCAN = np.logspace(-2, 0, 25)
+DEFAULT_WEIGHTS_TO_SCAN = np.logspace(-2, 0, 25)
 
 
 def rms_between_coefficients(map1: Map, map2: Map) -> float:
@@ -25,7 +25,7 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
 
 
 @pytest.mark.parametrize(
-    "lambda_values_to_scan",
+    "weights_to_scan",
     [
         None,
         [-1.0, 0.0, 1.0],
@@ -33,13 +33,13 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
 )
 @pytest.mark.parametrize("full_output", [False, True])
 def test_tv_denoise_map_smoke(
-    lambda_values_to_scan: None | Sequence[float],
+    weights_to_scan: None | Sequence[float],
     full_output: bool,
     random_difference_map: Map,
 ) -> None:
     output = tv.tv_denoise_difference_map(
         random_difference_map,
-        lambda_values_to_scan=lambda_values_to_scan,
+        weights_to_scan=weights_to_scan,
         full_output=full_output,
     )  # type: ignore[call-overload]
     if full_output:
@@ -54,7 +54,7 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     weight = 0.0
     output = tv.tv_denoise_difference_map(
         random_difference_map,
-        lambda_values_to_scan=[weight],
+        weights_to_scan=[weight],
         full_output=False,
     )
     random_difference_map.canonicalize_amplitudes()
@@ -62,9 +62,9 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     pd.testing.assert_frame_equal(random_difference_map, output, rtol=1e-2)
 
 
-@pytest.mark.parametrize("lambda_values_to_scan", [None, DEFAULT_LAMBDA_VALUES_TO_SCAN])
+@pytest.mark.parametrize("weights_to_scan", [None, DEFAULT_WEIGHTS_TO_SCAN])
 def test_tv_denoise_map(
-    lambda_values_to_scan: None | Sequence[float],
+    weights_to_scan: None | Sequence[float],
     noise_free_map: Map,
     noisy_map: Map,
 ) -> None:
@@ -75,28 +75,28 @@ def test_tv_denoise_map(
     # know the ground truth, work around this to test all possible results.
 
     lowest_rms: float = np.inf
-    best_lambda: float = 0.0
+    best_weight: float = 0.0
 
-    for trial_lambda in DEFAULT_LAMBDA_VALUES_TO_SCAN:
+    for trial_weight in DEFAULT_WEIGHTS_TO_SCAN:
         denoised_map, result = tv.tv_denoise_difference_map(
             noisy_map,
-            lambda_values_to_scan=[
-                trial_lambda,
+            weights_to_scan=[
+                trial_weight,
             ],
             full_output=True,
         )
         rms = rms_to_noise_free(denoised_map)
         if rms < lowest_rms:
             lowest_rms = rms
-            best_lambda = trial_lambda
+            best_weight = trial_weight
 
     # now run the denoising algorithm and make sure we get a result that's close
     # to the one that minimizes the RMS error to the ground truth
     denoised_map, result = tv.tv_denoise_difference_map(
         noisy_map,
-        lambda_values_to_scan=lambda_values_to_scan,
+        weights_to_scan=weights_to_scan,
         full_output=True,
     )
 
     assert rms_to_noise_free(denoised_map) < rms_to_noise_free(noisy_map), "error didnt drop"
-    np.testing.assert_allclose(result.optimal_lambda, best_lambda, rtol=0.5, err_msg="opt lambda")
+    np.testing.assert_allclose(result.optimal_weight, best_weight, rtol=0.5, err_msg="opt weight")
