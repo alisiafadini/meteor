@@ -76,21 +76,6 @@ def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> 
     np.testing.assert_array_almost_equal(scale_factors, miller_dataseries.values)
 
 
-def test_check_index_consistency(miller_dataseries: rs.DataSeries) -> None:
-    scale._check_index_consistency(miller_dataseries, miller_dataseries)
-
-    modified_series = miller_dataseries.copy()
-    modified_series.index = pd.MultiIndex.from_tuples(
-        [
-            (-100, -100, -100),
-        ]
-        * 5,
-        names=["H", "K", "L"],
-    )
-    with pytest.raises(IndexError):
-        scale._check_index_consistency(modified_series, miller_dataseries)
-
-
 @pytest.mark.parametrize("use_uncertainties", [False, True])
 def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None:
     multiple = 2.0
@@ -114,6 +99,30 @@ def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None
         scaled.uncertainties / multiple,
         random_difference_map.uncertainties,
     )
+
+
+def test_scale_maps_uncertainty_weighting() -> None:
+    x = np.array([1, 2, 3])
+    y = np.array([4, 8, 2])
+    phi = np.array([0, 0, 0])
+    weights = np.array([1, 1, 1e6])
+
+    miller_indices = [(0, 0, 0), (0, 0, 1), (0, 0, 2)]
+    index = pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"])
+
+    reference_map = Map({"F": x, "PHI": phi, "SIGF": weights})
+    reference_map.index = index
+    map_to_scale = Map({"F": y, "PHI": phi, "SIGF": weights})
+    map_to_scale.index = index
+
+    scaled = scale.scale_maps(
+        reference_map=reference_map,
+        map_to_scale=map_to_scale,
+        weight_using_uncertainties=True,
+    )
+
+    assert np.isclose(scaled["F"][(0, 0, 2)], 0.5)
+    assert np.isclose(scaled["SIGF"][(0, 0, 2)], 250000.0)
 
 
 def test_scale_maps_no_uncertainties_error(random_difference_map: Map) -> None:
