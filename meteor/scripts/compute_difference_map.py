@@ -125,7 +125,7 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     final_map.write_mtz(args.mtzout)
 
     log.info("Writing metadata.", file=args.metadataout)
-    # TODO save metadata
+    metadata.write_csv(args.metadataout)
 
 
 if __name__ == "__main__":

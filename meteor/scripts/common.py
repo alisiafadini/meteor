@@ -38,30 +38,39 @@ class DiffMapSet:
     derivative: Map
     calculated: Map
 
-    def scale(self) -> None:
-        # note: FC do not have uncertainties
-        # TODO: enable weighting with single uncertainties
+    def scale(self, *, weight_using_uncertainties: bool = True) -> None:
         self.native = scale_maps(
             reference_map=self.calculated,
             map_to_scale=self.native,
-            weight_using_uncertainties=True,
+            weight_using_uncertainties=weight_using_uncertainties,
         )
-        log.info("scaling: native map --> calculated native")
+        log.info(
+            "scaling: native map --> calculated native",
+            weight_using_uncertainties=weight_using_uncertainties,
+        )
 
         self.derivative = scale_maps(
             reference_map=self.calculated,
             map_to_scale=self.derivative,
-            weight_using_uncertainties=True,
+            weight_using_uncertainties=weight_using_uncertainties,
         )
-        log.info("scaling: derivative map --> calculated native")
+        log.info(
+            "scaling: derivative map --> calculated native",
+            weight_using_uncertainties=weight_using_uncertainties,
+        )
 
 
 class DiffmapArgParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        # TODO: add descriptions
-        derivative_group = self.add_argument_group("derivative", description="...")
+        derivative_group = self.add_argument_group(
+            "derivative",
+            description=(
+                "The 'derivative' diffraction data, typically: light-triggered, ligand-bound, etc. "
+                "We compute derivative-minus-native maps."
+            ),
+        )
         derivative_group.add_argument("derivative_mtz", type=Path, required=True)
         derivative_group.add_argument(
             "-da",
@@ -78,7 +87,14 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
-        native_group = self.add_argument_group("native", description="...")
+        native_group = self.add_argument_group(
+            "native",
+            description=(
+                "The 'native' diffraction data, typically: dark, apo, etc. We compute derivative-"
+                "minus-native maps. The single set of known phases are typically assumed to "
+                "correspond to the native dataset."
+            ),
+        )
         native_group.add_argument("native_mtz", type=Path, required=True)
         native_group.add_argument(
             "-na",
