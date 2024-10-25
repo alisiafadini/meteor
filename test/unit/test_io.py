@@ -64,9 +64,9 @@ def test_infer_mtz_column() -> None:
     to_search = ["FOO", "BAR", "BAZ"]
     assert io._infer_mtz_column(to_search, ["FOO"]) == "FOO"
     assert io._infer_mtz_column(to_search, ["BAR"]) == "BAR"
-    with pytest.raises(io.AmbiguousMtzcolumnError):
+    with pytest.raises(io.AmbiguousMtzColumnError):
         _ = io._infer_mtz_column(to_search, [])
-    with pytest.raises(io.AmbiguousMtzcolumnError):
+    with pytest.raises(io.AmbiguousMtzColumnError):
         _ = io._infer_mtz_column(to_search, ["FOO", "BAR"])
 
 
@@ -74,7 +74,7 @@ def validate_find_column_result(
     function: FIND_column_FUNC_TYPE, columns: list[str], expected_result: str
 ) -> None:
     if expected_result == "raise":
-        with pytest.raises(io.AmbiguousMtzcolumnError):
+        with pytest.raises(io.AmbiguousMtzColumnError):
             _ = function(columns)
     else:
         assert function(columns) == expected_result
