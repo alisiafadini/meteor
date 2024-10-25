@@ -76,21 +76,6 @@ def test_compute_scale_factors_anisotropic(miller_dataseries: rs.DataSeries) -> 
     np.testing.assert_array_almost_equal(scale_factors, miller_dataseries.values)
 
 
-def test_check_index_consistency(miller_dataseries: rs.DataSeries) -> None:
-    scale._check_index_consistency(miller_dataseries, miller_dataseries)
-
-    modified_series = miller_dataseries.copy()
-    modified_series.index = pd.MultiIndex.from_tuples(
-        [
-            (-100, -100, -100),
-        ]
-        * 5,
-        names=["H", "K", "L"],
-    )
-    with pytest.raises(IndexError):
-        scale._check_index_consistency(modified_series, miller_dataseries)
-
-
 @pytest.mark.parametrize("use_uncertainties", [False, True])
 def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None:
     multiple = 2.0
