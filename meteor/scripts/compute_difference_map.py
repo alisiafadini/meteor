@@ -30,9 +30,9 @@ class TvDiffmapArgParser(DiffmapArgParser):
         self.add_argument(
             "-tv",
             "--tv-denoise-mode",
-            type=str,
+            type=WeightMode,
             default=WeightMode.optimize,
-            choices=WeightMode,
+            choices=list(WeightMode),
             help="Choose how to find a TV denoising regularization weight (lambda) parameter.",
         )
         self.add_argument(

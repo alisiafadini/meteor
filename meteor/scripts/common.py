@@ -71,7 +71,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
                 "We compute derivative-minus-native maps."
             ),
         )
-        derivative_group.add_argument("derivative_mtz", type=Path, required=True)
+        derivative_group.add_argument("derivative_mtz", type=Path)
         derivative_group.add_argument(
             "-da",
             "--derivative-amplitude-column",
@@ -95,7 +95,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
                 "correspond to the native dataset."
             ),
         )
-        native_group.add_argument("native_mtz", type=Path, required=True)
+        native_group.add_argument("native_mtz", type=Path)
         native_group.add_argument(
             "-na",
             "--native-amplitude-column",
@@ -122,7 +122,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
         self.add_argument(
             "-o",
             "--mtzout",
-            type=str,
+            type=Path,
             default=DEFAULT_OUTPUT_MTZ,
             help=f"Specify output MTZ file path. Default: {DEFAULT_OUTPUT_MTZ}.",
         )
@@ -130,7 +130,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
         self.add_argument(
             "-m",
             "--metadataout",
-            type=str,
+            type=Path,
             default=DEFAULT_OUTPUT_METADATA_FILE,
             help=f"Specify output metadata file path. Default: {DEFAULT_OUTPUT_METADATA_FILE}.",
         )
@@ -138,9 +138,9 @@ class DiffmapArgParser(argparse.ArgumentParser):
         self.add_argument(
             "-k",
             "--kweight-mode",
-            type=str,
+            type=WeightMode,
             default=WeightMode.optimize,
-            choices=WeightMode,
+            choices=list(WeightMode),
             help="Choose the k-weighting behavior.",
         )
 
