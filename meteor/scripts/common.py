@@ -19,6 +19,7 @@ log = structlog.get_logger()
 INFER_COLUMN_NAME: str = "infer"
 PHASE_COLUMN_NAME: str = "PHI"
 DEFAULT_OUTPUT_MTZ: Path = Path("meteor_difference_map.mtz")
+DEFAULT_OUTPUT_METADATA_FILE: Path = Path("meteor_metadata.csv")
 FLOAT_REGEX: re.Pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
 
@@ -99,7 +100,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "--pdb",
             type=Path,
             required=True,
-            help="Specify PDB file name/path, model should correspond to the native MTZ.",
+            help="Specify PDB file path, model should correspond to the native MTZ.",
         )
 
         self.add_argument(
@@ -107,7 +108,15 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "--mtzout",
             type=str,
             default=DEFAULT_OUTPUT_MTZ,
-            help=f"Specify output MTZ file name/path. Default: {DEFAULT_OUTPUT_MTZ}.",
+            help=f"Specify output MTZ file path. Default: {DEFAULT_OUTPUT_MTZ}.",
+        )
+
+        self.add_argument(
+            "-m",
+            "--metadataout",
+            type=str,
+            default=DEFAULT_OUTPUT_METADATA_FILE,
+            help=f"Specify output metadata file path. Default: {DEFAULT_OUTPUT_METADATA_FILE}.",
         )
 
         self.add_argument(
@@ -129,6 +138,13 @@ class DiffmapArgParser(argparse.ArgumentParser):
                 f"Default: {KWEIGHT_PARAMETER_DEFAULT}."
             ),
         )
+
+    @staticmethod
+    def check_output_filepaths(args: argparse.Namespace) -> None:
+        for filename in [args.mtzout, args.metadataout]:
+            if filename.exists():
+                msg = f"file: {filename} already exists, refusing to overwrite"
+                raise OSError(msg)
 
     @staticmethod
     def _construct_map(
@@ -168,15 +184,16 @@ class DiffmapArgParser(argparse.ArgumentParser):
             uncertainty_column=found_uncertainty_column,
         )
 
-    def load_difference_maps(self) -> DiffMapSet:
-        args = self.parse_args()
+    @staticmethod
+    def load_difference_maps(args: argparse.Namespace) -> DiffMapSet:
+        # note: method accepts `args`, in case the passed arguments are mutable
 
         calculated_map = structure_to_calculated_map(
             args.pdb, high_resolution_limit=COMPUTED_MAP_RESOLUTION_LIMIT
         )
         log.info("Loading PDB & computing FC/PHIC", file=args.pdb)
 
-        derivative_map = self._construct_map(
+        derivative_map = DiffmapArgParser._construct_map(
             name="derivative",
             mtz_file=args.derivative_mtz,
             calculated_map_phases=calculated_map.phases,
@@ -184,7 +201,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             uncertainty_column=args.derivative_uncertainty_column,
         )
 
-        native_map = self._construct_map(
+        native_map = DiffmapArgParser._construct_map(
             name="native",
             mtz_file=args.native_mtz,
             calculated_map_phases=calculated_map.phases,

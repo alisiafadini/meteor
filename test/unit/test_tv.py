@@ -5,6 +5,7 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 
 from meteor import tv
 from meteor.rsmap import Map
@@ -22,6 +23,36 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
     map2_array /= map2_array.std()
 
     return float(np.linalg.norm(map2_array - map1_array))
+
+
+@pytest.fixture
+def tv_denoise_result_source_data() -> dict:
+    return {
+        "initial_negentropy": 0.0,
+        "optimal_weight": 1.0,
+        "optimal_negentropy": 5.0,
+        "map_sampling_used_for_tv": 5,
+        "weights_scanned": [0.0, 1.0],
+        "negentropy_at_weights": [0.0, 5.0],
+    }
+
+
+def test_tv_denoise_result_dict(tv_denoise_result_source_data: dict) -> None:
+    tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
+    assert tv_denoise_result_source_data == tdr_obj.dict()
+
+
+def test_tv_denoise_result_to_csv(tv_denoise_result_source_data: dict, tmp_path: Path) -> None:
+    tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
+    filepath = tmp_path / "tmp.csv"
+    tdr_obj.write_csv(filepath)
+
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    # spotcheck
+    assert "# map_sampling_used_for_tv: 5\n" in lines
+    assert "1.0,5.0\n" in lines
 
 
 @pytest.mark.parametrize(

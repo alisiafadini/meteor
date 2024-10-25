@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Literal, Sequence, overload
+from csv import DictWriter
 
 import numpy as np
 from skimage.restoration import denoise_tv_chambolle
 
 from .rsmap import Map
+from pathlib import Path
 from .settings import (
     MAP_SAMPLING,
     TV_MAX_NUM_ITER,
@@ -18,11 +20,38 @@ from .validate import ScalarMaximizer, negentropy
 
 @dataclass
 class TvDenoiseResult:
+    initial_negentropy: float
     optimal_weight: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
     weights_scanned: list[float]
     negentropy_at_weights: list[float]
+
+    def dict(self) -> dict:
+        return asdict(self)
+
+    def write_csv(self, filename: Path) -> None:
+        with open(filename, "w") as csvfile:
+            # write single parameters in header
+            csvfile.write("# METEOR metadata - TV Denoising Result\n")
+            csvfile.write(f"# initial_negentropy: {self.initial_negentropy}\n")
+            csvfile.write(f"# optimal_negentropy: {self.optimal_negentropy}\n")
+            csvfile.write(f"# optimal_weight: {self.optimal_weight}\n")
+            csvfile.write(f"# map_sampling_used_for_tv: {self.map_sampling_used_for_tv}\n")
+            csvfile.write(f"\n")
+            csvfile.write(f"# values scanned:\n")
+
+            # write each value scanned
+            fieldnames = ["weight", "negentropy"]
+            writer = DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for idx in range(len(self.weights_scanned)):
+                writer.writerow(
+                    {
+                        "weight": self.weights_scanned[idx],
+                        "negentropy": self.negentropy_at_weights[idx],
+                    }
+                )
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
@@ -152,7 +181,9 @@ def tv_denoise_difference_map(
         raise IndexError(msg)
 
     if full_output:
+        initial_negentropy = negentropy(realspace_map_array)
         tv_result = TvDenoiseResult(
+            initial_negentropy=initial_negentropy,
             optimal_weight=maximizer.argument_optimum,
             optimal_negentropy=maximizer.objective_maximum,
             map_sampling_used_for_tv=MAP_SAMPLING,
