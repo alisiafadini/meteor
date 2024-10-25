@@ -40,8 +40,8 @@ def cut_resolution(
 def canonicalize_amplitudes(
     dataset: rs.DataSet,
     *,
-    amplitude_label: str,
-    phase_label: str,
+    amplitude_column: str,
+    phase_column: str,
     inplace: Literal[False],
 ) -> rs.DataSet: ...
 
@@ -50,8 +50,8 @@ def canonicalize_amplitudes(
 def canonicalize_amplitudes(
     dataset: rs.DataSet,
     *,
-    amplitude_label: str,
-    phase_label: str,
+    amplitude_column: str,
+    phase_column: str,
     inplace: Literal[True],
 ) -> None: ...
 
@@ -59,18 +59,18 @@ def canonicalize_amplitudes(
 def canonicalize_amplitudes(
     dataset: rs.DataSet,
     *,
-    amplitude_label: str,
-    phase_label: str,
+    amplitude_column: str,
+    phase_column: str,
     inplace: bool = False,
 ) -> rs.DataSet | None:
     if not inplace:
         dataset = dataset.copy()
 
-    negative_amplitude_indices = dataset[amplitude_label] < 0.0
-    dataset[amplitude_label] = np.abs(dataset[amplitude_label])
-    dataset.loc[negative_amplitude_indices, phase_label] += 180.0
+    negative_amplitude_indices = dataset[amplitude_column] < 0.0
+    dataset[amplitude_column] = np.abs(dataset[amplitude_column])
+    dataset.loc[negative_amplitude_indices, phase_column] += 180.0
 
-    dataset[phase_label] = canonicalize_phases(dataset[phase_label])
+    dataset[phase_column] = canonicalize_phases(dataset[phase_column])
 
     if not inplace:
         return dataset

@@ -278,8 +278,8 @@ class Map(rs.DataSet):
     def canonicalize_amplitudes(self) -> None:
         canonicalize_amplitudes(
             self,
-            amplitude_label=self._amplitude_column,
-            phase_label=self._phase_column,
+            amplitude_column=self._amplitude_column,
+            phase_column=self._phase_column,
             inplace=True,
         )
 

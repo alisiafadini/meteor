@@ -8,7 +8,7 @@ from meteor.rsmap import Map
 from meteor.scale import scale_maps
 from meteor.settings import KWEIGHT_PARAMETER_DEFAULT, COMPUTED_MAP_RESOLUTION_LIMIT
 from meteor.sfcalc import structure_to_calculated_map
-from meteor.io import find_observed_amplitude_label, find_observed_uncertainty_label
+from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_column
 
 from enum import StrEnum, auto
 from typing import Any
@@ -18,7 +18,7 @@ import reciprocalspaceship as rs
 
 log = structlog.get_logger()
 
-INFER = "infer"
+INFER_COLUMN_NAME = "infer"
 PHASE_COLUMN_NAME = "PHI"
 DEFAULT_OUTPUT_MTZ = Path("meteor_difference_map.mtz")
 FLOAT_REGEX = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
@@ -30,6 +30,30 @@ class KweightMode(StrEnum):
     none = auto()
 
 
+@dataclass
+class DiffMapSet:
+    native: Map
+    derivative: Map
+    calculated: Map
+
+    def scale(self) -> None:
+        # note: FC do not have uncertainties
+        # TODO: enable weighting with single uncertainties
+        self.native = scale_maps(
+            reference_map=self.calculated,
+            map_to_scale=self.native,
+            weight_using_uncertainties=True,
+        )
+        log.info("scaling: native map --> calculated native")
+
+        self.derivative = scale_maps(
+            reference_map=self.calculated,
+            map_to_scale=self.derivative,
+            weight_using_uncertainties=True,
+        )
+        log.info("scaling: derivative map --> calculated native")
+
+
 class DiffmapArgParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -39,16 +63,16 @@ class DiffmapArgParser(argparse.ArgumentParser):
         derivative_group.add_argument("derivative_mtz", type=Path, required=True)
         derivative_group.add_argument(
             "-da",
-            "--derivative-amplitude-label",
+            "--derivative-amplitude-column",
             type=str,
-            default=INFER,
+            default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
         derivative_group.add_argument(
             "-du",
-            "--derivative-uncertainty-label",
+            "--derivative-uncertainty-column",
             type=str,
-            default=INFER,
+            default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
@@ -56,16 +80,16 @@ class DiffmapArgParser(argparse.ArgumentParser):
         native_group.add_argument("native_mtz", type=Path, required=True)
         native_group.add_argument(
             "-na",
-            "--native-amplitude-label",
+            "--native-amplitude-column",
             type=str,
-            default=INFER,
+            default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
         native_group.add_argument(
             "-nu",
-            "--native-uncertainty-label",
+            "--native-uncertainty-column",
             type=str,
-            default=INFER,
+            default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
@@ -102,34 +126,27 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help=f"If --kweight-mode == {KweightMode.fixed}, set the kweight-parameter to this value. Default: {KWEIGHT_PARAMETER_DEFAULT}.",
         )
 
-
-@dataclass
-class DiffMapSet:
-    native: Map
-    derivative: Map
-    calculated: Map
-
     @staticmethod
     def _construct_map(
         *,
         name: str,
         mtz_file: Path,
         calculated_map_phases: rs.DataSeries,
-        amplitude_label: str,
-        uncertainty_label: str,
+        amplitude_column: str,
+        uncertainty_column: str,
     ) -> Map:
         mtz = rs.read_mtz(mtz_file)
         mtz[PHASE_COLUMN_NAME] = calculated_map_phases
 
         found_amplitude_column = (
-            find_observed_amplitude_label(mtz.columns)
-            if amplitude_label is INFER
-            else amplitude_label
+            find_observed_amplitude_column(mtz.columns)
+            if amplitude_column is INFER_COLUMN_NAME
+            else amplitude_column
         )
         found_uncertainty_column = (
-            find_observed_uncertainty_label(mtz.columns)
-            if uncertainty_label is INFER
-            else uncertainty_label
+            find_observed_uncertainty_column(mtz.columns)
+            if uncertainty_column is INFER_COLUMN_NAME
+            else uncertainty_column
         )
 
         log.info(
@@ -147,47 +164,31 @@ class DiffMapSet:
             uncertainty_column=found_uncertainty_column,
         )
 
-    def scale(self) -> None:
-        # note: FC do not have uncertainties
-        # TODO: enable weighting with single uncertainties
-        self.native = scale_maps(
-            reference_map=self.calculated,
-            map_to_scale=self.native,
-            weight_using_uncertainties=True,
-        )
-        log.info("scaling: native map --> calculated native")
+    def load_difference_maps(self) -> DiffMapSet:
+        args = self.parse_args()
 
-        self.derivative = scale_maps(
-            reference_map=self.calculated,
-            map_to_scale=self.derivative,
-            weight_using_uncertainties=True,
-        )
-        log.info("scaling: derivative map --> calculated native")
-
-    @classmethod
-    def from_arguments(cls, args: argparse.Namespace) -> DiffMapSet:
         calculated_map = structure_to_calculated_map(
             args.pdb, high_resolution_limit=COMPUTED_MAP_RESOLUTION_LIMIT
         )
         log.info("Loading PDB & computing FC/PHIC", file=args.pdb)
 
-        derivative_map = cls._construct_map(
+        derivative_map = self._construct_map(
             name="derivative",
             mtz_file=args.derivative_mtz,
             calculated_map_phases=calculated_map.phases,
-            amplitude_label=args.derivative_amplitude_label,
-            uncertainty_label=args.derivative_uncertainty_label,
+            amplitude_column=args.derivative_amplitude_column,
+            uncertainty_column=args.derivative_uncertainty_column,
         )
 
-        native_map = cls._construct_map(
+        native_map = self._construct_map(
             name="native",
             mtz_file=args.native_mtz,
             calculated_map_phases=calculated_map.phases,
-            amplitude_label=args.native_amplitude_label,
-            uncertainty_label=args.native_uncertainty_label,
+            amplitude_column=args.native_amplitude_column,
+            uncertainty_column=args.native_uncertainty_column,
         )
 
-        mapset = cls(
+        mapset = DiffMapSet(
             native=native_map,
             derivative=derivative_map,
             calculated=calculated_map,
@@ -195,3 +196,5 @@ class DiffMapSet:
 
         mapset.scale()
         return mapset
+
+

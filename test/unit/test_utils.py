@@ -69,15 +69,15 @@ def test_canonicalize_amplitudes(
         canonicalized = random_difference_map
         utils.canonicalize_amplitudes(
             canonicalized,
-            amplitude_label=test_map_columns.amplitude,
-            phase_label=test_map_columns.phase,
+            amplitude_column=test_map_columns.amplitude,
+            phase_column=test_map_columns.phase,
             inplace=inplace,
         )
     else:
         canonicalized = utils.canonicalize_amplitudes(
             random_difference_map,
-            amplitude_label=test_map_columns.amplitude,
-            phase_label=test_map_columns.phase,
+            amplitude_column=test_map_columns.amplitude,
+            phase_column=test_map_columns.phase,
             inplace=inplace,
         )
 
