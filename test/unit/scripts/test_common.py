@@ -13,37 +13,6 @@ from meteor.rsmap import Map
 from meteor.scripts.common import DiffmapArgParser, DiffMapSet, WeightMode
 
 
-@pytest.fixture
-def diffmap_set(random_difference_map: Map) -> DiffMapSet:
-    return DiffMapSet(
-        native=random_difference_map.copy(),
-        derivative=random_difference_map.copy(),
-        calculated=random_difference_map.copy(),
-    )
-
-
-@pytest.fixture
-def base_cli_arguments() -> list[str]:
-    return [
-        "fake-derivative.mtz",
-        "-da",
-        "F",
-        "--derivative-uncertainty-column",
-        "SIGF",
-        "fake-native.mtz",
-        "--pdb",
-        "fake.pdb",
-        "-o",
-        "fake-output.mtz",
-        "-m",
-        "fake-output-metadata.csv",
-        "--kweight-mode",
-        "fixed",
-        "--kweight-parameter",
-        "0.75",
-    ]
-
-
 def mocked_read_mtz(dummy_filename: Path) -> rs.DataSet:
     assert isinstance(dummy_filename, Path)
     index = pd.MultiIndex.from_arrays([[1, 1, 5], [1, 2, 5], [1, 3, 5]], names=("H", "K", "L"))
