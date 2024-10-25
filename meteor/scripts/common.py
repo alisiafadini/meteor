@@ -1,30 +1,31 @@
 import argparse
-from dataclasses import dataclass
-
-import structlog
-from pathlib import Path
-
-from meteor.rsmap import Map
-from meteor.scale import scale_maps
-from meteor.settings import KWEIGHT_PARAMETER_DEFAULT, COMPUTED_MAP_RESOLUTION_LIMIT
-from meteor.sfcalc import structure_to_calculated_map
-from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_column
-
-from enum import StrEnum, auto
-from typing import Any
 import re
+from dataclasses import dataclass
+from enum import StrEnum, auto
+from pathlib import Path
+from typing import Any
 
 import reciprocalspaceship as rs
+import structlog
+
+from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_column
+from meteor.rsmap import Map
+from meteor.scale import scale_maps
+from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
+from meteor.sfcalc import structure_to_calculated_map
 
 log = structlog.get_logger()
 
-INFER_COLUMN_NAME = "infer"
-PHASE_COLUMN_NAME = "PHI"
-DEFAULT_OUTPUT_MTZ = Path("meteor_difference_map.mtz")
-FLOAT_REGEX = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
+INFER_COLUMN_NAME: str = "infer"
+PHASE_COLUMN_NAME: str = "PHI"
+DEFAULT_OUTPUT_MTZ: Path = Path("meteor_difference_map.mtz")
+FLOAT_REGEX: re.Pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
 
-class KweightMode(StrEnum):
+class InvalidWeightModeError(ValueError): ...
+
+
+class WeightMode(StrEnum):
     optimize = auto()
     fixed = auto()
     none = auto()
@@ -113,8 +114,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "-k",
             "--kweight-mode",
             type=str,
-            default=KweightMode.optimize,
-            choices=KweightMode,
+            default=WeightMode.optimize,
+            choices=WeightMode,
             help="Choose the k-weighting behavior.",
         )
 
@@ -123,7 +124,10 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "--kweight-parameter",
             type=float,
             default=KWEIGHT_PARAMETER_DEFAULT,
-            help=f"If --kweight-mode == {KweightMode.fixed}, set the kweight-parameter to this value. Default: {KWEIGHT_PARAMETER_DEFAULT}.",
+            help=(
+                f"If `--kweight-mode {WeightMode.fixed}`, set the kweight-parameter to this value. "
+                f"Default: {KWEIGHT_PARAMETER_DEFAULT}."
+            ),
         )
 
     @staticmethod
@@ -196,5 +200,3 @@ class DiffmapArgParser(argparse.ArgumentParser):
 
         mapset.scale()
         return mapset
-
-

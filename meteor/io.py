@@ -37,7 +37,9 @@ class AmbiguousMtzcolumnError(ValueError): ...
 def _infer_mtz_column(columns_to_search: list[str], columns_to_look_for: list[str]) -> str:
     # the next line consumes ["FOO", "BAR", "BAZ"] and produces regex strings like "^(FOO|BAR|BAZ)$"
     regex = re.compile(f"^({'|'.join(columns_to_look_for)})$")
-    matches = [regex.match(column) for column in columns_to_search if regex.match(column) is not None]
+    matches = [
+        regex.match(column) for column in columns_to_search if regex.match(column) is not None
+    ]
 
     if len(matches) == 0:
         msg = "cannot infer MTZ column name; "
