@@ -101,6 +101,30 @@ def test_scale_maps(random_difference_map: Map, use_uncertainties: bool) -> None
     )
 
 
+def test_scale_maps_uncertainty_weighting() -> None:
+    x = np.array([1, 2, 3])
+    y = np.array([4, 8, 2])
+    phi = np.array([0, 0, 0])
+    weights = np.array([1, 1, 1e6])
+
+    miller_indices = [(0, 0, 0), (0, 0, 1), (0, 0, 2)]
+    index = pd.MultiIndex.from_tuples(miller_indices, names=["H", "K", "L"])
+
+    reference_map = Map({"F": x, "PHI": phi, "SIGF": weights})
+    reference_map.index = index
+    map_to_scale = Map({"F": y, "PHI": phi, "SIGF": weights})
+    map_to_scale.index = index
+
+    scaled = scale.scale_maps(
+        reference_map=reference_map,
+        map_to_scale=map_to_scale,
+        weight_using_uncertainties=True,
+    )
+
+    assert np.isclose(scaled["F"][(0, 0, 2)], 0.5)
+    assert np.isclose(scaled["SIGF"][(0, 0, 2)], 250000.0)
+
+
 def test_scale_maps_no_uncertainties_error(random_difference_map: Map) -> None:
     no_uncertainties: Map = random_difference_map.copy()
     del no_uncertainties[no_uncertainties._uncertainty_column]
