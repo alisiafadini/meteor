@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Sequence
 
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
 
 from meteor import tv
 from meteor.rsmap import Map
@@ -47,10 +47,9 @@ def test_tv_denoise_result_to_csv(tv_denoise_result_source_data: dict, tmp_path:
     filepath = tmp_path / "tmp.csv"
     tdr_obj.write_csv(filepath)
 
-    with open(filepath, "r") as f:
-        lines = f.readlines()
-
     # spotcheck
+    with filepath.open("r") as f:
+        lines = f.readlines()
     assert "# map_sampling_used_for_tv: 5\n" in lines
     assert "1.0,5.0\n" in lines
 

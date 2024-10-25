@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from typing import Literal, Sequence, overload
 from csv import DictWriter
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Literal, Sequence, overload
 
 import numpy as np
 from skimage.restoration import denoise_tv_chambolle
 
 from .rsmap import Map
-from pathlib import Path
 from .settings import (
     MAP_SAMPLING,
     TV_MAX_NUM_ITER,
@@ -31,15 +31,15 @@ class TvDenoiseResult:
         return asdict(self)
 
     def write_csv(self, filename: Path) -> None:
-        with open(filename, "w") as csvfile:
+        with filename.open("w") as csvfile:
             # write single parameters in header
             csvfile.write("# METEOR metadata - TV Denoising Result\n")
             csvfile.write(f"# initial_negentropy: {self.initial_negentropy}\n")
             csvfile.write(f"# optimal_negentropy: {self.optimal_negentropy}\n")
             csvfile.write(f"# optimal_weight: {self.optimal_weight}\n")
             csvfile.write(f"# map_sampling_used_for_tv: {self.map_sampling_used_for_tv}\n")
-            csvfile.write(f"\n")
-            csvfile.write(f"# values scanned:\n")
+            csvfile.write("\n")
+            csvfile.write("# values scanned:\n")
 
             # write each value scanned
             fieldnames = ["weight", "negentropy"]
