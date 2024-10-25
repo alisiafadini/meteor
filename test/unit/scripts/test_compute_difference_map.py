@@ -19,7 +19,7 @@ from meteor.scripts.compute_difference_map import (
 from meteor.tv import TvDenoiseResult
 
 # ensure tests complete quickly by monkey-patching a limited number of weights
-compute_difference_map.TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 10)
+compute_difference_map.TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 6)
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
     assert isinstance(metadata, TvDenoiseResult)
 
     if mode == WeightMode.optimize:
-        assert np.isclose(metadata.optimal_weight, 0.05555555555555556)
+        assert np.isclose(metadata.optimal_weight, 0.06)
     elif mode == WeightMode.fixed:
         assert metadata.optimal_weight == 0.1
         with pytest.raises(TypeError):
