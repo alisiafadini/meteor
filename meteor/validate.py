@@ -95,13 +95,15 @@ class ScalarMaximizer:
         self.objective = objective
         self.argument_optimum: float = np.nan
         self.objective_maximum: float = -np.inf
-        self.values_evaluated: set[float] = set()
+        self.values_evaluated: list[float] = []
+        self.objective_at_values: list[float] = []
 
-    def _update_optima(self, argument_test_value: float) -> None:
+    def _update_optima(self, argument_test_value: float) -> float:
         objective_value = self.objective(argument_test_value)
         if objective_value > self.objective_maximum:
             self.argument_optimum = argument_test_value
             self.objective_maximum = objective_value
+        return objective_value
 
     def optimize_over_explicit_values(
         self, *, arguments_to_scan: Sequence[float] | np.ndarray
@@ -115,8 +117,9 @@ class ScalarMaximizer:
             A list or array of argument values to evaluate.
         """
         for argument_test_value in arguments_to_scan:
-            self._update_optima(argument_test_value)
-            self.values_evaluated.add(argument_test_value)
+            objective_value = self._update_optima(argument_test_value)
+            self.values_evaluated.append(argument_test_value)
+            self.objective_at_values.append(objective_value)
 
     def optimize_with_golden_algorithm(
         self,
@@ -142,8 +145,10 @@ class ScalarMaximizer:
 
         def _objective_with_value_tracking(argument_test_value: float) -> float:
             """Adds the evaluated value to self.values_evaluated"""
-            self.values_evaluated.add(argument_test_value)
-            return -self.objective(argument_test_value)  # negative: we want max
+            objective_value = self.objective(argument_test_value)
+            self.values_evaluated.append(argument_test_value)
+            self.objective_at_values.append(objective_value)
+            return -objective_value  # negative: we want max
 
         optimizer_result = minimize_scalar(
             _objective_with_value_tracking,
