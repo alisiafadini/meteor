@@ -20,8 +20,8 @@ from .common import DiffmapArgParser, DiffMapSet, InvalidWeightModeError, Weight
 log = structlog.get_logger()
 
 
-# TODO: optimize
-TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 10)
+# TO OPTMIZE
+TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 101)
 
 
 class TvDiffmapArgParser(DiffmapArgParser):
