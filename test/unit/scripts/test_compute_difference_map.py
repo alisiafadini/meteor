@@ -77,13 +77,15 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
     assert isinstance(metadata, TvDenoiseResult)
 
     if mode == WeightMode.optimize:
-        assert np.isclose(metadata.optimal_weight, 0.06)
+        assert metadata.optimal_weight in [0.04, 0.06]  # random test; alternates
+
     elif mode == WeightMode.fixed:
         assert metadata.optimal_weight == TV_WEIGHT
         with pytest.raises(TypeError):
             _, _ = denoise_diffmap(
                 diffmap=random_difference_map, tv_denoise_mode=mode, tv_weight=None
             )
+
     elif mode == WeightMode.none:
         assert metadata.optimal_weight == 0.0
 

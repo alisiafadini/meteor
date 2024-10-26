@@ -184,19 +184,20 @@ def scale_maps(
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
-    if weight_using_uncertainties:
-        if reference_map.has_uncertainties and map_to_scale.has_uncertainties:
-            scale_factors = compute_scale_factors(
-                reference_values=reference_map.amplitudes,
-                values_to_scale=map_to_scale.amplitudes,
-                reference_uncertainties=reference_map.uncertainties,
-                to_scale_uncertainties=map_to_scale.uncertainties,
-            )
-        else:
-            msg = "requested `weight_using_uncertainties=True`, but either `reference_map`, "
-            msg += "`map_to_scale` or both are missing an uncertainties column"
-            raise ValueError(msg)
-
+    at_least_one_map_has_uncertainties = (
+        reference_map.has_uncertainties or map_to_scale.has_uncertainties
+    )
+    if weight_using_uncertainties and at_least_one_map_has_uncertainties:
+        scale_factors = compute_scale_factors(
+            reference_values=reference_map.amplitudes,
+            values_to_scale=map_to_scale.amplitudes,
+            reference_uncertainties=(
+                reference_map.uncertainties if reference_map.has_uncertainties else None
+            ),
+            to_scale_uncertainties=(
+                map_to_scale.uncertainties if map_to_scale.has_uncertainties else None
+            ),
+        )
     else:
         scale_factors = compute_scale_factors(
             reference_values=reference_map.amplitudes, values_to_scale=map_to_scale.amplitudes

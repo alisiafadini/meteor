@@ -21,7 +21,9 @@ def structure() -> gemmi.Structure:
 
 
 def test_sf_calc(structure: gemmi.Structure) -> None:
-    calc_map: Map = sfcalc.structure_to_calculated_map(structure, high_resolution_limit=RESOLUTION)
+    calc_map: Map = sfcalc.gemmi_structure_to_calculated_map(
+        structure, high_resolution_limit=RESOLUTION
+    )
     assert calc_map.resolution_limits[1] == RESOLUTION
     assert calc_map.spacegroup == SPACE_GROUP
     assert calc_map.cell == UNIT_CELL

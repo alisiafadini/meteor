@@ -13,8 +13,10 @@ from meteor.rsmap import Map
 from meteor.scripts.common import DiffmapArgParser, DiffMapSet, WeightMode
 
 
-def mocked_read_mtz(dummy_filename: Path) -> rs.DataSet:
-    assert isinstance(dummy_filename, Path)
+def mocked_read_mtz(dummy_filename: str) -> rs.DataSet:
+    # if read_mtz gets a Path, it freaks out; requires str
+    assert isinstance(dummy_filename, str)
+
     index = pd.MultiIndex.from_arrays([[1, 1, 5], [1, 2, 5], [1, 3, 5]], names=("H", "K", "L"))
     data = {
         "F": np.array([2.0, 3.0, 1.0]),
@@ -119,7 +121,7 @@ def test_load_difference_maps(random_difference_map: Map, base_cli_arguments: li
     def return_a_map(*args: Any, **kwargs: Any) -> Map:
         return random_difference_map
 
-    mocked_fxn_1 = "meteor.scripts.common.structure_to_calculated_map"
+    mocked_fxn_1 = "meteor.scripts.common.pdb_to_calculated_map"
     mocked_fxn_2 = "meteor.scripts.common.DiffmapArgParser._construct_map"
 
     with mock.patch(mocked_fxn_1, return_a_map), mock.patch(mocked_fxn_2, return_a_map):

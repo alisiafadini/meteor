@@ -12,7 +12,7 @@ from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_
 from meteor.rsmap import Map
 from meteor.scale import scale_maps
 from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
-from meteor.sfcalc import structure_to_calculated_map
+from meteor.sfcalc import pdb_to_calculated_map
 
 log = structlog.get_logger()
 
@@ -171,7 +171,20 @@ class DiffmapArgParser(argparse.ArgumentParser):
         amplitude_column: str,
         uncertainty_column: str,
     ) -> Map:
-        mtz = rs.read_mtz(mtz_file)
+        log.info(
+            "Looking for columns in MTZ",
+            file=str(mtz_file),
+            amplitudes=amplitude_column,
+            uncertainties=uncertainty_column,
+        )
+
+        mtz = rs.read_mtz(str(mtz_file))
+        if PHASE_COLUMN_NAME in mtz.columns:
+            log.warning(
+                "phase column already in MTZ; overwriting with computed data",
+                file=str(mtz_file),
+                column=PHASE_COLUMN_NAME,
+            )
         mtz[PHASE_COLUMN_NAME] = calculated_map_phases
 
         found_amplitude_column = (
@@ -188,7 +201,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
         log.info(
             "Loading",
             map=name,
-            file=mtz_file,
+            file=str(mtz_file),
             amplitudes=found_amplitude_column,
             uncertainties=found_uncertainty_column,
         )
@@ -204,10 +217,10 @@ class DiffmapArgParser(argparse.ArgumentParser):
     def load_difference_maps(args: argparse.Namespace) -> DiffMapSet:
         # note: method accepts `args`, in case the passed arguments are mutable
 
-        calculated_map = structure_to_calculated_map(
+        log.info("Loading PDB & computing FC/PHIC", file=str(args.pdb))
+        calculated_map = pdb_to_calculated_map(
             args.pdb, high_resolution_limit=COMPUTED_MAP_RESOLUTION_LIMIT
         )
-        log.info("Loading PDB & computing FC/PHIC", file=args.pdb)
 
         derivative_map = DiffmapArgParser._construct_map(
             name="derivative",

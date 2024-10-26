@@ -123,23 +123,3 @@ def test_scale_maps_uncertainty_weighting() -> None:
 
     assert np.isclose(scaled["F"][(0, 0, 2)], 0.5)
     assert np.isclose(scaled["SIGF"][(0, 0, 2)], 250000.0)
-
-
-def test_scale_maps_no_uncertainties_error(random_difference_map: Map) -> None:
-    no_uncertainties: Map = random_difference_map.copy()
-    del no_uncertainties[no_uncertainties._uncertainty_column]
-
-    with pytest.raises(ValueError, match="requested `weight_using_uncertainties=True`"):
-        _ = scale.scale_maps(
-            reference_map=random_difference_map,
-            map_to_scale=no_uncertainties,
-            weight_using_uncertainties=True,
-        )
-
-    # swap order of maps to test both arguments
-    with pytest.raises(ValueError, match="requested `weight_using_uncertainties=True`"):
-        _ = scale.scale_maps(
-            reference_map=no_uncertainties,
-            map_to_scale=random_difference_map,
-            weight_using_uncertainties=True,
-        )
