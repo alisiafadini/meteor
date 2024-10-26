@@ -49,30 +49,36 @@ class TvDiffmapArgParser(DiffmapArgParser):
 
 def make_requested_diffmap(
     *, mapset: DiffMapSet, kweight_mode: WeightMode, kweight_parameter: float | None = None
-) -> Map:
+) -> tuple[Map, float | None]:
+    # TODO: docstring
     log.info("Computing difference map.")
 
     if kweight_mode == WeightMode.optimize:
-        diffmap, opt_k = max_negentropy_kweighted_difference_map(mapset.derivative, mapset.native)
-        log.info("  using negentropy optimized", kparameter=opt_k)
+        diffmap, kweight_parameter = max_negentropy_kweighted_difference_map(
+            mapset.derivative, mapset.native
+        )
+        log.info("  using negentropy optimized", kparameter=kweight_parameter)
 
     elif kweight_mode == WeightMode.fixed:
         if not isinstance(kweight_parameter, float):
             msg = f"`kweight_parameter` is type `{type(kweight_parameter)}`, must be `float`"
             raise TypeError(msg)
+
         diffmap = compute_kweighted_difference_map(
             mapset.derivative, mapset.native, k_parameter=kweight_parameter
         )
+
         log.info("  using fixed", kparameter=kweight_parameter)
 
     elif kweight_mode == WeightMode.none:
         diffmap = compute_difference_map(mapset.derivative, mapset.native)
+        kweight_parameter = None
         log.info(" requested no k-weighting")
 
     else:
         raise InvalidWeightModeError(kweight_mode)
 
-    return diffmap
+    return diffmap, kweight_parameter
 
 
 def denoise_diffmap(
@@ -81,6 +87,7 @@ def denoise_diffmap(
     tv_denoise_mode: WeightMode,
     tv_weight: float | None = None,
 ) -> tuple[Map, TvDenoiseResult]:
+    # TODO: docstring
     if tv_denoise_mode == WeightMode.optimize:
         log.info(
             "Searching for max-negentropy TV denoising weight",
@@ -148,7 +155,7 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     parser.check_output_filepaths(args)
     mapset = parser.load_difference_maps(args)
 
-    diffmap = make_requested_diffmap(
+    diffmap, kparameter_used = make_requested_diffmap(
         kweight_mode=args.kweight_mode, kweight_parameter=args.kweight_parameter, mapset=mapset
     )
     final_map, metadata = denoise_diffmap(
@@ -159,7 +166,8 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     final_map.write_mtz(args.mtzout)
 
     log.info("Writing metadata.", file=str(args.metadataout))
-    metadata.write_csv(args.metadataout)
+    metadata.k_parameter_used = kparameter_used
+    metadata.to_json_file(args.metadataout)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ class TvDenoiseResult:
     map_sampling_used_for_tv: float
     weights_scanned: list[float]
     negentropy_at_weights: list[float]
+    k_parameter_used: float | None = None
 
     def json(self) -> dict:
         json_payload = asdict(self)

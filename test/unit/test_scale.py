@@ -121,5 +121,5 @@ def test_scale_maps_uncertainty_weighting() -> None:
         weight_using_uncertainties=True,
     )
 
-    assert np.isclose(scaled["F"][(0, 0, 2)], 0.5)
-    assert np.isclose(scaled["SIGF"][(0, 0, 2)], 250000.0)
+    np.testing.assert_allclose(scaled["F"][(0, 0, 2)], 0.5)
+    np.testing.assert_allclose(scaled["SIGF"][(0, 0, 2)], 250000.0)
