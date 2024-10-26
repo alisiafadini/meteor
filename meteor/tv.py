@@ -20,34 +20,31 @@ from .validate import ScalarMaximizer, negentropy
 
 @dataclass
 class TvDenoiseResult:
+    # constants for JSON format
+    _scan_name = "scan"
+    _weight_name = "weight"
+    _negentropy_name = "negentropy"
+
     initial_negentropy: float
     optimal_weight: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
     weights_scanned: list[float]
     negentropy_at_weights: list[float]
-    
+
     def json(self) -> dict:
-
-        data = []
-        for idx in range(len(self.weights_scanned)):
-            data.append(
-                {
-                    "weight": self.weights_scanned[idx],
-                    "negentropy": self.negentropy_at_weights[idx],
-                }
-            )
-
-        json_payload = {
-            "initial_negentropy": self.initial_negentropy,
-            "optimal_weight": self.optimal_weight,
-            "optimal_negentropy": self.optimal_negentropy,
-            "map_sampling_used_for_tv": self.map_sampling_used_for_tv,
-            "data": data
-        }    
-
+        json_payload = asdict(self)
+        json_payload.pop("weights_scanned")
+        json_payload.pop("negentropy_at_weights")
+        json_payload[self._scan_name] = [
+            {
+                self._weight_name: self.weights_scanned[idx],
+                self._negentropy_name: self.negentropy_at_weights[idx],
+            }
+            for idx in range(len(self.weights_scanned))
+        ]
         return json_payload
-    
+
     def to_json_file(self, filename: Path) -> None:
         with filename.open("w") as f:
             json.dump(self.json(), f, indent=4)
@@ -55,13 +52,15 @@ class TvDenoiseResult:
     @classmethod
     def from_json(cls, json_payload: dict) -> TvDenoiseResult:
         try:
-            data = json_payload.pop("data")
-            json_payload["weights_scanned"] = [float(point["weight"]) for point in data]
-            json_payload["negentropy_at_weights"] = [float(point["negentropy"]) for point in data]
+            data = json_payload.pop(cls._scan_name)
+            json_payload["weights_scanned"] = [float(point[cls._weight_name]) for point in data]
+            json_payload["negentropy_at_weights"] = [
+                float(point[cls._negentropy_name]) for point in data
+            ]
             return cls(**json_payload)
 
         except Exception as exptn:
-            msg = f"could not load json payload; mis-formatted"
+            msg = "could not load json payload; mis-formatted"
             raise ValueError(msg) from exptn
 
     @classmethod
@@ -69,9 +68,6 @@ class TvDenoiseResult:
         with filename.open("r") as f:
             json_payload = json.load(f)
         return cls.from_json(json_payload)
-
- 
-
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:

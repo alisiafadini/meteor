@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Sequence
-from dataclasses import asdict
 
 import numpy as np
 import pandas as pd
