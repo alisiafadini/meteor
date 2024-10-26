@@ -1,5 +1,4 @@
 from pathlib import Path
-from unittest import mock
 
 import numpy as np
 import pytest
@@ -11,10 +10,7 @@ from meteor.scripts.common import WeightMode
 from meteor.tv import TvDenoiseResult
 from meteor.utils import filter_common_indices
 
-TV_WEIGHTS_TO_SCAN = np.array([0.005, 0.01, 0.025, 0.5])
 
-
-@mock.patch("meteor.scripts.compute_difference_map.TV_WEIGHTS_TO_SCAN", TV_WEIGHTS_TO_SCAN)
 @pytest.mark.parametrize("kweight_mode", list(WeightMode))
 @pytest.mark.parametrize("tv_weight_mode", list(WeightMode))
 def test_script_produces_consistent_results(
