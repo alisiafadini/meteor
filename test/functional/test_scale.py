@@ -7,8 +7,8 @@ from meteor.rsmap import Map
 from meteor.scale import scale_maps
 
 
-def test_scaling_regression(testing_mtz: Path) -> None:
-    ds = rs.read_mtz(str(testing_mtz))
+def test_scaling_regression(testing_mtz_file: Path) -> None:
+    ds = rs.read_mtz(str(testing_mtz_file))
 
     on = Map(ds, amplitude_column="F_on", phase_column="PHI_k", uncertainty_column="SIGF_on")
     off = Map(ds, amplitude_column="F_off", phase_column="PHI_k", uncertainty_column="SIGF_off")

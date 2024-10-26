@@ -12,7 +12,7 @@ def data_dir() -> Path:
 
 @pytest.fixture(scope="session")
 def testing_pdb_file(data_dir: Path) -> Path:
-    return data_dir / "8a6g.pdb"
+    return data_dir / "8a6g-chromophore-removed.pdb"
 
 
 @pytest.fixture(scope="session")
