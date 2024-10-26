@@ -45,7 +45,7 @@ class DiffMapSet:
             weight_using_uncertainties=weight_using_uncertainties,
         )
         log.info(
-            "scaling: native map --> calculated native",
+            "scaling: native --> calculated",
             weight_using_uncertainties=weight_using_uncertainties,
         )
 
@@ -55,7 +55,7 @@ class DiffMapSet:
             weight_using_uncertainties=weight_using_uncertainties,
         )
         log.info(
-            "scaling: derivative map --> calculated native",
+            "scaling: derivative --> calculated",
             weight_using_uncertainties=weight_using_uncertainties,
         )
 
@@ -172,10 +172,9 @@ class DiffmapArgParser(argparse.ArgumentParser):
         uncertainty_column: str,
     ) -> Map:
         log.info(
-            "Looking for columns in MTZ",
+            "Reading structure factors...",
             file=str(mtz_file),
-            amplitudes=amplitude_column,
-            uncertainties=uncertainty_column,
+            map=name,
         )
 
         mtz = rs.read_mtz(str(mtz_file))
@@ -192,19 +191,14 @@ class DiffmapArgParser(argparse.ArgumentParser):
             if amplitude_column is INFER_COLUMN_NAME
             else amplitude_column
         )
+        log.info("  amplitudes", sought=amplitude_column, found=found_amplitude_column)
+
         found_uncertainty_column = (
             find_observed_uncertainty_column(mtz.columns)
             if uncertainty_column is INFER_COLUMN_NAME
             else uncertainty_column
         )
-
-        log.info(
-            "Loading",
-            map=name,
-            file=str(mtz_file),
-            amplitudes=found_amplitude_column,
-            uncertainties=found_uncertainty_column,
-        )
+        log.info("  uncertainties", sought=uncertainty_column, found=found_uncertainty_column)
 
         return Map(
             mtz,

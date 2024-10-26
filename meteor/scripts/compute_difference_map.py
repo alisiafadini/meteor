@@ -50,9 +50,11 @@ class TvDiffmapArgParser(DiffmapArgParser):
 def make_requested_diffmap(
     *, mapset: DiffMapSet, kweight_mode: WeightMode, kweight_parameter: float | None = None
 ) -> Map:
+    log.info("Computing difference map.")
+
     if kweight_mode == WeightMode.optimize:
         diffmap, opt_k = max_negentropy_kweighted_difference_map(mapset.derivative, mapset.native)
-        log.info("Computing max negentropy diffmap with optimized k-parameter:", value=opt_k)
+        log.info("  using negentropy optimized", kparameter=opt_k)
 
     elif kweight_mode == WeightMode.fixed:
         if not isinstance(kweight_parameter, float):
@@ -61,11 +63,11 @@ def make_requested_diffmap(
         diffmap = compute_kweighted_difference_map(
             mapset.derivative, mapset.native, k_parameter=kweight_parameter
         )
-        log.info("Computing diffmap with user-specified k-parameter:", value=kweight_parameter)
+        log.info("  using fixed", kparameter=kweight_parameter)
 
     elif kweight_mode == WeightMode.none:
         diffmap = compute_difference_map(mapset.derivative, mapset.native)
-        log.info("Computing unweighted difference map.")
+        log.info(" requested no k-weighting")
 
     else:
         raise InvalidWeightModeError(kweight_mode)
@@ -93,10 +95,10 @@ def denoise_diffmap(
         )
 
         log.info(
-            "Optimal TV weight found, map denoised.",
-            best_weight=metadata.optimal_weight,
-            initial_negentropy=metadata.initial_negentropy,
-            final_negetropy=round(metadata.optimal_negentropy, 3),
+            "Optimal TV weight found",
+            weight=metadata.optimal_weight,
+            initial_negentropy=f"{metadata.initial_negentropy:.2e}",
+            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.fixed:
@@ -110,10 +112,10 @@ def denoise_diffmap(
         )
 
         log.info(
-            "Map TV-denoised with fixed weight.",
+            "Map TV-denoised with fixed weight",
             weight=tv_weight,
-            initial_negentropy=metadata.initial_negentropy,
-            final_negetropy=round(metadata.optimal_negentropy, 3),
+            initial_negentropy=f"{metadata.initial_negentropy:.2e}",
+            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.none:
@@ -130,7 +132,7 @@ def denoise_diffmap(
             negentropy_at_weights=[map_negetropy],
         )
 
-        log.info("Requested no denoising. Skipping TV step.")
+        log.info("Requested no TV denoising")
 
     else:
         raise InvalidWeightModeError(tv_denoise_mode)
@@ -153,10 +155,10 @@ def main(command_line_arguments: list[str] | None = None) -> None:
         tv_denoise_mode=args.tv_denoise_mode, tv_weight=args.tv_weight, diffmap=diffmap
     )
 
-    log.info("Writing output.", file=args.mtzout)
+    log.info("Writing output.", file=str(args.mtzout))
     final_map.write_mtz(args.mtzout)
 
-    log.info("Writing metadata.", file=args.metadataout)
+    log.info("Writing metadata.", file=str(args.metadataout))
     metadata.write_csv(args.metadataout)
 
 
