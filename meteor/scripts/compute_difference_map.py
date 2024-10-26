@@ -47,10 +47,39 @@ class TvDiffmapArgParser(DiffmapArgParser):
         )
 
 
-def make_requested_diffmap(
+def kweight_diffmap_according_to_mode(
     *, mapset: DiffMapSet, kweight_mode: WeightMode, kweight_parameter: float | None = None
 ) -> tuple[Map, float | None]:
-    # TODO: docstring
+    """
+    Make and k-weight a difference map using a specified `WeightMode`.
+
+    Three modes are possible to pick the k-parameter:
+      * `WeightMode.optimize`, max-negentropy value will and picked, this may take some time
+      * `WeightMode.fixed`, `kweight_parameter` is used
+      * `WeightMode.none`, then no k-weighting is done (note this is NOT equivalent to
+         kweight_parameter=0.0)
+
+    Parameters
+    ----------
+    mapset: DiffMapSet
+        The set of `derivative`, `native`, `computed` maps to use to compute the diffmap.
+
+    kweight_mode: WeightMode
+        How to set the k-parameter: {optimize, fixed, none}. See above. If `fixed`, then
+        `kweight_parameter` is required.
+
+    kweight_parameter: float | None
+        If kweight_mode == WeightMode.fixed, then this must be a float that specifies the
+        k-parameter to use.
+
+    Returns
+    -------
+    diffmap: meteor.rsmap.Map
+        The difference map, k-weighted if requested.
+
+    kweight_parameter: float | None
+        The `kweight_parameter` used. Only really interesting if WeightMode.optimize.
+    """
     log.info("Computing difference map.")
 
     if kweight_mode == WeightMode.optimize:
@@ -84,13 +113,41 @@ def make_requested_diffmap(
     return diffmap, kweight_parameter
 
 
-def denoise_diffmap(
+def denoise_diffmap_according_to_mode(
     *,
     diffmap: Map,
     tv_denoise_mode: WeightMode,
     tv_weight: float | None = None,
 ) -> tuple[Map, TvDenoiseResult]:
-    # TODO: docstring
+    """
+    Denoise a difference map `diffmap` using a specified `WeightMode`.
+
+    Three modes are possible:
+      * `WeightMode.optimize`, max-negentropy value will and picked, this may take some time
+      * `WeightMode.fixed`, `tv_weight` is used
+      * `WeightMode.none`, then no TV denoising is done (equivalent to weight = 0.0)
+
+    Parameters
+    ----------
+    diffmap: meteor.rsmap.Map
+        The map to denoise.
+
+    tv_denoise_mode: WeightMode
+        How to set the TV weight parameter: {optimize, fixed, none}. See above. If `fixed`, the
+        `tv_weight` parameter is required.
+
+    tv_weight: float | None
+        If tv_denoise_mode == WeightMode.fixed, then this must be a float that specifies the weight
+        to use.
+
+    Returns
+    -------
+    final_map: meteor.rsmap.Map
+        The difference map, denoised if requested
+
+    metadata: meteor.tv.TvDenoiseResult
+        Information regarding the denoising process.
+    """
     if tv_denoise_mode == WeightMode.optimize:
         log.info(
             "Searching for max-negentropy TV denoising weight",
@@ -164,10 +221,10 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     parser.check_output_filepaths(args)
     mapset = parser.load_difference_maps(args)
 
-    diffmap, kparameter_used = make_requested_diffmap(
+    diffmap, kparameter_used = kweight_diffmap_according_to_mode(
         kweight_mode=args.kweight_mode, kweight_parameter=args.kweight_parameter, mapset=mapset
     )
-    final_map, metadata = denoise_diffmap(
+    final_map, metadata = denoise_diffmap_according_to_mode(
         tv_denoise_mode=args.tv_denoise_mode, tv_weight=args.tv_weight, diffmap=diffmap
     )
 

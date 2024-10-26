@@ -1,10 +1,9 @@
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import pytest
 import reciprocalspaceship as rs
-
-from unittest import mock
 
 from meteor.rsmap import Map
 from meteor.scripts import compute_difference_map
@@ -12,8 +11,8 @@ from meteor.scripts.common import WeightMode
 from meteor.tv import TvDenoiseResult
 from meteor.utils import filter_common_indices
 
-
 TV_WEIGHTS_TO_SCAN = np.array([0.005, 0.01, 0.025, 0.5])
+
 
 @mock.patch("meteor.scripts.compute_difference_map.TV_WEIGHTS_TO_SCAN", TV_WEIGHTS_TO_SCAN)
 @pytest.mark.parametrize("kweight_mode", list(WeightMode))
@@ -25,7 +24,6 @@ def test_script_produces_consistent_results(
     testing_mtz_file: Path,
     tmp_path: Path,
 ) -> None:
-    
     # for when WeightMode.fixed; these maximize negentropy in manual testing
     kweight_parameter = 0.05
     tv_weight = 0.01

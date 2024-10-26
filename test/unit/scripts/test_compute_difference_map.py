@@ -13,8 +13,8 @@ from meteor.scripts import compute_difference_map
 from meteor.scripts.common import DiffMapSet, WeightMode
 from meteor.scripts.compute_difference_map import (
     TvDiffmapArgParser,
-    denoise_diffmap,
-    make_requested_diffmap,
+    denoise_diffmap_according_to_mode,
+    kweight_diffmap_according_to_mode,
 )
 from meteor.tv import TvDenoiseResult
 
@@ -48,13 +48,13 @@ def test_tv_diffmap_parser(parsed_tv_cli_args: argparse.Namespace) -> None:
 
 
 @pytest.mark.parametrize("mode", list(WeightMode))
-def test_make_requested_diffmap(
+def test_kweight_diffmap_according_to_mode(
     mode: WeightMode, diffmap_set: DiffMapSet, fixed_kparameter: float
 ) -> None:
     # ensure the two maps aren't exactly the same to prevent numerical issues
     diffmap_set.derivative.amplitudes.iloc[0] += 1.0
 
-    diffmap, _ = make_requested_diffmap(
+    diffmap, _ = kweight_diffmap_according_to_mode(
         mapset=diffmap_set, kweight_mode=mode, kweight_parameter=fixed_kparameter
     )
     assert len(diffmap) > 0
@@ -62,14 +62,14 @@ def test_make_requested_diffmap(
 
     if mode == WeightMode.fixed:
         with pytest.raises(TypeError):
-            _ = make_requested_diffmap(
+            _ = kweight_diffmap_according_to_mode(
                 mapset=diffmap_set, kweight_mode=mode, kweight_parameter=None
             )
 
 
 @pytest.mark.parametrize("mode", list(WeightMode))
-def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
-    diffmap, metadata = denoise_diffmap(
+def test_denoise_diffmap_according_to_mode(mode: WeightMode, random_difference_map: Map) -> None:
+    diffmap, metadata = denoise_diffmap_according_to_mode(
         diffmap=random_difference_map,
         tv_denoise_mode=mode,
         tv_weight=TV_WEIGHT,
@@ -85,7 +85,7 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
     elif mode == WeightMode.fixed:
         assert metadata.optimal_weight == TV_WEIGHT
         with pytest.raises(TypeError):
-            _, _ = denoise_diffmap(
+            _, _ = denoise_diffmap_according_to_mode(
                 diffmap=random_difference_map, tv_denoise_mode=mode, tv_weight=None
             )
 
