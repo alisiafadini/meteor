@@ -26,6 +26,9 @@ dev = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
+[project.scripts]
+"meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
+
 [tool.mypy]
 disallow_untyped_calls = true
 disallow_untyped_defs = true

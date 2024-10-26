@@ -35,6 +35,7 @@ def tv_denoise_result_source_data() -> dict:
         "map_sampling_used_for_tv": 5,
         "weights_scanned": [0.0, 1.0],
         "negentropy_at_weights": [0.0, 5.0],
+        "k_parameter_used": 0.0,
     }
 
 

@@ -12,7 +12,7 @@ from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_
 from meteor.rsmap import Map
 from meteor.scale import scale_maps
 from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
-from meteor.sfcalc import pdb_to_calculated_map
+from meteor.sfcalc import structure_file_to_calculated_map
 
 log = structlog.get_logger()
 
@@ -68,7 +68,6 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "derivative",
             description=(
                 "The 'derivative' diffraction data, typically: light-triggered, ligand-bound, etc. "
-                "We compute derivative-minus-native maps."
             ),
         )
         derivative_group.add_argument("derivative_mtz", type=Path)
@@ -89,11 +88,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
 
         native_group = self.add_argument_group(
             "native",
-            description=(
-                "The 'native' diffraction data, typically: dark, apo, etc. We compute derivative-"
-                "minus-native maps. The single set of known phases are typically assumed to "
-                "correspond to the native dataset."
-            ),
+            description=("The 'native' diffraction data, typically: dark, apo, etc."),
         )
         native_group.add_argument("native_mtz", type=Path)
         native_group.add_argument(
@@ -112,11 +107,11 @@ class DiffmapArgParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            "-p",
-            "--pdb",
+            "-s",
+            "--structure",
             type=Path,
             required=True,
-            help="Specify PDB file path, model should correspond to the native MTZ.",
+            help="Specify CIF or PDB file path to compute phases from (usually a native model).",
         )
 
         self.add_argument(
@@ -211,9 +206,9 @@ class DiffmapArgParser(argparse.ArgumentParser):
     def load_difference_maps(args: argparse.Namespace) -> DiffMapSet:
         # note: method accepts `args`, in case the passed arguments are mutable
 
-        log.info("Loading PDB & computing FC/PHIC", file=str(args.pdb))
-        calculated_map = pdb_to_calculated_map(
-            args.pdb, high_resolution_limit=COMPUTED_MAP_RESOLUTION_LIMIT
+        log.info("Loading PDB & computing FC/PHIC", file=str(args.structure))
+        calculated_map = structure_file_to_calculated_map(
+            args.structure, high_resolution_limit=COMPUTED_MAP_RESOLUTION_LIMIT
         )
 
         derivative_map = DiffmapArgParser._construct_map(

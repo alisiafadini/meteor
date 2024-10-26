@@ -29,7 +29,7 @@ def base_cli_arguments(fixed_kparameter: float) -> list[str]:
         "--derivative-uncertainty-column",
         "SIGF",
         "fake-native.mtz",
-        "--pdb",
+        "--structure",
         "fake.pdb",
         "-o",
         "fake-output.mtz",

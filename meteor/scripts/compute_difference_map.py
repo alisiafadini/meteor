@@ -58,6 +58,9 @@ def make_requested_diffmap(
             mapset.derivative, mapset.native
         )
         log.info("  using negentropy optimized", kparameter=kweight_parameter)
+        if kweight_parameter is np.nan:
+            msg = "determined `k-parameter` is NaN, something went wrong..."
+            raise RuntimeError(msg)
 
     elif kweight_mode == WeightMode.fixed:
         if not isinstance(kweight_parameter, float):
@@ -149,7 +152,13 @@ def denoise_diffmap(
 
 def main(command_line_arguments: list[str] | None = None) -> None:
     parser = TvDiffmapArgParser(
-        description="Compute a difference map using native, derivative, and calculated MTZ files."
+        description=(
+            "Compute an isomorphous difference map, optionally applying k-weighting and/or "
+            "TV-denoising if desired. \n\n In the terminology adopted, this script computes a "
+            "`derivative` minus a `native` map, using a constant phase approximation. Phases, "
+            "typically from a model of the `native` data, are computed from a CIF/PDB model you "
+            "must provide."
+        )
     )
     args = parser.parse_args(command_line_arguments)
     parser.check_output_filepaths(args)

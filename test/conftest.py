@@ -11,6 +11,11 @@ def data_dir() -> Path:
 
 
 @pytest.fixture(scope="session")
+def testing_cif_file(data_dir: Path) -> Path:
+    return data_dir / "8a6g-chromophore-removed.cif"
+
+
+@pytest.fixture(scope="session")
 def testing_pdb_file(data_dir: Path) -> Path:
     return data_dir / "8a6g-chromophore-removed.pdb"
 

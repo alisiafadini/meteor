@@ -53,7 +53,7 @@ def test_diffmap_argparser_parse_args(base_cli_arguments: list[str]) -> None:
     assert args.native_mtz == Path("fake-native.mtz")
     assert args.native_amplitude_column == "infer"
     assert args.native_uncertainty_column == "infer"
-    assert args.pdb == Path("fake.pdb")
+    assert args.structure == Path("fake.pdb")
     assert args.mtzout == Path("fake-output.mtz")
     assert args.metadataout == Path("fake-output-metadata.csv")
     assert args.kweight_mode == WeightMode.fixed
@@ -121,7 +121,7 @@ def test_load_difference_maps(random_difference_map: Map, base_cli_arguments: li
     def return_a_map(*args: Any, **kwargs: Any) -> Map:
         return random_difference_map
 
-    mocked_fxn_1 = "meteor.scripts.common.pdb_to_calculated_map"
+    mocked_fxn_1 = "meteor.scripts.common.structure_file_to_calculated_map"
     mocked_fxn_2 = "meteor.scripts.common.DiffmapArgParser._construct_map"
 
     with mock.patch(mocked_fxn_1, return_a_map), mock.patch(mocked_fxn_2, return_a_map):

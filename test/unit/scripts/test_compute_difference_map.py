@@ -51,7 +51,10 @@ def test_tv_diffmap_parser(parsed_tv_cli_args: argparse.Namespace) -> None:
 def test_make_requested_diffmap(
     mode: WeightMode, diffmap_set: DiffMapSet, fixed_kparameter: float
 ) -> None:
-    diffmap = make_requested_diffmap(
+    # ensure the two maps aren't exactly the same to prevent numerical issues
+    diffmap_set.derivative.amplitudes.iloc[0] += 1.0
+
+    diffmap, _ = make_requested_diffmap(
         mapset=diffmap_set, kweight_mode=mode, kweight_parameter=fixed_kparameter
     )
     assert len(diffmap) > 0
@@ -100,7 +103,7 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) 
     cli_arguments = [
         "fake-derivative.mtz",
         "fake-native.mtz",
-        "--pdb",
+        "--structure",
         "fake.pdb",
         "-o",
         str(output_mtz_path),
