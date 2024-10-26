@@ -33,7 +33,10 @@ class TvDiffmapArgParser(DiffmapArgParser):
             type=WeightMode,
             default=WeightMode.optimize,
             choices=list(WeightMode),
-            help="Choose how to find a TV denoising regularization weight (lambda) parameter.",
+            help=(
+                "How to find a TV regularization weight (lambda). Optimize means pick maximum "
+                "negentropy. Default: `optimize`."
+            ) 
         )
         self.add_argument(
             "-l",

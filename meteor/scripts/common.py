@@ -111,7 +111,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "--structure",
             type=Path,
             required=True,
-            help="Specify CIF or PDB file path to compute phases from (usually a native model).",
+            help="Specify CIF or PDB file path, for phases (usually a native model). Required.",
         )
 
         self.add_argument(
@@ -136,7 +136,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             type=WeightMode,
             default=WeightMode.optimize,
             choices=list(WeightMode),
-            help="Choose the k-weighting behavior.",
+            help="How to pick the k-parameter. Optimize means max negentropy. Default: `optimize`.",
         )
 
         self.add_argument(

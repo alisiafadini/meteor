@@ -39,8 +39,8 @@ class TvDenoiseResult:
         json_payload.pop("negentropy_at_weights")
         json_payload[self._scan_name] = [
             {
-                self._weight_name: self.weights_scanned[idx],
-                self._negentropy_name: self.negentropy_at_weights[idx],
+                self._weight_name: float(self.weights_scanned[idx]),
+                self._negentropy_name: float(self.negentropy_at_weights[idx]),
             }
             for idx in range(len(self.weights_scanned))
         ]

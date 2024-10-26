@@ -57,7 +57,7 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
         )
         raise ValueError(msg)
 
-    return neg_e
+    return float(neg_e)
 
 
 class ScalarMaximizer:
@@ -103,7 +103,7 @@ class ScalarMaximizer:
         if objective_value > self.objective_maximum:
             self.argument_optimum = argument_test_value
             self.objective_maximum = objective_value
-        return objective_value
+        return float(objective_value)
 
     def optimize_over_explicit_values(
         self, *, arguments_to_scan: Sequence[float] | np.ndarray
@@ -117,6 +117,7 @@ class ScalarMaximizer:
             A list or array of argument values to evaluate.
         """
         for argument_test_value in arguments_to_scan:
+            argument_test_value = float(argument_test_value)
             objective_value = self._update_optima(argument_test_value)
             self.values_evaluated.append(argument_test_value)
             self.objective_at_values.append(objective_value)
