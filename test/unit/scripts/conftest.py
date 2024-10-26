@@ -16,7 +16,12 @@ def diffmap_set(random_difference_map: Map) -> DiffMapSet:
 
 
 @pytest.fixture
-def base_cli_arguments() -> list[str]:
+def fixed_kparameter() -> float:
+    return 0.75
+
+
+@pytest.fixture
+def base_cli_arguments(fixed_kparameter: float) -> list[str]:
     return [
         "fake-derivative.mtz",
         "-da",
@@ -33,5 +38,5 @@ def base_cli_arguments() -> list[str]:
         "--kweight-mode",
         "fixed",
         "--kweight-parameter",
-        "0.75",
+        str(fixed_kparameter),
     ]

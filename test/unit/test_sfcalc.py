@@ -30,8 +30,8 @@ def test_sf_calc(structure: gemmi.Structure) -> None:
     assert np.any(calc_map.phases != 0.0)
 
 
-def test_pdb_to_calculated_map(example_pdb_file: Path) -> None:
-    calc_map: Map = sfcalc.pdb_to_calculated_map(example_pdb_file, high_resolution_limit=RESOLUTION)
+def test_pdb_to_calculated_map(testing_pdb_file: Path) -> None:
+    calc_map: Map = sfcalc.pdb_to_calculated_map(testing_pdb_file, high_resolution_limit=RESOLUTION)
     npt.assert_allclose(calc_map.resolution_limits[1], RESOLUTION, atol=1e-5)
 
     # CRYST1   51.990   62.910   72.030  90.00  90.00  90.00 P 21 21 21

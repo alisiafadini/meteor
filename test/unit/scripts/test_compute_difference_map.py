@@ -22,13 +22,16 @@ from meteor.tv import TvDenoiseResult
 compute_difference_map.TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 6)
 
 
+TV_WEIGHT = 0.1
+
+
 @pytest.fixture
 def tv_cli_arguments(base_cli_arguments: list[str]) -> list[str]:
     new_cli_arguments = [
         "-tv",
         "fixed",
         "--tv-weight",
-        "0.1",
+        str(TV_WEIGHT),
     ]
     return [*base_cli_arguments, *new_cli_arguments]
 
@@ -41,12 +44,16 @@ def parsed_tv_cli_args(tv_cli_arguments: list[str]) -> argparse.Namespace:
 
 def test_tv_diffmap_parser(parsed_tv_cli_args: argparse.Namespace) -> None:
     assert parsed_tv_cli_args.tv_denoise_mode == WeightMode.fixed
-    assert parsed_tv_cli_args.tv_weight == 0.1
+    assert parsed_tv_cli_args.tv_weight == TV_WEIGHT
 
 
 @pytest.mark.parametrize("mode", list(WeightMode))
-def test_make_requested_diffmap(mode: WeightMode, diffmap_set: DiffMapSet) -> None:
-    diffmap = make_requested_diffmap(mapset=diffmap_set, kweight_mode=mode, kweight_parameter=0.75)
+def test_make_requested_diffmap(
+    mode: WeightMode, diffmap_set: DiffMapSet, fixed_kparameter: float
+) -> None:
+    diffmap = make_requested_diffmap(
+        mapset=diffmap_set, kweight_mode=mode, kweight_parameter=fixed_kparameter
+    )
     assert len(diffmap) > 0
     assert isinstance(diffmap, Map)
 
@@ -62,7 +69,7 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
     diffmap, metadata = denoise_diffmap(
         diffmap=random_difference_map,
         tv_denoise_mode=mode,
-        tv_weight=0.1,
+        tv_weight=TV_WEIGHT,
     )
 
     assert len(diffmap) > 0
@@ -72,7 +79,7 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
     if mode == WeightMode.optimize:
         assert np.isclose(metadata.optimal_weight, 0.06)
     elif mode == WeightMode.fixed:
-        assert metadata.optimal_weight == 0.1
+        assert metadata.optimal_weight == TV_WEIGHT
         with pytest.raises(TypeError):
             _, _ = denoise_diffmap(
                 diffmap=random_difference_map, tv_denoise_mode=mode, tv_weight=None
@@ -81,7 +88,7 @@ def test_denoise_diffmap(mode: WeightMode, random_difference_map: Map) -> None:
         assert metadata.optimal_weight == 0.0
 
 
-def test_main(diffmap_set: DiffMapSet, tmp_path: Path) -> None:
+def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) -> None:
     def mock_load_difference_maps(self: Any, args: argparse.Namespace) -> DiffMapSet:
         return diffmap_set
 
@@ -100,11 +107,11 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path) -> None:
         "--kweight-mode",
         "fixed",
         "--kweight-parameter",
-        "0.75",
+        str(fixed_kparameter),
         "-tv",
         "fixed",
         "-l",
-        "0.1",
+        str(TV_WEIGHT),
     ]
 
     fxn_to_mock = "meteor.scripts.compute_difference_map.TvDiffmapArgParser.load_difference_maps"
