@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Sequence
+from dataclasses import asdict
 
 import numpy as np
 import pandas as pd
@@ -37,21 +38,21 @@ def tv_denoise_result_source_data() -> dict:
     }
 
 
-def test_tv_denoise_result_dict(tv_denoise_result_source_data: dict) -> None:
+def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
     tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
-    assert tv_denoise_result_source_data == tdr_obj.dict()
+    assert tv_denoise_result_source_data == asdict(tdr_obj)
+
+    json = tdr_obj.json()
+    roundtrip = tv.TvDenoiseResult.from_json(json)
+    assert tv_denoise_result_source_data == asdict(roundtrip)
 
 
-def test_tv_denoise_result_to_csv(tv_denoise_result_source_data: dict, tmp_path: Path) -> None:
+def test_tv_denoise_result_to_file(tv_denoise_result_source_data: dict, tmp_path: Path) -> None:
     tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
-    filepath = tmp_path / "tmp.csv"
-    tdr_obj.write_csv(filepath)
-
-    # spotcheck
-    with filepath.open("r") as f:
-        lines = f.readlines()
-    assert "# map_sampling_used_for_tv: 5\n" in lines
-    assert "1.0,5.0\n" in lines
+    filepath = tmp_path / "tmp.json"
+    tdr_obj.to_json_file(filepath)
+    roundtrip = tv.TvDenoiseResult.from_json_file(filepath)
+    assert tv_denoise_result_source_data == asdict(roundtrip)
 
 
 @pytest.mark.parametrize(

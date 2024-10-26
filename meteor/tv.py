@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from csv import DictWriter
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, Sequence, overload
@@ -26,32 +26,52 @@ class TvDenoiseResult:
     map_sampling_used_for_tv: float
     weights_scanned: list[float]
     negentropy_at_weights: list[float]
+    
+    def json(self) -> dict:
 
-    def dict(self) -> dict:
-        return asdict(self)
+        data = []
+        for idx in range(len(self.weights_scanned)):
+            data.append(
+                {
+                    "weight": self.weights_scanned[idx],
+                    "negentropy": self.negentropy_at_weights[idx],
+                }
+            )
 
-    def write_csv(self, filename: Path) -> None:
-        with filename.open("w") as csvfile:
-            # write single parameters in header
-            csvfile.write("# METEOR metadata - TV Denoising Result\n")
-            csvfile.write(f"# initial_negentropy: {self.initial_negentropy}\n")
-            csvfile.write(f"# optimal_negentropy: {self.optimal_negentropy}\n")
-            csvfile.write(f"# optimal_weight: {self.optimal_weight}\n")
-            csvfile.write(f"# map_sampling_used_for_tv: {self.map_sampling_used_for_tv}\n")
-            csvfile.write("\n")
-            csvfile.write("# values scanned:\n")
+        json_payload = {
+            "initial_negentropy": self.initial_negentropy,
+            "optimal_weight": self.optimal_weight,
+            "optimal_negentropy": self.optimal_negentropy,
+            "map_sampling_used_for_tv": self.map_sampling_used_for_tv,
+            "data": data
+        }    
 
-            # write each value scanned
-            fieldnames = ["weight", "negentropy"]
-            writer = DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for idx in range(len(self.weights_scanned)):
-                writer.writerow(
-                    {
-                        "weight": self.weights_scanned[idx],
-                        "negentropy": self.negentropy_at_weights[idx],
-                    }
-                )
+        return json_payload
+    
+    def to_json_file(self, filename: Path) -> None:
+        with filename.open("w") as f:
+            json.dump(self.json(), f, indent=4)
+
+    @classmethod
+    def from_json(cls, json_payload: dict) -> TvDenoiseResult:
+        try:
+            data = json_payload.pop("data")
+            json_payload["weights_scanned"] = [float(point["weight"]) for point in data]
+            json_payload["negentropy_at_weights"] = [float(point["negentropy"]) for point in data]
+            return cls(**json_payload)
+
+        except Exception as exptn:
+            msg = f"could not load json payload; mis-formatted"
+            raise ValueError(msg) from exptn
+
+    @classmethod
+    def from_json_file(cls, filename: Path) -> TvDenoiseResult:
+        with filename.open("r") as f:
+            json_payload = json.load(f)
+        return cls.from_json(json_payload)
+
+ 
+
 
 
 def _tv_denoise_array(*, map_as_array: np.ndarray, weight: float) -> np.ndarray:
