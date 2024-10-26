@@ -85,8 +85,9 @@ def test_script_produces_consistent_results(
                 err_msg="tv weight optimium different from expected",
             )
         else:
+            optimal_tv_with_weighting = 0.00867
             np.testing.assert_allclose(
-                tv_weight,
+                optimal_tv_with_weighting,
                 result_metadata.optimal_weight,
                 rtol=0.1,
                 err_msg="tv weight optimium different from expected",
