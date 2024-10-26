@@ -117,10 +117,9 @@ class ScalarMaximizer:
             A list or array of argument values to evaluate.
         """
         for argument_test_value in arguments_to_scan:
-            argument_test_value = float(argument_test_value)
             objective_value = self._update_optima(argument_test_value)
-            self.values_evaluated.append(argument_test_value)
-            self.objective_at_values.append(objective_value)
+            self.values_evaluated.append(float(argument_test_value))
+            self.objective_at_values.append(float(objective_value))
 
     def optimize_with_golden_algorithm(
         self,

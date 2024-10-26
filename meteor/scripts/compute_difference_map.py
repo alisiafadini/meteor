@@ -36,7 +36,7 @@ class TvDiffmapArgParser(DiffmapArgParser):
             help=(
                 "How to find a TV regularization weight (lambda). Optimize means pick maximum "
                 "negentropy. Default: `optimize`."
-            ) 
+            ),
         )
         self.add_argument(
             "-l",
