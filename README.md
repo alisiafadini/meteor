@@ -25,7 +25,7 @@ TODO: installation instructions
 Once installed, you will have two command-line scripts. Ask for more info using `-h`:
 ```
 meteor.diffmap -h
-meteor.tvphase -h
+meteor.phaseboost -h
 ```
 which compute denoised difference maps using the constant-phase approximation _vs._ iterative phase retrieval, respectively.
 
