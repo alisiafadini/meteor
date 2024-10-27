@@ -16,10 +16,20 @@ Map Enhancement Tools for Ephemeral Occupancy Refinement
 
 ❗ `meteor` is currently **in beta**. We re-wrote everything recently, moving from a research code to something that can be robustly used as a tool. If you are willing to put up with a few sharp edges, it would be great if you give it a spin and then send us feedback: on how easy/not it was to use and what kinds of scientific results you obtain.
 
-Finally: a word of caution. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with `meteor` until we exit `beta`.
+Finally: a word of caution. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with `meteor` until we exit `beta`. 
 
+In that vein, for now please install the current master branch as per the following instructions. We'll have a sane
+first stable version soon, which will be deployed straight to `PyPI` and `conda-forge`. Stay posted.
+
+First, we recommend you make a new environment. For conda users,
 ```
-TODO: installation instructions
+conda create --name meteor python==3.11 --yes
+conda activate meteor
+```
+
+Then install from github,
+```
+pip install git+https://github.com/alisiafadini/meteor
 ```
 
 Once installed, you will have two command-line scripts. Ask for more info using `-h`:

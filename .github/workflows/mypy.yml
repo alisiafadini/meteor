@@ -25,6 +25,6 @@ jobs:
     - name: mypy
       run: |
         pip install mypy
-        pip install .
+        pip install '.[tests]'
         mkdir .mypy_cache
         mypy --install-types --non-interactive meteor/ test/
