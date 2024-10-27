@@ -7,35 +7,32 @@ from unittest import mock
 
 import pytest
 
-from meteor.scripts import compute_difference_map
-from meteor.scripts.common import DiffMapSet, WeightMode
-from meteor.scripts.compute_difference_map import (
-    TvDiffmapArgParser,
+from meteor.scripts import compute_iterative_tv_map
+from meteor.scripts.common import DiffMapSet
+from meteor.scripts.compute_iterative_tv_map import (
+    IterativeTvArgParser,
 )
 
-TV_WEIGHT = 0.1
+TV_WEIGHTS_TO_SCAN = [0.01, 0.05]
 
 
 @pytest.fixture
 def tv_cli_arguments(base_cli_arguments: list[str]) -> list[str]:
     new_cli_arguments = [
-        "-tv",
-        "fixed",
-        "--tv-weight",
-        str(TV_WEIGHT),
+        "--tv-weights-to-scan",
+        *[str(x) for x in TV_WEIGHTS_TO_SCAN],
     ]
     return [*base_cli_arguments, *new_cli_arguments]
 
 
 @pytest.fixture
 def parsed_tv_cli_args(tv_cli_arguments: list[str]) -> argparse.Namespace:
-    parser = TvDiffmapArgParser()
+    parser = IterativeTvArgParser()
     return parser.parse_args(tv_cli_arguments)
 
 
 def test_tv_diffmap_parser(parsed_tv_cli_args: argparse.Namespace) -> None:
-    assert parsed_tv_cli_args.tv_denoise_mode == WeightMode.fixed
-    assert parsed_tv_cli_args.tv_weight == TV_WEIGHT
+    assert parsed_tv_cli_args.tv_weights_to_scan == TV_WEIGHTS_TO_SCAN
 
 
 def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) -> None:
@@ -58,15 +55,15 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) 
         "fixed",
         "--kweight-parameter",
         str(fixed_kparameter),
-        "-tv",
-        "fixed",
-        "-l",
-        str(TV_WEIGHT),
+        "-x",
+        *[str(x) for x in TV_WEIGHTS_TO_SCAN],
     ]
 
-    fxn_to_mock = "meteor.scripts.compute_difference_map.TvDiffmapArgParser.load_difference_maps"
-    with mock.patch(fxn_to_mock, mock_load_difference_maps):
-        compute_difference_map.main(cli_arguments)
+    # TODO is very slow
+
+    fxn_to_mck = "meteor.scripts.compute_iterative_tv_map.IterativeTvArgParser.load_difference_maps"
+    with mock.patch(fxn_to_mck, mock_load_difference_maps):
+        compute_iterative_tv_map.main(cli_arguments)
 
     assert output_mtz_path.exists()
     assert output_metadata_path.exists()

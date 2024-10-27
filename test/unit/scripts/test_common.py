@@ -10,7 +10,12 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
-from meteor.scripts.common import DiffmapArgParser, DiffMapSet, WeightMode
+from meteor.scripts.common import (
+    DiffmapArgParser,
+    DiffMapSet,
+    WeightMode,
+    kweight_diffmap_according_to_mode,
+)
 
 
 def mocked_read_mtz(dummy_filename: str) -> rs.DataSet:
@@ -129,3 +134,23 @@ def test_load_difference_maps(random_difference_map: Map, base_cli_arguments: li
         assert isinstance(mapset.native, Map)
         assert isinstance(mapset.derivative, Map)
         assert isinstance(mapset.calculated, Map)
+
+
+@pytest.mark.parametrize("mode", list(WeightMode))
+def test_kweight_diffmap_according_to_mode(
+    mode: WeightMode, diffmap_set: DiffMapSet, fixed_kparameter: float
+) -> None:
+    # ensure the two maps aren't exactly the same to prevent numerical issues
+    diffmap_set.derivative.amplitudes.iloc[0] += 1.0
+
+    diffmap, _ = kweight_diffmap_according_to_mode(
+        mapset=diffmap_set, kweight_mode=mode, kweight_parameter=fixed_kparameter
+    )
+    assert len(diffmap) > 0
+    assert isinstance(diffmap, Map)
+
+    if mode == WeightMode.fixed:
+        with pytest.raises(TypeError):
+            _ = kweight_diffmap_according_to_mode(
+                mapset=diffmap_set, kweight_mode=mode, kweight_parameter=None
+            )
