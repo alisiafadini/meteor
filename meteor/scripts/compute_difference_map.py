@@ -148,9 +148,7 @@ def denoise_diffmap_according_to_mode(
         Information regarding the denoising process.
     """
     if tv_denoise_mode == WeightMode.optimize:
-        log.info(
-            "Searching for max-negentropy TV denoising weight", method="golden-section search"
-        )
+        log.info("Searching for max-negentropy TV denoising weight", method="golden-section search")
         log.info("This may take some time...")
 
         final_map, metadata = tv_denoise_difference_map(diffmap, full_output=True)
