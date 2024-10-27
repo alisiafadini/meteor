@@ -131,4 +131,6 @@ def test_tv_denoise_map(
     )
 
     assert rms_to_noise_free(denoised_map) < rms_to_noise_free(noisy_map), "error didnt drop"
-    np.testing.assert_allclose(result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight")
+    np.testing.assert_allclose(
+        result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight"
+    )

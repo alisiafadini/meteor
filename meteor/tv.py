@@ -10,10 +10,10 @@ from skimage.restoration import denoise_tv_chambolle
 
 from .rsmap import Map
 from .settings import (
+    BRACKET_FOR_GOLDEN_OPTIMIZATION,
     MAP_SAMPLING,
     TV_MAX_NUM_ITER,
     TV_STOP_TOLERANCE,
-    BRACKET_FOR_GOLDEN_OPTIMIZATION,
 )
 from .validate import ScalarMaximizer, negentropy
 
