@@ -122,7 +122,7 @@ def _complex_derivative_from_iterative_tv(
         metadata.append(
             {
                 "iteration": num_iterations,
-                "tv_weight": tv_metadata.optimal_weight,
+                "tv_weight": tv_metadata.optimal_tv_weight,
                 "negentropy_after_tv": tv_metadata.optimal_negentropy,
                 "average_phase_change": phase_change,
             },

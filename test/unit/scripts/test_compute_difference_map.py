@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-import numpy as np
 import pytest
 
 from meteor.rsmap import Map
@@ -17,10 +16,6 @@ from meteor.scripts.compute_difference_map import (
     kweight_diffmap_according_to_mode,
 )
 from meteor.tv import TvDenoiseResult
-
-# ensure tests complete quickly by monkey-patching a limited number of weights
-compute_difference_map.TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 6)
-
 
 TV_WEIGHT = 0.1
 
@@ -80,17 +75,18 @@ def test_denoise_diffmap_according_to_mode(mode: WeightMode, random_difference_m
     assert isinstance(metadata, TvDenoiseResult)
 
     if mode == WeightMode.optimize:
-        assert metadata.optimal_weight in [0.04, 0.06]  # random test; alternates
+        # random test; changes
+        assert 0.04 < metadata.optimal_tv_weight < 0.06
 
     elif mode == WeightMode.fixed:
-        assert metadata.optimal_weight == TV_WEIGHT
+        assert metadata.optimal_tv_weight == TV_WEIGHT
         with pytest.raises(TypeError):
             _, _ = denoise_diffmap_according_to_mode(
                 diffmap=random_difference_map, tv_denoise_mode=mode, tv_weight=None
             )
 
     elif mode == WeightMode.none:
-        assert metadata.optimal_weight == 0.0
+        assert metadata.optimal_tv_weight == 0.0
 
 
 def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) -> None:

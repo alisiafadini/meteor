@@ -20,10 +20,6 @@ from .common import DiffmapArgParser, DiffMapSet, InvalidWeightModeError, Weight
 log = structlog.get_logger()
 
 
-# TO OPTMIZE
-TV_WEIGHTS_TO_SCAN = np.linspace(0.0, 0.1, 101)
-
-
 class TvDiffmapArgParser(DiffmapArgParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -153,20 +149,15 @@ def denoise_diffmap_according_to_mode(
     """
     if tv_denoise_mode == WeightMode.optimize:
         log.info(
-            "Searching for max-negentropy TV denoising weight",
-            min=np.min(TV_WEIGHTS_TO_SCAN),
-            max=np.max(TV_WEIGHTS_TO_SCAN),
-            points_to_test=len(TV_WEIGHTS_TO_SCAN),
+            "Searching for max-negentropy TV denoising weight", method="golden ration optimization"
         )
         log.info("This may take some time...")
 
-        final_map, metadata = tv_denoise_difference_map(
-            diffmap, full_output=True, weights_to_scan=TV_WEIGHTS_TO_SCAN
-        )
+        final_map, metadata = tv_denoise_difference_map(diffmap, full_output=True)
 
         log.info(
             "Optimal TV weight found",
-            weight=metadata.optimal_weight,
+            weight=metadata.optimal_tv_weight,
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
             final_negetropy=f"{metadata.optimal_negentropy:.2e}",
         )
@@ -196,9 +187,9 @@ def denoise_diffmap_according_to_mode(
         metadata = TvDenoiseResult(
             initial_negentropy=map_negetropy,
             optimal_negentropy=map_negetropy,
-            optimal_weight=0.0,
+            optimal_tv_weight=0.0,
             map_sampling_used_for_tv=MAP_SAMPLING,
-            weights_scanned=[0.0],
+            tv_weights_scanned=[0.0],
             negentropy_at_weights=[map_negetropy],
         )
 

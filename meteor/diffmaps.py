@@ -174,7 +174,7 @@ def max_negentropy_kweighted_difference_map(
 
     maximizer = ScalarMaximizer(objective=negentropy_objective)
     maximizer.optimize_over_explicit_values(arguments_to_scan=k_parameter_values_to_scan)
-    opt_k_parameter = maximizer.argument_optimum
+    opt_k_parameter = float(maximizer.argument_optimum)
 
     kweighted_dataset = compute_kweighted_difference_map(
         derivative,

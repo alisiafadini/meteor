@@ -30,9 +30,9 @@ def simple_tv_function(fourier_array: np.ndarray) -> tuple[np.ndarray, TvDenoise
     denoised = denoise_tv_chambolle(real_space, weight=weight)  # type: ignore[no-untyped-call]
     result = TvDenoiseResult(
         initial_negentropy=0.0,
-        optimal_weight=weight,
+        optimal_tv_weight=weight,
         optimal_negentropy=1.0,
-        weights_scanned=[weight],
+        tv_weights_scanned=[weight],
         negentropy_at_weights=[1.0],
         map_sampling_used_for_tv=0,
     )
