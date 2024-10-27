@@ -28,6 +28,7 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 "meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
+"meteor.phaseboost" = "meteor.scripts.compute_iterative_tv_map:main"
 
 [tool.mypy]
 disallow_untyped_calls = true
