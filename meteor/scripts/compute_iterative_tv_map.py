@@ -7,6 +7,7 @@ import structlog
 from meteor.iterative import iterative_tv_phase_retrieval
 from meteor.tv import tv_denoise_difference_map
 
+
 from .common import DiffmapArgParser, kweight_diffmap_according_to_mode
 
 log = structlog.get_logger()
@@ -54,18 +55,13 @@ def main(command_line_arguments: list[str] | None = None) -> None:
         kweight_mode=args.kweight_mode, kweight_parameter=args.kweight_parameter, mapset=mapset
     )
 
-    # TODO: used fixed weight or golden method?
-    final_map, final_tv_metadata = tv_denoise_difference_map(
-        diffmap, full_output=True, weights_to_scan=args.tv_weights_to_scan
-    )
+    final_map, final_tv_metadata = tv_denoise_difference_map(diffmap, full_output=True)
 
     log.info("Writing output.", file=str(args.mtzout))
     final_map.write_mtz(args.mtzout)
 
-    # TODO: append it_tv_metadata
-    # log.info("Writing metadata.", file=str(args.metadataout))
-    # metadata.k_parameter_used = kparameter_used
-    #
+    log.info("Writing metadata.", file=str(args.metadataout))
+    final_tv_metadata.k_parameter_used = kparameter_used
 
 
 if __name__ == "__main__":

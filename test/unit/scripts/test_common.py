@@ -10,11 +10,14 @@ import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
+from meteor.tv import TvDenoiseResult
 from meteor.scripts.common import (
     DiffmapArgParser,
     DiffMapSet,
     WeightMode,
     kweight_diffmap_according_to_mode,
+    write_combined_metadata,
+    read_combined_metadata,
 )
 
 
@@ -154,3 +157,15 @@ def test_kweight_diffmap_according_to_mode(
             _ = kweight_diffmap_according_to_mode(
                 mapset=diffmap_set, kweight_mode=mode, kweight_parameter=None
             )
+
+def test_read_write_combined_metadata(tmp_path: Path, tv_denoise_result_source_data: dict) -> None:
+    filename = tmp_path / "tmp.json"
+
+    fake_ittv_metadata = pd.DataFrame([1,2,3])
+    fake_tv_metadata = TvDenoiseResult(**tv_denoise_result_source_data)
+
+    write_combined_metadata(filename=filename, it_tv_metadata=fake_ittv_metadata, final_tv_metadata=fake_tv_metadata)
+    obtained_ittv_metadata, obtained_tv_metadata = read_combined_metadata(filename=filename)
+
+    pd.testing.assert_frame_equal(fake_ittv_metadata, obtained_ittv_metadata)
+    assert fake_tv_metadata == obtained_tv_metadata

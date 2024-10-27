@@ -10,7 +10,10 @@ from typing import Any
 import numpy as np
 import reciprocalspaceship as rs
 import structlog
+import json
+import pandas as pd
 
+from meteor.tv import TvDenoiseResult
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
@@ -309,3 +312,21 @@ def kweight_diffmap_according_to_mode(
         raise InvalidWeightModeError(kweight_mode)
 
     return diffmap, kweight_parameter
+
+
+def write_combined_metadata(*, filename: Path, it_tv_metadata: pd.DataFrame, final_tv_metadata: TvDenoiseResult) -> None:
+    combined_metadata = {
+        "iterative_tv": it_tv_metadata.to_json(),
+        "final_tv_pass": final_tv_metadata.json(),
+    }
+    with filename.open("w") as f:
+        json.dump(combined_metadata, f, indent=4)
+
+
+def read_combined_metadata(*, filename: Path) -> tuple[pd.DataFrame, TvDenoiseResult]:
+    with filename.open("r") as f:
+        combined_metadata = json.load(f)
+    print("***", pd.read_json(combined_metadata["iterative_tv"]))
+    it_tv_metadata = pd.read_json(combined_metadata["iterative_tv"])
+    final_tv_metadata = TvDenoiseResult.from_json(combined_metadata["final_tv_pass"])
+    return it_tv_metadata, final_tv_metadata

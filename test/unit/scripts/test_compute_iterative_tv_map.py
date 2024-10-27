@@ -20,7 +20,7 @@ TV_WEIGHTS_TO_SCAN = [0.01, 0.05]
 def tv_cli_arguments(base_cli_arguments: list[str]) -> list[str]:
     new_cli_arguments = [
         "--tv-weights-to-scan",
-        *[str(x) for x in TV_WEIGHTS_TO_SCAN],
+        *[str(weight) for weight in TV_WEIGHTS_TO_SCAN],
     ]
     return [*base_cli_arguments, *new_cli_arguments]
 
@@ -56,7 +56,7 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) 
         "--kweight-parameter",
         str(fixed_kparameter),
         "-x",
-        *[str(x) for x in TV_WEIGHTS_TO_SCAN],
+        *[str(weight) for weight in TV_WEIGHTS_TO_SCAN],
     ]
 
     # TODO is very slow

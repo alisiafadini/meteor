@@ -26,17 +26,7 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
     return float(np.linalg.norm(map2_array - map1_array))
 
 
-@pytest.fixture
-def tv_denoise_result_source_data() -> dict:
-    return {
-        "initial_negentropy": 0.0,
-        "optimal_tv_weight": 1.0,
-        "optimal_negentropy": 5.0,
-        "map_sampling_used_for_tv": 5,
-        "tv_weights_scanned": [0.0, 1.0],
-        "negentropy_at_weights": [0.0, 5.0],
-        "k_parameter_used": 0.0,
-    }
+
 
 
 def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
