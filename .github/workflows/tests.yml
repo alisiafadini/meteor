@@ -26,7 +26,7 @@ jobs:
     
     - name: Test with pytest
       run: |
-        pip install .[all]
+        pip install '.[all]'
         pytest test/
     
     - name: Upload coverage to Codecov  
