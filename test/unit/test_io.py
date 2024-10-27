@@ -6,7 +6,7 @@ import pytest
 
 from meteor import io
 
-FIND_LABEL_FUNC_TYPE = Callable[[list[str]], str]
+FIND_column_FUNC_TYPE = Callable[[list[str]], str]
 
 
 OBSERVED_INTENSITY_CASES = [
@@ -60,46 +60,46 @@ COMPUTED_PHASE_CASES = [
 ]
 
 
-def test_infer_mtz_label() -> None:
+def test_infer_mtz_column() -> None:
     to_search = ["FOO", "BAR", "BAZ"]
-    assert io._infer_mtz_label(to_search, ["FOO"]) == "FOO"
-    assert io._infer_mtz_label(to_search, ["BAR"]) == "BAR"
-    with pytest.raises(io.AmbiguousMtzLabelError):
-        _ = io._infer_mtz_label(to_search, [])
-    with pytest.raises(io.AmbiguousMtzLabelError):
-        _ = io._infer_mtz_label(to_search, ["FOO", "BAR"])
+    assert io._infer_mtz_column(to_search, ["FOO"]) == "FOO"
+    assert io._infer_mtz_column(to_search, ["BAR"]) == "BAR"
+    with pytest.raises(io.AmbiguousMtzColumnError):
+        _ = io._infer_mtz_column(to_search, [])
+    with pytest.raises(io.AmbiguousMtzColumnError):
+        _ = io._infer_mtz_column(to_search, ["FOO", "BAR"])
 
 
-def validate_find_label_result(
-    function: FIND_LABEL_FUNC_TYPE, labels: list[str], expected_result: str
+def validate_find_column_result(
+    function: FIND_column_FUNC_TYPE, columns: list[str], expected_result: str
 ) -> None:
     if expected_result == "raise":
-        with pytest.raises(io.AmbiguousMtzLabelError):
-            _ = function(labels)
+        with pytest.raises(io.AmbiguousMtzColumnError):
+            _ = function(columns)
     else:
-        assert function(labels) == expected_result
+        assert function(columns) == expected_result
 
 
-@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_INTENSITY_CASES)
-def test_find_observed_intensity_label(labels: list[str], expected_result: str) -> None:
-    validate_find_label_result(io.find_observed_intensity_label, labels, expected_result)
+@pytest.mark.parametrize(("columns", "expected_result"), OBSERVED_INTENSITY_CASES)
+def test_find_observed_intensity_column(columns: list[str], expected_result: str) -> None:
+    validate_find_column_result(io.find_observed_intensity_column, columns, expected_result)
 
 
-@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_AMPLITUDE_CASES)
-def test_find_observed_amplitude_label(labels: list[str], expected_result: str) -> None:
-    validate_find_label_result(io.find_observed_amplitude_label, labels, expected_result)
+@pytest.mark.parametrize(("columns", "expected_result"), OBSERVED_AMPLITUDE_CASES)
+def test_find_observed_amplitude_column(columns: list[str], expected_result: str) -> None:
+    validate_find_column_result(io.find_observed_amplitude_column, columns, expected_result)
 
 
-@pytest.mark.parametrize(("labels", "expected_result"), OBSERVED_UNCERTAINTY_CASES)
-def test_find_observed_uncertainty_label(labels: list[str], expected_result: str) -> None:
-    validate_find_label_result(io.find_observed_uncertainty_label, labels, expected_result)
+@pytest.mark.parametrize(("columns", "expected_result"), OBSERVED_UNCERTAINTY_CASES)
+def test_find_observed_uncertainty_column(columns: list[str], expected_result: str) -> None:
+    validate_find_column_result(io.find_observed_uncertainty_column, columns, expected_result)
 
 
-@pytest.mark.parametrize(("labels", "expected_result"), COMPUTED_AMPLITUDE_CASES)
-def test_find_computed_amplitude_label(labels: list[str], expected_result: str) -> None:
-    validate_find_label_result(io.find_computed_amplitude_label, labels, expected_result)
+@pytest.mark.parametrize(("columns", "expected_result"), COMPUTED_AMPLITUDE_CASES)
+def test_find_computed_amplitude_column(columns: list[str], expected_result: str) -> None:
+    validate_find_column_result(io.find_computed_amplitude_column, columns, expected_result)
 
 
-@pytest.mark.parametrize(("labels", "expected_result"), COMPUTED_PHASE_CASES)
-def test_find_computed_phase_label(labels: list[str], expected_result: str) -> None:
-    validate_find_label_result(io.find_computed_phase_label, labels, expected_result)
+@pytest.mark.parametrize(("columns", "expected_result"), COMPUTED_PHASE_CASES)
+def test_find_computed_phase_column(columns: list[str], expected_result: str) -> None:
+    validate_find_column_result(io.find_computed_phase_column, columns, expected_result)

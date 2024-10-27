@@ -9,6 +9,7 @@ __pycache__/
 *.map
 *.mtz
 *.pdb
+*.cif
 
 # C extensions
 *.so

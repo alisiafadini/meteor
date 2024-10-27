@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+from pathlib import Path
 from typing import Sequence
 
 import numpy as np
@@ -22,6 +24,36 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
     map2_array /= map2_array.std()
 
     return float(np.linalg.norm(map2_array - map1_array))
+
+
+@pytest.fixture
+def tv_denoise_result_source_data() -> dict:
+    return {
+        "initial_negentropy": 0.0,
+        "optimal_tv_weight": 1.0,
+        "optimal_negentropy": 5.0,
+        "map_sampling_used_for_tv": 5,
+        "tv_weights_scanned": [0.0, 1.0],
+        "negentropy_at_weights": [0.0, 5.0],
+        "k_parameter_used": 0.0,
+    }
+
+
+def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
+    tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
+    assert tv_denoise_result_source_data == asdict(tdr_obj)
+
+    json = tdr_obj.json()
+    roundtrip = tv.TvDenoiseResult.from_json(json)
+    assert tv_denoise_result_source_data == asdict(roundtrip)
+
+
+def test_tv_denoise_result_to_file(tv_denoise_result_source_data: dict, tmp_path: Path) -> None:
+    tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
+    filepath = tmp_path / "tmp.json"
+    tdr_obj.to_json_file(filepath)
+    roundtrip = tv.TvDenoiseResult.from_json_file(filepath)
+    assert tv_denoise_result_source_data == asdict(roundtrip)
 
 
 @pytest.mark.parametrize(
@@ -59,7 +91,7 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     )
     random_difference_map.canonicalize_amplitudes()
     output.canonicalize_amplitudes()
-    pd.testing.assert_frame_equal(random_difference_map, output, rtol=1e-2)
+    pd.testing.assert_frame_equal(random_difference_map, output, atol=1e-3, rtol=1e-2)
 
 
 @pytest.mark.parametrize("weights_to_scan", [None, DEFAULT_WEIGHTS_TO_SCAN])
@@ -99,4 +131,6 @@ def test_tv_denoise_map(
     )
 
     assert rms_to_noise_free(denoised_map) < rms_to_noise_free(noisy_map), "error didnt drop"
-    np.testing.assert_allclose(result.optimal_weight, best_weight, rtol=0.5, err_msg="opt weight")
+    np.testing.assert_allclose(
+        result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight"
+    )

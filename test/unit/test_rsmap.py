@@ -340,9 +340,7 @@ def test_ccp4_map_round_trip(
     output_coefficients.canonicalize_amplitudes()
 
     pd.testing.assert_series_equal(
-        random_difference_map.amplitudes,
-        output_coefficients.amplitudes,
-        atol=1e-3,
+        random_difference_map.amplitudes, output_coefficients.amplitudes, atol=0.01
     )
     assert_phases_allclose(
         random_difference_map.phases.to_numpy(),

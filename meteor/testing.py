@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import gemmi
 import numpy as np
@@ -20,6 +21,12 @@ def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol: float =
     if not absolute_difference < atol:
         msg = f"per element diff {absolute_difference} > tolerance {atol}"
         raise AssertionError(msg)
+
+
+def check_test_file_exists(path: Path) -> None:
+    if not path.exists():
+        msg = f"cannot find {path}, use github LFS to retrieve this file from the parent repo"
+        raise OSError(msg)
 
 
 def single_carbon_structure(

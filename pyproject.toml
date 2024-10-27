@@ -12,6 +12,7 @@ dependencies = [
     "gemmi",
     "scikit-image",
     "reciprocalspaceship",
+    "structlog",
     "pytest",
     "pytest-cov",
 ]
@@ -24,6 +25,9 @@ dev = [
 [build-system]
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+"meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
 
 [tool.mypy]
 disallow_untyped_calls = true
