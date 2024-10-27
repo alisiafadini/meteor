@@ -13,7 +13,7 @@ from .settings import (
     MAP_SAMPLING,
     TV_MAX_NUM_ITER,
     TV_STOP_TOLERANCE,
-    TV_WEIGHT_RANGE,
+    BRACKET_FOR_GOLDEN_OPTIMIZATION,
 )
 from .validate import ScalarMaximizer, negentropy
 
@@ -26,23 +26,23 @@ class TvDenoiseResult:
     _negentropy_name = "negentropy"
 
     initial_negentropy: float
-    optimal_weight: float
+    optimal_tv_weight: float
     optimal_negentropy: float
     map_sampling_used_for_tv: float
-    weights_scanned: list[float]
+    tv_weights_scanned: list[float]
     negentropy_at_weights: list[float]
     k_parameter_used: float | None = None
 
     def json(self) -> dict:
         json_payload = asdict(self)
-        json_payload.pop("weights_scanned")
+        json_payload.pop("tv_weights_scanned")
         json_payload.pop("negentropy_at_weights")
         json_payload[self._scan_name] = [
             {
-                self._weight_name: float(self.weights_scanned[idx]),
+                self._weight_name: float(self.tv_weights_scanned[idx]),
                 self._negentropy_name: float(self.negentropy_at_weights[idx]),
             }
-            for idx in range(len(self.weights_scanned))
+            for idx in range(len(self.tv_weights_scanned))
         ]
         return json_payload
 
@@ -54,7 +54,7 @@ class TvDenoiseResult:
     def from_json(cls, json_payload: dict) -> TvDenoiseResult:
         try:
             data = json_payload.pop(cls._scan_name)
-            json_payload["weights_scanned"] = [float(point[cls._weight_name]) for point in data]
+            json_payload["tv_weights_scanned"] = [float(point[cls._weight_name]) for point in data]
             json_payload["negentropy_at_weights"] = [
                 float(point[cls._negentropy_name]) for point in data
             ]
@@ -157,7 +157,7 @@ def tv_denoise_difference_map(
     -------
     >>> coefficients = Map.read_mtz("./path/to/difference_map.mtz", ...)  # load dataset
     >>> denoised_map, result = tv_denoise_difference_map(coefficients, full_output=True)
-    >>> print(f"Optimal: {result.optimal_weight}, Negentropy: {result.optimal_negentropy}")
+    >>> print(f"Optimal: {result.optimal_tv_weight}, Negentropy: {result.optimal_negentropy}")
     """
     realspace_map = difference_map.to_ccp4_map(map_sampling=MAP_SAMPLING)
     realspace_map_array = np.array(realspace_map.grid)
@@ -170,7 +170,7 @@ def tv_denoise_difference_map(
     if weights_to_scan is not None:
         maximizer.optimize_over_explicit_values(arguments_to_scan=weights_to_scan)
     else:
-        maximizer.optimize_with_golden_algorithm(bracket=TV_WEIGHT_RANGE)
+        maximizer.optimize_with_golden_algorithm(bracket=BRACKET_FOR_GOLDEN_OPTIMIZATION)
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_realspace_map_as_array = _tv_denoise_array(
@@ -201,10 +201,10 @@ def tv_denoise_difference_map(
         initial_negentropy = negentropy(realspace_map_array)
         tv_result = TvDenoiseResult(
             initial_negentropy=initial_negentropy,
-            optimal_weight=maximizer.argument_optimum,
+            optimal_tv_weight=maximizer.argument_optimum,
             optimal_negentropy=maximizer.objective_maximum,
             map_sampling_used_for_tv=MAP_SAMPLING,
-            weights_scanned=maximizer.values_evaluated,
+            tv_weights_scanned=maximizer.values_evaluated,
             negentropy_at_weights=maximizer.objective_at_values,
         )
         return final_map, tv_result

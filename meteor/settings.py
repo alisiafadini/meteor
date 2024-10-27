@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-TV_WEIGHT_RANGE: tuple[float, float] = (0.0, 0.05)  # for golden optimization
+BRACKET_FOR_GOLDEN_OPTIMIZATION: tuple[float, float] = (0.0, 0.05)
 TV_STOP_TOLERANCE: float = 0.00000005
 TV_MAX_NUM_ITER: int = 50
 MAP_SAMPLING: int = 3

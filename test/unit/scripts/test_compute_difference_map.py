@@ -76,17 +76,17 @@ def test_denoise_diffmap_according_to_mode(mode: WeightMode, random_difference_m
 
     if mode == WeightMode.optimize:
         # random test; changes
-        assert 0.04 < metadata.optimal_weight < 0.06
+        assert 0.04 < metadata.optimal_tv_weight < 0.06
 
     elif mode == WeightMode.fixed:
-        assert metadata.optimal_weight == TV_WEIGHT
+        assert metadata.optimal_tv_weight == TV_WEIGHT
         with pytest.raises(TypeError):
             _, _ = denoise_diffmap_according_to_mode(
                 diffmap=random_difference_map, tv_denoise_mode=mode, tv_weight=None
             )
 
     elif mode == WeightMode.none:
-        assert metadata.optimal_weight == 0.0
+        assert metadata.optimal_tv_weight == 0.0
 
 
 def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) -> None:

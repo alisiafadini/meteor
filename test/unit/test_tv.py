@@ -30,10 +30,10 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
 def tv_denoise_result_source_data() -> dict:
     return {
         "initial_negentropy": 0.0,
-        "optimal_weight": 1.0,
+        "optimal_tv_weight": 1.0,
         "optimal_negentropy": 5.0,
         "map_sampling_used_for_tv": 5,
-        "weights_scanned": [0.0, 1.0],
+        "tv_weights_scanned": [0.0, 1.0],
         "negentropy_at_weights": [0.0, 5.0],
         "k_parameter_used": 0.0,
     }
@@ -131,4 +131,4 @@ def test_tv_denoise_map(
     )
 
     assert rms_to_noise_free(denoised_map) < rms_to_noise_free(noisy_map), "error didnt drop"
-    np.testing.assert_allclose(result.optimal_weight, best_weight, rtol=0.5, err_msg="opt weight")
+    np.testing.assert_allclose(result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight")
