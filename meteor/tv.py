@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, Sequence, overload
+from typing import Literal, overload
 
 import numpy as np
 from skimage.restoration import denoise_tv_chambolle

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Literal, overload
+from typing import Any, ClassVar, Literal, overload
 
 import gemmi
 import numpy as np
