@@ -20,7 +20,9 @@ log = structlog.get_logger()
 class IterativeTvArgParser(DiffmapArgParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.add_argument(
+
+        it_tv_group = self.add_argument_group("iterative TV settings")
+        it_tv_group.add_argument(
             "-x",
             "--tv-weights-to-scan",
             nargs="+",
@@ -31,7 +33,7 @@ class IterativeTvArgParser(DiffmapArgParser):
                 f"Default: {DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION}."
             ),
         )
-        self.add_argument(
+        it_tv_group.add_argument(
             "--convergence-tolerance",
             type=float,
             default=ITERATIVE_TV_CONVERGENCE_TOLERANCE,
@@ -40,7 +42,7 @@ class IterativeTvArgParser(DiffmapArgParser):
                 f"Default: {ITERATIVE_TV_CONVERGENCE_TOLERANCE}."
             ),
         )
-        self.add_argument(
+        it_tv_group.add_argument(
             "--max-iterations",
             type=float,
             default=ITERATIVE_TV_MAX_ITERATIONS,
