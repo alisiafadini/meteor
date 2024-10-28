@@ -7,19 +7,18 @@ authors = [
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
 ]
 dependencies = [
-    "numpy",
-    "scipy",
-    "gemmi",
-    "scikit-image",
-    "reciprocalspaceship",
-    "structlog",
-    "pytest",
-    "pytest-cov",
+    "numpy >= 1.26",
+    "scipy >= 1.14.0",
+    "gemmi >= 0.6.6",
+    "scikit-image >= 0.24.0",
+    "reciprocalspaceship >= 1.0.2",
+    "structlog >= 24.4.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pre-commit",
+tests = [
+    "pytest",
+    "pytest-cov",
 ]
 
 [build-system]
