@@ -2,6 +2,7 @@
 name = "meteor"
 description = "denoise crystallographic difference maps"
 version = "0.2.0"
+requires-python = ">3.11"
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
