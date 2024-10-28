@@ -62,12 +62,7 @@ def test_script_produces_consistent_results(
     assert negentropy_over_iterations[-1] > negentropy_over_iterations[0]
 
     # 2. make sure negentropy increased in the final TV pass
-    if kweight_mode == WeightMode.none and tv_weight_mode == WeightMode.none:
-        np.testing.assert_allclose(
-            final_tv_metadata.optimal_negentropy, final_tv_metadata.initial_negentropy
-        )
-    else:
-        assert final_tv_metadata.optimal_negentropy >= final_tv_metadata.initial_negentropy
+    assert final_tv_metadata.optimal_negentropy >= final_tv_metadata.initial_negentropy
 
     # 3. make sure computed DF are close to those stored on disk
     reference_dataset = rs.read_mtz(str(testing_mtz_file))
