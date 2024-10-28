@@ -4,14 +4,21 @@ from typing import Callable
 
 import numpy as np
 import pandas as pd
+import structlog
 
 from .rsmap import Map
-from .settings import DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION
+from .settings import (
+    DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
+    ITERATIVE_TV_CONVERGENCE_TOLERANCE,
+    ITERATIVE_TV_MAX_ITERATIONS,
+)
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
     complex_array_to_rs_dataseries,
 )
+
+log = structlog.get_logger()
 
 
 def _project_derivative_on_experimental_set(
@@ -52,13 +59,14 @@ def _project_derivative_on_experimental_set(
     return projected_derivative
 
 
-def _complex_derivative_from_iterative_tv(
+def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
     *,
     native: np.ndarray,
     initial_derivative: np.ndarray,
     tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]],
-    convergence_tolerance: float = 1e-4,
-    max_iterations: int = 1000,
+    convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
+    max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
+    verbose: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Estimate the derivative phases using the iterative TV algorithm.
@@ -85,6 +93,9 @@ def _complex_derivative_from_iterative_tv(
 
     max_iterations: int
         If this number of iterations is reached, stop early. Default 1000.
+
+    verbose: bool
+        Log or not.
 
     Returns
     -------
@@ -126,6 +137,12 @@ def _complex_derivative_from_iterative_tv(
                 "average_phase_change": phase_change,
             },
         )
+        if verbose:
+            log.info(
+                f"  iter {num_iterations:03d}",  # noqa: G004
+                phase_change=round(phase_change, 4),
+                negentropy=round(tv_metadata.optimal_negentropy, 4),
+            )
 
         if num_iterations > max_iterations:
             break
@@ -133,13 +150,14 @@ def _complex_derivative_from_iterative_tv(
     return derivative, pd.DataFrame(metadata)
 
 
-def iterative_tv_phase_retrieval(
+def iterative_tv_phase_retrieval(  # noqa: PLR0913
     initial_derivative: Map,
     native: Map,
     *,
-    convergence_tolerance: float = 1e-4,
-    max_iterations: int = 1000,
+    convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
+    max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
     tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
+    verbose: bool = False,
 ) -> tuple[Map, pd.DataFrame]:
     """
     Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless
@@ -181,6 +199,9 @@ def iterative_tv_phase_retrieval(
         A list of TV regularization weights (λ values) to be scanned for optimal results,
         by default [0.001, 0.01, 0.1, 1.0].
 
+    verbose: bool
+        Log or not.
+
     Returns
     -------
     output_map: Map
@@ -208,12 +229,19 @@ def iterative_tv_phase_retrieval(
         return denoised_map.complex_amplitudes, tv_metadata
 
     # estimate the derivative phases using the iterative TV algorithm
+    if verbose:
+        log.info(
+            "convergence criteria:",
+            phase_tolerance=convergence_tolerance,
+            max_iterations=max_iterations,
+        )
     it_tv_complex_derivative, metadata = _complex_derivative_from_iterative_tv(
         native=native.complex_amplitudes,
         initial_derivative=initial_derivative.complex_amplitudes,
         tv_denoise_function=tv_denoise_closure,
         convergence_tolerance=convergence_tolerance,
         max_iterations=max_iterations,
+        verbose=verbose,
     )
     _, derivative_phases = complex_array_to_rs_dataseries(
         it_tv_complex_derivative,

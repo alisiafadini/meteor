@@ -85,7 +85,7 @@ def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> flo
     phase2 = np.rad2deg(np.angle(array2))
     diff = phase2 - phase1
     diff = (diff + 180) % 360 - 180
-    return np.sum(np.abs(diff)) / float(np.prod(array1.shape))
+    return float(np.sum(np.abs(diff)) / float(np.prod(array1.shape)))
 
 
 def complex_array_to_rs_dataseries(

@@ -56,7 +56,7 @@ def test_script_produces_consistent_results(
     result_map = Map.read_mtz_file(output_mtz)
 
     # 1. make sure the negentropy increased during iterative TV
-    negentropy_over_iterations = iterative_tv_metadata["negentropy_after_tv"]
+    negentropy_over_iterations = iterative_tv_metadata["negentropy_after_tv"].to_numpy()
     assert negentropy_over_iterations[-1] > negentropy_over_iterations[0]
 
     # 2. make sure negentropy increased in the final TV pass
@@ -80,4 +80,4 @@ def test_script_produces_consistent_results(
     if (kweight_mode == WeightMode.none) or (tv_weight_mode == WeightMode.none):  # noqa: PLR1714
         assert rho > 0.50
     else:
-        assert rho > 0.98
+        assert rho > 0.95

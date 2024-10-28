@@ -5,15 +5,12 @@ from typing import Any
 import structlog
 
 from meteor.iterative import iterative_tv_phase_retrieval
+from meteor.settings import DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION
 from meteor.tv import tv_denoise_difference_map
 
 from .common import DiffmapArgParser, kweight_diffmap_according_to_mode, write_combined_metadata
 
 log = structlog.get_logger()
-
-
-# TODO: test this
-TV_WEIGHTS_TO_SCAN_DEFAULT = [0.01]
 
 
 class IterativeTvArgParser(DiffmapArgParser):
@@ -24,10 +21,10 @@ class IterativeTvArgParser(DiffmapArgParser):
             "--tv-weights-to-scan",
             nargs="+",
             type=float,
-            default=TV_WEIGHTS_TO_SCAN_DEFAULT,
+            default=DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
             help=(
                 "Choose what TV weights to evaluate at every iteration. Can be a single float."
-                f"Default: {TV_WEIGHTS_TO_SCAN_DEFAULT}."
+                f"Default: {DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION}."
             ),
         )
 
@@ -49,11 +46,13 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     parser.check_output_filepaths(args)
     mapset = parser.load_difference_maps(args)
 
-    # First, find improved derivative phases
+    log.info("Launching iterative TV phase retrieval", tv_weights_to_scan=args.tv_weights_to_scan)
+    log.info("This will take time, typically minutes...")
     new_derivative_map, it_tv_metadata = iterative_tv_phase_retrieval(
         mapset.derivative,
         mapset.native,
         tv_weights_to_scan=args.tv_weights_to_scan,
+        verbose=True,
     )
     mapset.derivative = new_derivative_map
 
@@ -61,7 +60,15 @@ def main(command_line_arguments: list[str] | None = None) -> None:
         kweight_mode=args.kweight_mode, kweight_parameter=args.kweight_parameter, mapset=mapset
     )
 
+    log.info("Final real-space TV denoising pass...", method="golden-section search")
+    log.info("This may take some time (up to a few minutes)...")
     final_map, final_tv_metadata = tv_denoise_difference_map(diffmap, full_output=True)
+
+    log.info(
+        "Optimal TV weight found",
+        weight=final_tv_metadata.optimal_tv_weight,
+        final_negetropy=f"{final_tv_metadata.optimal_negentropy:.2e}",
+    )
 
     log.info("Writing output.", file=str(args.mtzout))
     final_map.write_mtz(args.mtzout)

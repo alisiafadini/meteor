@@ -21,7 +21,7 @@ TV_WEIGHTS_TO_SCAN = [0.01, 0.05]
 
 
 def mock_compute_it_tv(
-    derivative: Map, native: Map, *, tv_weights_to_scan: list[float]
+    derivative: Map, native: Map, *, tv_weights_to_scan: list[float], verbose: bool
 ) -> tuple[Map, pd.DataFrame]:
     assert isinstance(derivative, Map)
     assert isinstance(native, Map)

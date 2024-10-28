@@ -5,9 +5,9 @@ import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
+from io import StringIO
 from pathlib import Path
 from typing import Any
-from io import StringIO
 
 import numpy as np
 import pandas as pd
