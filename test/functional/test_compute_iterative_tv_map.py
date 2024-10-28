@@ -1,27 +1,19 @@
 from pathlib import Path
 
 import numpy as np
-import pytest
 import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
 from meteor.scripts import compute_iterative_tv_map
-from meteor.scripts.common import WeightMode, read_combined_metadata
+from meteor.scripts.common import read_combined_metadata
 from meteor.utils import filter_common_indices
 
 
-@pytest.mark.parametrize("kweight_mode", list(WeightMode))
-@pytest.mark.parametrize("tv_weight_mode", list(WeightMode))
 def test_script_produces_consistent_results(
-    kweight_mode: WeightMode,
-    tv_weight_mode: WeightMode,
     testing_pdb_file: Path,
     testing_mtz_file: Path,
     tmp_path: Path,
 ) -> None:
-    # for when WeightMode.fixed; these maximize negentropy in manual testing
-    kweight_parameter = 0.05
-
     output_mtz = tmp_path / "test-output.mtz"
     output_metadata = tmp_path / "test-output-metadata.csv"
 
@@ -42,14 +34,10 @@ def test_script_produces_consistent_results(
         str(output_mtz),
         "-m",
         str(output_metadata),
-        "--kweight-mode",
-        kweight_mode,
-        "--kweight-parameter",
-        str(kweight_parameter),
         "-x",
         "0.01",
         "--max-iterations",
-        "5"
+        "5",
     ]
 
     compute_iterative_tv_map.main(cli_args)
@@ -72,9 +60,4 @@ def test_script_produces_consistent_results(
         result_map.amplitudes, reference_amplitudes
     )
     rho = np.corrcoef(result_amplitudes.to_numpy(), reference_amplitudes.to_numpy())[0, 1]
-
-    # comparing a correlation coefficienct allows for a global scale factor change, but nothing else
-    if (kweight_mode == WeightMode.none) or (tv_weight_mode == WeightMode.none):  # noqa: PLR1714
-        assert rho > 0.50
-    else:
-        assert rho > 0.95
+    assert rho > 0.95
