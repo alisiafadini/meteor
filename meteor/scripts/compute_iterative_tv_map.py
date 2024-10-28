@@ -5,7 +5,7 @@ from typing import Any
 import structlog
 
 from meteor.iterative import iterative_tv_phase_retrieval
-from meteor.settings import DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION
+from meteor.settings import DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION, ITERATIVE_TV_CONVERGENCE_TOLERANCE, ITERATIVE_TV_MAX_ITERATIONS
 from meteor.tv import tv_denoise_difference_map
 
 from .common import DiffmapArgParser, kweight_diffmap_according_to_mode, write_combined_metadata
@@ -25,6 +25,24 @@ class IterativeTvArgParser(DiffmapArgParser):
             help=(
                 "Choose what TV weights to evaluate at every iteration. Can be a single float."
                 f"Default: {DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION}."
+            ),
+        )
+        self.add_argument(
+            "--convergence-tolerance",
+            type=float,
+            default=ITERATIVE_TV_CONVERGENCE_TOLERANCE,
+            help=(
+                "If the average phase change drops below this value at each iteration, stop."
+                f"Default: {ITERATIVE_TV_CONVERGENCE_TOLERANCE}."
+            ),
+        )
+        self.add_argument(
+            "--max-iterations",
+            type=float,
+            default=ITERATIVE_TV_MAX_ITERATIONS,
+            help=(
+                "If the number of iterations exceeds this value, stop."
+                f"Default: {ITERATIVE_TV_MAX_ITERATIONS}."
             ),
         )
 
@@ -52,6 +70,8 @@ def main(command_line_arguments: list[str] | None = None) -> None:
         mapset.derivative,
         mapset.native,
         tv_weights_to_scan=args.tv_weights_to_scan,
+        convergence_tolerance=args.convergence_tolerance,
+        max_iterations=args.max_iterations,
         verbose=True,
     )
     mapset.derivative = new_derivative_map

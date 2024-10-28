@@ -59,6 +59,10 @@ def tv_cli_arguments(base_cli_arguments: list[str]) -> list[str]:
     new_cli_arguments = [
         "--tv-weights-to-scan",
         *[str(weight) for weight in TV_WEIGHTS_TO_SCAN],
+        "--convergence-tolerance",
+        "0.1",
+        "--max-iterations",
+        "3",
     ]
     return [*base_cli_arguments, *new_cli_arguments]
 
@@ -95,6 +99,10 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) 
         str(fixed_kparameter),
         "-x",
         *[str(weight) for weight in TV_WEIGHTS_TO_SCAN],
+        "--convergence-tolerance",
+        "0.1",
+        "--max-iterations",
+        "3",
     ]
 
     patch1 = mock.patch(
@@ -102,14 +110,11 @@ def test_main(diffmap_set: DiffMapSet, tmp_path: Path, fixed_kparameter: float) 
         mock_load_maps,
     )
     patch2 = mock.patch(
-        "meteor.scripts.compute_iterative_tv_map.iterative_tv_phase_retrieval", mock_compute_it_tv
-    )
-    patch3 = mock.patch(
         "meteor.scripts.compute_iterative_tv_map.tv_denoise_difference_map",
         mock_tv_denoise_difference_map,
     )
 
-    with patch1, patch2, patch3:
+    with patch1, patch2:
         compute_iterative_tv_map.main(cli_arguments)
 
     assert output_mtz_path.exists()
