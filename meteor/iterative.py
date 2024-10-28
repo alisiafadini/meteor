@@ -139,7 +139,7 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
         )
         if verbose:
             log.info(
-                f"  iter {num_iterations:03d}",  # noqa: G004
+                f"  iteration {num_iterations:04d}",  # noqa: G004
                 phase_change=round(phase_change, 4),
                 negentropy=round(tv_metadata.optimal_negentropy, 4),
                 tv_weight=tv_metadata.optimal_tv_weight,

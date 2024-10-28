@@ -319,7 +319,7 @@ def write_combined_metadata(
     *, filename: Path, it_tv_metadata: pd.DataFrame, final_tv_metadata: TvDenoiseResult
 ) -> None:
     combined_metadata = {
-        "iterative_tv": it_tv_metadata.to_json(),
+        "iterative_tv": it_tv_metadata.to_json(orient="records", indent=4),
         "final_tv_pass": final_tv_metadata.json(),
     }
     with filename.open("w") as f:
