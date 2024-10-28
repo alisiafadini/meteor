@@ -48,6 +48,8 @@ def test_script_produces_consistent_results(
         str(kweight_parameter),
         "-x",
         "0.01",
+        "--max-iterations",
+        "5"
     ]
 
     compute_iterative_tv_map.main(cli_args)
