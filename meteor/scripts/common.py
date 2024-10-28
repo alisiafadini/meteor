@@ -76,41 +76,48 @@ class DiffmapArgParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        derivative_group = self.add_argument_group(
-            "derivative",
-            description=(
-                "The 'derivative' diffraction data, typically: light-triggered, ligand-bound, etc. "
-            ),
+        required_group = self.add_argument_group("required")
+        required_group.add_argument(
+            "derivative_mtz",
+            type=Path,
+            help="Path to MTZ containing the `derivative` data; positional arg (order matters).",
         )
-        derivative_group.add_argument("derivative_mtz", type=Path)
-        derivative_group.add_argument(
+        required_group.add_argument(
+            "native_mtz",
+            type=Path,
+            help="Path to MTZ containing the `native` data; positional arg (order matters)",
+        )
+        required_group.add_argument(
+            "-s",
+            "--structure",
+            type=Path,
+            required=True,
+            help="Specify CIF or PDB file path, for phases (usually a native model)",
+        )
+
+        labels_group = self.add_argument_group("mtz column labels (input)")
+        labels_group.add_argument(
             "-da",
             "--derivative-amplitude-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
-        derivative_group.add_argument(
+        labels_group.add_argument(
             "-du",
             "--derivative-uncertainty-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
-
-        native_group = self.add_argument_group(
-            "native",
-            description=("The 'native' diffraction data, typically: dark, apo, etc."),
-        )
-        native_group.add_argument("native_mtz", type=Path)
-        native_group.add_argument(
+        labels_group.add_argument(
             "-na",
             "--native-amplitude-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
-        native_group.add_argument(
+        labels_group.add_argument(
             "-nu",
             "--native-uncertainty-column",
             type=str,
@@ -118,23 +125,15 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
-        self.add_argument(
-            "-s",
-            "--structure",
-            type=Path,
-            required=True,
-            help="Specify CIF or PDB file path, for phases (usually a native model). Required.",
-        )
-
-        self.add_argument(
+        output_group = self.add_argument_group("output")
+        output_group.add_argument(
             "-o",
             "--mtzout",
             type=Path,
             default=DEFAULT_OUTPUT_MTZ,
             help=f"Specify output MTZ file path. Default: {DEFAULT_OUTPUT_MTZ}.",
         )
-
-        self.add_argument(
+        output_group.add_argument(
             "-m",
             "--metadataout",
             type=Path,
@@ -142,7 +141,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help=f"Specify output metadata file path. Default: {DEFAULT_OUTPUT_METADATA_FILE}.",
         )
 
-        self.add_argument(
+        kweight_group = self.add_argument_group("k weighting settings")
+        kweight_group.add_argument(
             "-k",
             "--kweight-mode",
             type=WeightMode,
@@ -150,8 +150,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             choices=list(WeightMode),
             help="How to pick the k-parameter. Optimize means max negentropy. Default: `optimize`.",
         )
-
-        self.add_argument(
+        kweight_group.add_argument(
             "-w",
             "--kweight-parameter",
             type=float,

@@ -23,7 +23,9 @@ log = structlog.get_logger()
 class TvDiffmapArgParser(DiffmapArgParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.add_argument(
+
+        tv_group = self.add_argument_group("TV denoising settings")
+        tv_group.add_argument(
             "-tv",
             "--tv-denoise-mode",
             type=WeightMode,
@@ -34,7 +36,7 @@ class TvDiffmapArgParser(DiffmapArgParser):
                 "negentropy. Default: `optimize`."
             ),
         )
-        self.add_argument(
+        tv_group.add_argument(
             "-l",
             "--tv-weight",
             type=float,
