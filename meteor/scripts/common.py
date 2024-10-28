@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
@@ -8,12 +9,10 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 import structlog
-import json
-import pandas as pd
 
-from meteor.tv import TvDenoiseResult
 from meteor.diffmaps import (
     compute_difference_map,
     compute_kweighted_difference_map,
@@ -24,6 +23,7 @@ from meteor.rsmap import Map
 from meteor.scale import scale_maps
 from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
 from meteor.sfcalc import structure_file_to_calculated_map
+from meteor.tv import TvDenoiseResult
 
 log = structlog.get_logger()
 
@@ -314,7 +314,9 @@ def kweight_diffmap_according_to_mode(
     return diffmap, kweight_parameter
 
 
-def write_combined_metadata(*, filename: Path, it_tv_metadata: pd.DataFrame, final_tv_metadata: TvDenoiseResult) -> None:
+def write_combined_metadata(
+    *, filename: Path, it_tv_metadata: pd.DataFrame, final_tv_metadata: TvDenoiseResult
+) -> None:
     combined_metadata = {
         "iterative_tv": it_tv_metadata.to_json(),
         "final_tv_pass": final_tv_metadata.json(),
@@ -326,7 +328,6 @@ def write_combined_metadata(*, filename: Path, it_tv_metadata: pd.DataFrame, fin
 def read_combined_metadata(*, filename: Path) -> tuple[pd.DataFrame, TvDenoiseResult]:
     with filename.open("r") as f:
         combined_metadata = json.load(f)
-    print("***", pd.read_json(combined_metadata["iterative_tv"]))
     it_tv_metadata = pd.read_json(combined_metadata["iterative_tv"])
     final_tv_metadata = TvDenoiseResult.from_json(combined_metadata["final_tv_pass"])
     return it_tv_metadata, final_tv_metadata

@@ -6,8 +6,7 @@ import reciprocalspaceship as rs
 
 from meteor.rsmap import Map
 from meteor.scripts import compute_iterative_tv_map
-from meteor.scripts.common import WeightMode
-from meteor.tv import TvDenoiseResult
+from meteor.scripts.common import WeightMode, read_combined_metadata
 from meteor.utils import filter_common_indices
 
 
@@ -53,19 +52,22 @@ def test_script_produces_consistent_results(
 
     compute_iterative_tv_map.main(cli_args)
 
-    # TODO this simple load metadata won't work, load JSON then make object instead
-    result_metadata = TvDenoiseResult.from_json_file(output_metadata)
+    iterative_tv_metadata, final_tv_metadata = read_combined_metadata(filename=output_metadata)
     result_map = Map.read_mtz_file(output_mtz)
 
-    # 1. make sure negentropy increased
+    # 1. make sure the negentropy increased during iterative TV
+    negentropy_over_iterations = iterative_tv_metadata["negentropy_after_tv"]
+    assert negentropy_over_iterations[-1] > negentropy_over_iterations[0]
+
+    # 2. make sure negentropy increased in the final TV pass
     if kweight_mode == WeightMode.none and tv_weight_mode == WeightMode.none:
         np.testing.assert_allclose(
-            result_metadata.optimal_negentropy, result_metadata.initial_negentropy
+            final_tv_metadata.optimal_negentropy, final_tv_metadata.initial_negentropy
         )
     else:
-        assert result_metadata.optimal_negentropy >= result_metadata.initial_negentropy
+        assert final_tv_metadata.optimal_negentropy >= final_tv_metadata.initial_negentropy
 
-    # 2. make sure computed DF are close to those stored on disk
+    # 3. make sure computed DF are close to those stored on disk
     reference_dataset = rs.read_mtz(str(testing_mtz_file))
     reference_amplitudes = reference_dataset["F_itTV"]
 

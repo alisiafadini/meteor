@@ -7,8 +7,7 @@ import structlog
 from meteor.iterative import iterative_tv_phase_retrieval
 from meteor.tv import tv_denoise_difference_map
 
-
-from .common import DiffmapArgParser, kweight_diffmap_according_to_mode
+from .common import DiffmapArgParser, kweight_diffmap_according_to_mode, write_combined_metadata
 
 log = structlog.get_logger()
 
@@ -36,7 +35,14 @@ class IterativeTvArgParser(DiffmapArgParser):
 def main(command_line_arguments: list[str] | None = None) -> None:
     parser = IterativeTvArgParser(
         description=(
-            "bla bla"  # TODO
+            "Compute an difference map, where the phases of the derivative structure are estimated "
+            "using the assumption that the resulting map should have a low total variation. Phases "
+            "are estimated using a crystallographic analog of the Gerchberg-Saxton algorithm, with "
+            "TV denoising as the real-space constraint.\n\n K-weighting can optionally be used to "
+            "weight the algorithm input. \n\n In the terminology adopted, this script computes a "
+            "`derivative` minus a `native` map, modifying the derivative phases. Native phases,"
+            "typically from a model of the `native` data, are computed from a CIF/PDB model you "
+            "must provide."
         )
     )
     args = parser.parse_args(command_line_arguments)
@@ -62,6 +68,11 @@ def main(command_line_arguments: list[str] | None = None) -> None:
 
     log.info("Writing metadata.", file=str(args.metadataout))
     final_tv_metadata.k_parameter_used = kparameter_used
+    write_combined_metadata(
+        filename=args.metadataout,
+        it_tv_metadata=it_tv_metadata,
+        final_tv_metadata=final_tv_metadata,
+    )
 
 
 if __name__ == "__main__":

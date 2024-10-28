@@ -16,6 +16,7 @@ CARBON1_POSITION = (5.0, 5.0, 5.0)
 
 NP_RNG = np.random.default_rng()
 
+
 @pytest.fixture
 def tv_denoise_result_source_data() -> dict:
     return {

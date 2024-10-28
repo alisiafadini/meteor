@@ -26,9 +26,6 @@ def rms_between_coefficients(map1: Map, map2: Map) -> float:
     return float(np.linalg.norm(map2_array - map1_array))
 
 
-
-
-
 def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
     tdr_obj = tv.TvDenoiseResult(**tv_denoise_result_source_data)
     assert tv_denoise_result_source_data == asdict(tdr_obj)
