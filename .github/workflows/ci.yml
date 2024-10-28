@@ -1,15 +1,13 @@
 name: CICD
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - "v*"
-  pull_request: {}
   workflow_run:
-    workflows: ["tests"]
-    branches: [master]
+    workflows:
+      - "tests"
+      - "mypy"
+      - "ruff"
+    branches:
+      - "master"
     types: 
       - completed
   workflow_dispatch:
