@@ -200,9 +200,9 @@ def tv_denoise_difference_map(
     if full_output:
         initial_negentropy = negentropy(realspace_map_array)
         tv_result = TvDenoiseResult(
-            initial_negentropy=initial_negentropy,
-            optimal_tv_weight=maximizer.argument_optimum,
-            optimal_negentropy=maximizer.objective_maximum,
+            initial_negentropy=float(initial_negentropy),
+            optimal_tv_weight=float(maximizer.argument_optimum),
+            optimal_negentropy=float(maximizer.objective_maximum),
             map_sampling_used_for_tv=MAP_SAMPLING,
             tv_weights_scanned=maximizer.values_evaluated,
             negentropy_at_weights=maximizer.objective_at_values,

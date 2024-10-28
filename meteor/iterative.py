@@ -142,6 +142,7 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
                 f"  iter {num_iterations:03d}",  # noqa: G004
                 phase_change=round(phase_change, 4),
                 negentropy=round(tv_metadata.optimal_negentropy, 4),
+                tv_weight=tv_metadata.optimal_tv_weight,
             )
 
         if num_iterations > max_iterations:

@@ -91,7 +91,7 @@ def denoise_diffmap_according_to_mode(
             "Optimal TV weight found",
             weight=metadata.optimal_tv_weight,
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
-            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
+            final_negentropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.fixed:
@@ -108,7 +108,7 @@ def denoise_diffmap_according_to_mode(
             "Map TV-denoised with fixed weight",
             weight=tv_weight,
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
-            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
+            final_negentropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.none:

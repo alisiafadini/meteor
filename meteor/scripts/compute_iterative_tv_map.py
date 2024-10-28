@@ -55,6 +55,7 @@ def main(command_line_arguments: list[str] | None = None) -> None:
         verbose=True,
     )
     mapset.derivative = new_derivative_map
+    log.info("Convergence.")
 
     diffmap, kparameter_used = kweight_diffmap_according_to_mode(
         kweight_mode=args.kweight_mode, kweight_parameter=args.kweight_parameter, mapset=mapset
@@ -67,7 +68,7 @@ def main(command_line_arguments: list[str] | None = None) -> None:
     log.info(
         "Optimal TV weight found",
         weight=final_tv_metadata.optimal_tv_weight,
-        final_negetropy=f"{final_tv_metadata.optimal_negentropy:.2e}",
+        final_negentropy=f"{final_tv_metadata.optimal_negentropy:.2e}",
     )
 
     log.info("Writing output.", file=str(args.mtzout))
