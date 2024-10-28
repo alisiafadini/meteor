@@ -6,13 +6,12 @@ import numpy as np
 import pandas as pd
 
 from .rsmap import Map
+from .settings import DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
     complex_array_to_rs_dataseries,
 )
-
-DEFAULT_TV_WEIGHTS_TO_SCAN = [0.001, 0.01, 0.1, 1.0]
 
 
 def _project_derivative_on_experimental_set(
@@ -140,7 +139,7 @@ def iterative_tv_phase_retrieval(
     *,
     convergence_tolerance: float = 1e-4,
     max_iterations: int = 1000,
-    tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN,
+    tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
 ) -> tuple[Map, pd.DataFrame]:
     """
     Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex unless

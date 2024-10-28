@@ -5,30 +5,14 @@ https://www.globalphasing.com/buster/wiki/index.cgi?MTZcolumns
 from __future__ import annotations
 
 import re
-from typing import Final
 
-OBSERVED_INTENSITY_COLUMNS: Final[list[str]] = [
-    "I",  # generic
-    "IMEAN",  # CCP4
-    "I-obs",  # phenix
-]
-
-OBSERVED_AMPLITUDE_COLUMNS: Final[list[str]] = [
-    "F",  # generic
-    "FP",  # CCP4 & GLPh native
-    r"FPH\d",  # CCP4 derivative
-    "F-obs",  # phenix
-]
-
-OBSERVED_UNCERTAINTY_COLUMNS: Final[list[str]] = [
-    "SIGF",  # generic
-    "SIGFP",  # CCP4 & GLPh native
-    r"SIGFPH\d",  # CCP4
-]
-
-COMPUTED_AMPLITUDE_COLUMNS: Final[list[str]] = ["FC"]
-
-COMPUTED_PHASE_COLUMNS: Final[list[str]] = ["PHIC"]
+from .settings import (
+    COMPUTED_AMPLITUDE_COLUMNS,
+    COMPUTED_PHASE_COLUMNS,
+    OBSERVED_AMPLITUDE_COLUMNS,
+    OBSERVED_INTENSITY_COLUMNS,
+    OBSERVED_UNCERTAINTY_COLUMNS,
+)
 
 
 class AmbiguousMtzColumnError(ValueError): ...

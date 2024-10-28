@@ -51,7 +51,9 @@ def test_diffmap_set_scale(diffmap_set: DiffMapSet, use_uncertainties: bool) -> 
     assert np.all(derivative_amps_before * 2 == diffmap_set.derivative["F"].to_numpy())
 
 
-def test_diffmap_argparser_parse_args(base_cli_arguments: list[str]) -> None:
+def test_diffmap_argparser_parse_args(
+    base_cli_arguments: list[str], fixed_kparameter: float
+) -> None:
     parser = DiffmapArgParser()
     args = parser.parse_args(base_cli_arguments)
 
@@ -65,7 +67,7 @@ def test_diffmap_argparser_parse_args(base_cli_arguments: list[str]) -> None:
     assert args.mtzout == Path("fake-output.mtz")
     assert args.metadataout == Path("fake-output-metadata.csv")
     assert args.kweight_mode == WeightMode.fixed
-    assert args.kweight_parameter == 0.75
+    assert args.kweight_parameter == fixed_kparameter
 
 
 def test_diffmap_argparser_check_output_filepaths(
