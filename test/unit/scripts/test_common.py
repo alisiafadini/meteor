@@ -146,7 +146,8 @@ def test_kweight_diffmap_according_to_mode(
     mode: WeightMode, diffmap_set: DiffMapSet, fixed_kparameter: float
 ) -> None:
     # ensure the two maps aren't exactly the same to prevent numerical issues
-    diffmap_set.derivative.amplitudes.iloc[0] += 1.0
+    print("***", diffmap_set.derivative.columns)
+    diffmap_set.derivative.loc[0, diffmap_set.derivative._amplitude_column] += 1.0
 
     diffmap, _ = kweight_diffmap_according_to_mode(
         mapset=diffmap_set, kweight_mode=mode, kweight_parameter=fixed_kparameter

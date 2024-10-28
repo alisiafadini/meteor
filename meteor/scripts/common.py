@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 from typing import Any
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -328,6 +329,6 @@ def write_combined_metadata(
 def read_combined_metadata(*, filename: Path) -> tuple[pd.DataFrame, TvDenoiseResult]:
     with filename.open("r") as f:
         combined_metadata = json.load(f)
-    it_tv_metadata = pd.read_json(combined_metadata["iterative_tv"])
+    it_tv_metadata = pd.read_json(StringIO(combined_metadata["iterative_tv"]))
     final_tv_metadata = TvDenoiseResult.from_json(combined_metadata["final_tv_pass"])
     return it_tv_metadata, final_tv_metadata
