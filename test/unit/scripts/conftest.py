@@ -17,7 +17,7 @@ def diffmap_set(random_difference_map: Map) -> DiffMapSet:
 
 @pytest.fixture
 def fixed_kparameter() -> float:
-    return 0.75
+    return 0.05
 
 
 @pytest.fixture

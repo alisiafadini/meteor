@@ -99,7 +99,7 @@ class ScalarMaximizer:
         self.objective_at_values: list[float] = []
 
     def _update_optima(self, argument_test_value: float) -> float:
-        objective_value = self.objective(argument_test_value)
+        objective_value = float(self.objective(argument_test_value))
         if objective_value > self.objective_maximum:
             self.argument_optimum = argument_test_value
             self.objective_maximum = objective_value

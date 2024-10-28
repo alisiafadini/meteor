@@ -5,17 +5,17 @@ from typing import Any
 import numpy as np
 import structlog
 
-from meteor.diffmaps import (
-    compute_difference_map,
-    compute_kweighted_difference_map,
-    max_negentropy_kweighted_difference_map,
-)
 from meteor.rsmap import Map
 from meteor.settings import MAP_SAMPLING, TV_WEIGHT_DEFAULT
 from meteor.tv import TvDenoiseResult, tv_denoise_difference_map
 from meteor.validate import negentropy
 
-from .common import DiffmapArgParser, DiffMapSet, InvalidWeightModeError, WeightMode
+from .common import (
+    DiffmapArgParser,
+    InvalidWeightModeError,
+    WeightMode,
+    kweight_diffmap_according_to_mode,
+)
 
 log = structlog.get_logger()
 
@@ -23,7 +23,9 @@ log = structlog.get_logger()
 class TvDiffmapArgParser(DiffmapArgParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.add_argument(
+
+        tv_group = self.add_argument_group("TV denoising settings")
+        tv_group.add_argument(
             "-tv",
             "--tv-denoise-mode",
             type=WeightMode,
@@ -34,7 +36,7 @@ class TvDiffmapArgParser(DiffmapArgParser):
                 "negentropy. Default: `optimize`."
             ),
         )
-        self.add_argument(
+        tv_group.add_argument(
             "-l",
             "--tv-weight",
             type=float,
@@ -44,72 +46,6 @@ class TvDiffmapArgParser(DiffmapArgParser):
                 f"value. Default: {TV_WEIGHT_DEFAULT}."
             ),
         )
-
-
-def kweight_diffmap_according_to_mode(
-    *, mapset: DiffMapSet, kweight_mode: WeightMode, kweight_parameter: float | None = None
-) -> tuple[Map, float | None]:
-    """
-    Make and k-weight a difference map using a specified `WeightMode`.
-
-    Three modes are possible to pick the k-parameter:
-      * `WeightMode.optimize`, max-negentropy value will and picked, this may take some time
-      * `WeightMode.fixed`, `kweight_parameter` is used
-      * `WeightMode.none`, then no k-weighting is done (note this is NOT equivalent to
-         kweight_parameter=0.0)
-
-    Parameters
-    ----------
-    mapset: DiffMapSet
-        The set of `derivative`, `native`, `computed` maps to use to compute the diffmap.
-
-    kweight_mode: WeightMode
-        How to set the k-parameter: {optimize, fixed, none}. See above. If `fixed`, then
-        `kweight_parameter` is required.
-
-    kweight_parameter: float | None
-        If kweight_mode == WeightMode.fixed, then this must be a float that specifies the
-        k-parameter to use.
-
-    Returns
-    -------
-    diffmap: meteor.rsmap.Map
-        The difference map, k-weighted if requested.
-
-    kweight_parameter: float | None
-        The `kweight_parameter` used. Only really interesting if WeightMode.optimize.
-    """
-    log.info("Computing difference map.")
-
-    if kweight_mode == WeightMode.optimize:
-        diffmap, kweight_parameter = max_negentropy_kweighted_difference_map(
-            mapset.derivative, mapset.native
-        )
-        log.info("  using negentropy optimized", kparameter=kweight_parameter)
-        if kweight_parameter is np.nan:
-            msg = "determined `k-parameter` is NaN, something went wrong..."
-            raise RuntimeError(msg)
-
-    elif kweight_mode == WeightMode.fixed:
-        if not isinstance(kweight_parameter, float):
-            msg = f"`kweight_parameter` is type `{type(kweight_parameter)}`, must be `float`"
-            raise TypeError(msg)
-
-        diffmap = compute_kweighted_difference_map(
-            mapset.derivative, mapset.native, k_parameter=kweight_parameter
-        )
-
-        log.info("  using fixed", kparameter=kweight_parameter)
-
-    elif kweight_mode == WeightMode.none:
-        diffmap = compute_difference_map(mapset.derivative, mapset.native)
-        kweight_parameter = None
-        log.info(" requested no k-weighting")
-
-    else:
-        raise InvalidWeightModeError(kweight_mode)
-
-    return diffmap, kweight_parameter
 
 
 def denoise_diffmap_according_to_mode(
@@ -157,7 +93,7 @@ def denoise_diffmap_according_to_mode(
             "Optimal TV weight found",
             weight=metadata.optimal_tv_weight,
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
-            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
+            final_negentropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.fixed:
@@ -174,7 +110,7 @@ def denoise_diffmap_according_to_mode(
             "Map TV-denoised with fixed weight",
             weight=tv_weight,
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
-            final_negetropy=f"{metadata.optimal_negentropy:.2e}",
+            final_negentropy=f"{metadata.optimal_negentropy:.2e}",
         )
 
     elif tv_denoise_mode == WeightMode.none:

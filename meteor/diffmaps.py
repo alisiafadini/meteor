@@ -6,11 +6,9 @@ import numpy as np
 import reciprocalspaceship as rs
 
 from .rsmap import Map, _assert_is_map
-from .settings import MAP_SAMPLING
+from .settings import DEFAULT_KPARAMS_TO_SCAN, MAP_SAMPLING
 from .utils import filter_common_indices
 from .validate import ScalarMaximizer, negentropy
-
-DEFAULT_KPARAMS_TO_SCAN = np.linspace(0.0, 1.0, 101)
 
 
 def set_common_crystallographic_metadata(map1: Map, map2: Map, *, output: Map) -> None:

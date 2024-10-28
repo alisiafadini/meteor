@@ -1,18 +1,30 @@
+from __future__ import annotations
+
 import argparse
+import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import pandas as pd
 import reciprocalspaceship as rs
 import structlog
 
+from meteor.diffmaps import (
+    compute_difference_map,
+    compute_kweighted_difference_map,
+    max_negentropy_kweighted_difference_map,
+)
 from meteor.io import find_observed_amplitude_column, find_observed_uncertainty_column
 from meteor.rsmap import Map
 from meteor.scale import scale_maps
 from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
 from meteor.sfcalc import structure_file_to_calculated_map
+from meteor.tv import TvDenoiseResult
 
 log = structlog.get_logger()
 
@@ -64,41 +76,48 @@ class DiffmapArgParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        derivative_group = self.add_argument_group(
-            "derivative",
-            description=(
-                "The 'derivative' diffraction data, typically: light-triggered, ligand-bound, etc. "
-            ),
+        required_group = self.add_argument_group("required")
+        required_group.add_argument(
+            "derivative_mtz",
+            type=Path,
+            help="Path to MTZ containing the `derivative` data; positional arg (order matters).",
         )
-        derivative_group.add_argument("derivative_mtz", type=Path)
-        derivative_group.add_argument(
+        required_group.add_argument(
+            "native_mtz",
+            type=Path,
+            help="Path to MTZ containing the `native` data; positional arg (order matters)",
+        )
+        required_group.add_argument(
+            "-s",
+            "--structure",
+            type=Path,
+            required=True,
+            help="Specify CIF or PDB file path, for phases (usually a native model)",
+        )
+
+        labels_group = self.add_argument_group("mtz column labels (input)")
+        labels_group.add_argument(
             "-da",
             "--derivative-amplitude-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
-        derivative_group.add_argument(
+        labels_group.add_argument(
             "-du",
             "--derivative-uncertainty-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
-
-        native_group = self.add_argument_group(
-            "native",
-            description=("The 'native' diffraction data, typically: dark, apo, etc."),
-        )
-        native_group.add_argument("native_mtz", type=Path)
-        native_group.add_argument(
+        labels_group.add_argument(
             "-na",
             "--native-amplitude-column",
             type=str,
             default=INFER_COLUMN_NAME,
             help="specify the MTZ column for the amplitudes; will try to guess if not provided",
         )
-        native_group.add_argument(
+        labels_group.add_argument(
             "-nu",
             "--native-uncertainty-column",
             type=str,
@@ -106,23 +125,15 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
-        self.add_argument(
-            "-s",
-            "--structure",
-            type=Path,
-            required=True,
-            help="Specify CIF or PDB file path, for phases (usually a native model). Required.",
-        )
-
-        self.add_argument(
+        output_group = self.add_argument_group("output")
+        output_group.add_argument(
             "-o",
             "--mtzout",
             type=Path,
             default=DEFAULT_OUTPUT_MTZ,
             help=f"Specify output MTZ file path. Default: {DEFAULT_OUTPUT_MTZ}.",
         )
-
-        self.add_argument(
+        output_group.add_argument(
             "-m",
             "--metadataout",
             type=Path,
@@ -130,7 +141,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help=f"Specify output metadata file path. Default: {DEFAULT_OUTPUT_METADATA_FILE}.",
         )
 
-        self.add_argument(
+        kweight_group = self.add_argument_group("k weighting settings")
+        kweight_group.add_argument(
             "-k",
             "--kweight-mode",
             type=WeightMode,
@@ -138,8 +150,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             choices=list(WeightMode),
             help="How to pick the k-parameter. Optimize means max negentropy. Default: `optimize`.",
         )
-
-        self.add_argument(
+        kweight_group.add_argument(
             "-w",
             "--kweight-parameter",
             type=float,
@@ -235,3 +246,88 @@ class DiffmapArgParser(argparse.ArgumentParser):
 
         mapset.scale()
         return mapset
+
+
+def kweight_diffmap_according_to_mode(
+    *, mapset: DiffMapSet, kweight_mode: WeightMode, kweight_parameter: float | None = None
+) -> tuple[Map, float | None]:
+    """
+    Make and k-weight a difference map using a specified `WeightMode`.
+
+    Three modes are possible to pick the k-parameter:
+      * `WeightMode.optimize`, max-negentropy value will and picked, this may take some time
+      * `WeightMode.fixed`, `kweight_parameter` is used
+      * `WeightMode.none`, then no k-weighting is done (note this is NOT equivalent to
+         kweight_parameter=0.0)
+
+    Parameters
+    ----------
+    mapset: DiffMapSet
+        The set of `derivative`, `native`, `computed` maps to use to compute the diffmap.
+
+    kweight_mode: WeightMode
+        How to set the k-parameter: {optimize, fixed, none}. See above. If `fixed`, then
+        `kweight_parameter` is required.
+
+    kweight_parameter: float | None
+        If kweight_mode == WeightMode.fixed, then this must be a float that specifies the
+        k-parameter to use.
+
+    Returns
+    -------
+    diffmap: meteor.rsmap.Map
+        The difference map, k-weighted if requested.
+
+    kweight_parameter: float | None
+        The `kweight_parameter` used. Only really interesting if WeightMode.optimize.
+    """
+    log.info("Computing difference map.")
+
+    if kweight_mode == WeightMode.optimize:
+        diffmap, kweight_parameter = max_negentropy_kweighted_difference_map(
+            mapset.derivative, mapset.native
+        )
+        log.info("  using negentropy optimized", kparameter=kweight_parameter)
+        if kweight_parameter is np.nan:
+            msg = "determined `k-parameter` is NaN, something went wrong..."
+            raise RuntimeError(msg)
+
+    elif kweight_mode == WeightMode.fixed:
+        if not isinstance(kweight_parameter, float):
+            msg = f"`kweight_parameter` is type `{type(kweight_parameter)}`, must be `float`"
+            raise TypeError(msg)
+
+        diffmap = compute_kweighted_difference_map(
+            mapset.derivative, mapset.native, k_parameter=kweight_parameter
+        )
+
+        log.info("  using fixed", kparameter=kweight_parameter)
+
+    elif kweight_mode == WeightMode.none:
+        diffmap = compute_difference_map(mapset.derivative, mapset.native)
+        kweight_parameter = None
+        log.info(" requested no k-weighting")
+
+    else:
+        raise InvalidWeightModeError(kweight_mode)
+
+    return diffmap, kweight_parameter
+
+
+def write_combined_metadata(
+    *, filename: Path, it_tv_metadata: pd.DataFrame, final_tv_metadata: TvDenoiseResult
+) -> None:
+    combined_metadata = {
+        "iterative_tv": it_tv_metadata.to_json(orient="records", indent=4),
+        "final_tv_pass": final_tv_metadata.json(),
+    }
+    with filename.open("w") as f:
+        json.dump(combined_metadata, f, indent=4)
+
+
+def read_combined_metadata(*, filename: Path) -> tuple[pd.DataFrame, TvDenoiseResult]:
+    with filename.open("r") as f:
+        combined_metadata = json.load(f)
+    it_tv_metadata = pd.read_json(StringIO(combined_metadata["iterative_tv"]))
+    final_tv_metadata = TvDenoiseResult.from_json(combined_metadata["final_tv_pass"])
+    return it_tv_metadata, final_tv_metadata

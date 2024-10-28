@@ -76,6 +76,8 @@ def test_complex_derivative_from_iterative_tv() -> None:
         native=constant_image_ft,
         initial_derivative=test_image_noisy_ft,
         tv_denoise_function=simple_tv_function,
+        convergence_tolerance=0.001,
+        max_iterations=1000,
     )
 
     denoised_test_image = np.fft.ifftn(denoised_derivative).real
