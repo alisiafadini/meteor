@@ -16,7 +16,7 @@ from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
     complex_array_to_rs_dataseries,
-    filter_common_indices
+    filter_common_indices,
 )
 
 log = structlog.get_logger()
@@ -214,9 +214,8 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
-
     # hotfix #52
-    initial_derivative, native = filter_common_indices(initial_derivative, native) # type: ignore[assignment]
+    initial_derivative, native = filter_common_indices(initial_derivative, native)  # type: ignore[assignment]
 
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
