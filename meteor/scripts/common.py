@@ -184,7 +184,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
         )
 
         mtz = rs.read_mtz(str(mtz_file))
-        mtz.dropna(axis="index", how="any", inplace=True)
+        mtz.dropna(axis="index", how="any", inplace=True)  # hotfix #52
 
         if PHASE_COLUMN_NAME in mtz.columns:
             log.warning(
