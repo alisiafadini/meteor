@@ -19,11 +19,14 @@ OBSERVED_AMPLITUDE_COLUMNS: list[str] = [
     "FP",  # CCP4 & GLPh native
     r"FPH\d",  # CCP4 derivative
     "F-obs",  # phenix
+    "F-obs-filtered",  # phenix
 ]
 OBSERVED_UNCERTAINTY_COLUMNS: list[str] = [
     "SIGF",  # generic
     "SIGFP",  # CCP4 & GLPh native
     r"SIGFPH\d",  # CCP4
+    "SIGF-obs",  # phenix
+    "SIGF-obs-filtered",  # phenix
 ]
 COMPUTED_AMPLITUDE_COLUMNS: list[str] = ["FC"]
 COMPUTED_PHASE_COLUMNS: list[str] = ["PHIC"]
