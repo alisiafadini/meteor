@@ -2,7 +2,6 @@ name: tests
 
 on:
   - push
-  - pull_request
 
 jobs:
   build:
@@ -40,7 +39,7 @@ jobs:
         python -m pip install tox tox-gh-actions
 
     - name: Test with tox
-      run: python -m tox
+      run: tox -vv
       env:
         PLATFORM: ${{ matrix.platform }}
         
