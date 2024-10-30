@@ -31,7 +31,7 @@ tests = [
 "meteor.phaseboost" = "meteor.scripts.compute_iterative_tv_map:main"
 
 [tool.setuptools_scm]
-version_file = "meteor/__init__.py"
+version_file = "meteor/_version.py"
 
 [tool.mypy]
 disallow_untyped_calls = true
