@@ -107,7 +107,7 @@ def tv_denoise_difference_map(
     *,
     full_output: bool = False,
     weights_to_scan: Sequence[float] | np.ndarray | None = None,
-    extend_resolution_by: float = 1.0,
+    extend_resolution_by: float = 0.5,
 ) -> Map | tuple[Map, TvDenoiseResult]:
     """Single-pass TV denoising of a difference map.
 
