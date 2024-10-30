@@ -1,4 +1,4 @@
-name: --pre Test
+name: healthcheck
 # An "early warning" cron job that will install dependencies
 # with `pip install --pre` periodically to test for breakage
 # (and open an issue if a test fails)
@@ -36,6 +36,7 @@ jobs:
         run: python -m tox
         env:
           PLATFORM: ${{ matrix.platform }}
+
       # If something goes wrong, we can open an issue in the repo
       - name: Report Failures
         if: ${{ failure() }}
