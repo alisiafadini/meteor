@@ -1,1 +1,0 @@
-test/data/scaled-test-data.mtz filter=lfs diff=lfs merge=lfs -text

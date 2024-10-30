@@ -31,7 +31,7 @@ log = structlog.get_logger()
 INFER_COLUMN_NAME: str = "infer"
 PHASE_COLUMN_NAME: str = "PHI"
 DEFAULT_OUTPUT_MTZ: Path = Path("meteor_difference_map.mtz")
-DEFAULT_OUTPUT_METADATA_FILE: Path = Path("meteor_metadata.csv")
+DEFAULT_OUTPUT_METADATA_FILE: Path = Path("meteor_metadata.json")
 FLOAT_REGEX: re.Pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
 
@@ -184,6 +184,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
         )
 
         mtz = rs.read_mtz(str(mtz_file))
+        mtz.dropna(axis="index", how="any", inplace=True)  # hotfix #52
+
         if PHASE_COLUMN_NAME in mtz.columns:
             log.warning(
                 "phase column already in MTZ; overwriting with computed data",
