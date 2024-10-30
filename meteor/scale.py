@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
@@ -9,7 +7,7 @@ import scipy.optimize as opt
 
 from .rsmap import Map
 
-ScaleParameters = Tuple[float, float, float, float, float, float, float]
+ScaleParameters = tuple[float, float, float, float, float, float, float]
 """ 7x float tuple to hold anisotropic scaling parameters """
 
 
