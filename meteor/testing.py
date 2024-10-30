@@ -25,7 +25,7 @@ def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol: float =
 
 def check_test_file_exists(path: Path) -> None:
     if not path.exists():
-        msg = f"cannot find {path}, use github LFS to retrieve this file from the parent repo"
+        msg = f"cannot find test file {path}"
         raise OSError(msg)
 
 
