@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools >= 61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "meteor"
 description = "denoise crystallographic difference maps"
-version = "0.2.0"
+dynamic = ["version"]
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
@@ -21,13 +25,12 @@ tests = [
     "pytest-cov",
 ]
 
-[build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
-
 [project.scripts]
 "meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
 "meteor.phaseboost" = "meteor.scripts.compute_iterative_tv_map:main"
+
+[tool.setuptools_scm]
+version_file = "src/example/_version.py"
 
 [tool.mypy]
 disallow_untyped_calls = true
