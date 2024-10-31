@@ -295,9 +295,10 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
+
+    @classmethod
     @cellify("cell")
     @spacegroupify("spacegroup")
-    @classmethod
     def from_structurefactor(
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
@@ -335,8 +336,8 @@ class Map(rs.DataSet):
             uncertainty_column=uncertainty_column,
         )
 
-    @cellify("cell")
     @classmethod
+    @cellify("cell")
     def from_3d_numpy_map(
         cls, map_grid: np.ndarray, *, spacegroup: Any, cell: CellType, high_resolution_limit: float
     ) -> Map:
