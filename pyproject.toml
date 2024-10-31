@@ -8,9 +8,14 @@ description = "denoise crystallographic difference maps"
 dynamic = ["version"]
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
-    { name = "Thomas Lane", email = "thomas.lane@desy.de" }
+    { name = "Thomas Lane", email = "thomas.joseph.lane@gmail.com" }
 ]
 requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "numpy >= 1.26",
     "scipy >= 1.14.0",
@@ -30,6 +35,10 @@ tests = [
 [project.scripts]
 "meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
 "meteor.phaseboost" = "meteor.scripts.compute_iterative_tv_map:main"
+
+[project.urls]
+Homepage = "https://github.com/rs-station/meteor"
+Issues = "https://github.com/rs-station/meteor/issues"
 
 [tool.setuptools_scm]
 version_file = "meteor/_version.py"
