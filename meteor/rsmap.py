@@ -295,7 +295,6 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
-
     @classmethod
     @cellify("cell")
     @spacegroupify("spacegroup")

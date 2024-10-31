@@ -6,9 +6,9 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from pandas import DataFrame, Index
-from reciprocalspaceship.decorators import cellify, spacegroupify
+from pandas import Index
 from reciprocalspaceship import DataSet
+from reciprocalspaceship.decorators import cellify, spacegroupify
 from reciprocalspaceship.utils import canonicalize_phases
 
 CellType = Sequence[float] | np.ndarray | gemmi.UnitCell
