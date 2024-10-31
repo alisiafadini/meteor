@@ -1,0 +1,46 @@
+name: deploy
+
+on:
+  workflow_run:
+    branches:
+      - master
+    workflows:
+      - "tests"
+      - "mypy"
+      - "ruff"
+    types: 
+      - completed
+
+jobs:
+  deploy:
+    name: deploy-to-pypi
+    runs-on: ubuntu-latest
+    # only run if previous workflows were a success
+    # AND the commit starts with v (meaning it's a tag)
+    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_commit.message, 'v') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: install
+        run: |
+          git tag
+          pip install -U pip
+          pip install -U build twine
+          python -m build
+          twine check dist/*
+          ls -lh dist
+      - name: build and publish
+        run: twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_KEY }}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

@@ -3,14 +3,19 @@ requires = ["setuptools >= 61.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "meteor"
+name = "meteor-maps"
 description = "denoise crystallographic difference maps"
 dynamic = ["version"]
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
-    { name = "Thomas Lane", email = "thomas.lane@desy.de" }
+    { name = "Thomas Lane", email = "thomas.joseph.lane@gmail.com" }
 ]
 requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "numpy >= 1.26",
     "scipy >= 1.14.0",
@@ -24,14 +29,22 @@ dependencies = [
 tests = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 ]
 
 [project.scripts]
 "meteor.diffmap" = "meteor.scripts.compute_difference_map:main"
 "meteor.phaseboost" = "meteor.scripts.compute_iterative_tv_map:main"
 
+[project.urls]
+Homepage = "https://github.com/rs-station/meteor"
+Issues = "https://github.com/rs-station/meteor/issues"
+
 [tool.setuptools_scm]
 version_file = "meteor/_version.py"
+
+[tool.pytest.ini_options]
+addopts = "-n 4 --cov=meteor --cov-report=xml"
 
 [tool.mypy]
 disallow_untyped_calls = true
@@ -101,6 +114,3 @@ exclude = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.pytest.ini_options]
-addopts = "--cov=meteor --cov-report=xml"

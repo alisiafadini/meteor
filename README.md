@@ -18,18 +18,15 @@ Map Enhancement Tools for Ephemeral Occupancy Refinement
 
 Finally: a word of caution. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with `meteor` until we exit `beta`. 
 
-In that vein, for now please install the current master branch as per the following instructions. We'll have a sane
-first stable version soon, which will be deployed straight to `PyPI` and `conda-forge`. Stay posted.
-
-First, we recommend you make a new environment. For conda users,
+First, meteor needs a `python3.11` environment. We're working hard to extend this to as many versions as possible. To be sure things work, we recommend [installing conda](https://docs.anaconda.com/miniconda/) and creating a fresh environment,
 ```
 conda create --name meteor python==3.11 --yes
 conda activate meteor
 ```
 
-Then install from github,
+Then install `meteor` using pip
 ```
-pip install git+https://github.com/alisiafadini/meteor
+pip install meteor-maps
 ```
 
 Once installed, you will have two command-line scripts. Ask for more info using `-h`:
@@ -37,7 +34,7 @@ Once installed, you will have two command-line scripts. Ask for more info using 
 meteor.diffmap -h
 meteor.phaseboost -h
 ```
-which compute denoised difference maps using the constant-phase approximation _vs._ iterative phase retrieval, respectively.
+these scripts compute denoised difference maps using the constant-phase approximation _vs._ iterative phase retrieval, respectively.
 
 
 ## philosophy: better science through automation
