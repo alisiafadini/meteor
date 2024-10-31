@@ -193,12 +193,12 @@ class Map(rs.DataSet):
             raise MapMutabilityError(msg)
 
     @overload
-    def drop(self, labels: Any = None, *, inplace: Literal[True]) -> None: ...
+    def drop(self, labels: Any, *, inplace: Literal[True]) -> None: ...
 
     @overload
-    def drop(self, labels: Any = None, *, inplace: Literal[False]) -> Map: ...
+    def drop(self, labels: Any, *, inplace: Literal[False]) -> Map: ...
 
-    def drop(self, labels: Any = None, *, inplace: bool = False) -> None | Map:
+    def drop(self, labels: Any, *, inplace: bool = False) -> None | Map:
         return super().drop(labels=labels, axis="index", columns=None, inplace=inplace)
 
     def get_hkls(self) -> np.ndarray:
