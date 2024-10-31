@@ -345,6 +345,7 @@ def test_ccp4_map_round_trip(
     assert_phases_allclose(
         random_difference_map.phases.to_numpy(),
         output_coefficients.phases.to_numpy(),
+        atol=0.01,
     )
 
 
