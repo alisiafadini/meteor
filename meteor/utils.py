@@ -5,14 +5,15 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from pandas import DataFrame, Index
+from pandas import Index
+from reciprocalspaceship import DataSet
 from reciprocalspaceship.utils import canonicalize_phases
 
 
 class ShapeMismatchError(Exception): ...
 
 
-def filter_common_indices(df1: DataFrame, df2: DataFrame) -> tuple[DataFrame, DataFrame]:
+def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
     df2_common = df2.loc[common_indices].copy()
