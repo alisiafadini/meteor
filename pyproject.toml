@@ -35,7 +35,7 @@ tests = [
 version_file = "meteor/_version.py"
 
 [tool.pytest.ini_options]
-addopts = "--cov=meteor --cov-report=xml"
+addopts = "-n 4 --cov=meteor --cov-report=xml"
 
 [tool.mypy]
 disallow_untyped_calls = true
