@@ -24,6 +24,7 @@ dependencies = [
 tests = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 ]
 
 [project.scripts]
@@ -32,6 +33,9 @@ tests = [
 
 [tool.setuptools_scm]
 version_file = "meteor/_version.py"
+
+[tool.pytest.ini_options]
+addopts = "--cov=meteor --cov-report=xml"
 
 [tool.mypy]
 disallow_untyped_calls = true
@@ -102,5 +106,50 @@ exclude = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.pytest.ini_options]
-addopts = "--cov=meteor --cov-report=xml"
+
+
+[tool.tox]
+envlist = py{311}-{linux,macos,windows}, ruff, mypy, docs
+minversion = 3.11
+isolated_build = true
+toxworkdir=/tmp/.tox
+
+[tool.tox.gh-actions]
+python =
+    3.11: py311
+
+[tool.tox.gh-actions:env]
+PLATFORM =
+    ubuntu-latest: linux
+    macos-latest: macos
+    windows-latest: windows
+
+[tool.tox.testenv]
+platform =
+    macos: darwin
+    linux: linux
+    windows: win32
+setenv =
+    PYTHONPATH = {toxinidir}
+extras =
+    tests
+commands =
+    pytest -n 4 -v --cov=meteor/ --cov-report=xml --color=yes --basetemp={envtmpdir} {posargs}
+
+
+[tool.tox.testenv:ruff]
+basepython = python3.11
+skip_install = true
+deps =
+    ruff
+commands =
+    ruff check --output-format=github .
+
+
+[tool.tox.testenv:mypy]
+basepython = python3.11
+skip_install = true
+deps =
+    mypy
+commands =
+    mypy --install-types --non-interactive meteor/ test/

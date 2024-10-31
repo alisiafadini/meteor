@@ -3,10 +3,13 @@ from pathlib import Path
 import numpy as np
 import reciprocalspaceship as rs
 
+from meteor import settings
 from meteor.rsmap import Map
 from meteor.scripts import compute_iterative_tv_map
 from meteor.scripts.common import read_combined_metadata
 from meteor.utils import filter_common_indices
+
+settings.MAP_SAMPLING = 1  # faster tests
 
 
 def test_script_produces_consistent_results(

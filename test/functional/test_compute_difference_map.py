@@ -4,11 +4,14 @@ import numpy as np
 import pytest
 import reciprocalspaceship as rs
 
+from meteor import settings
 from meteor.rsmap import Map
 from meteor.scripts import compute_difference_map
 from meteor.scripts.common import WeightMode
 from meteor.tv import TvDenoiseResult
 from meteor.utils import filter_common_indices
+
+settings.MAP_SAMPLING = 1  # faster tests
 
 
 @pytest.mark.parametrize("kweight_mode", list(WeightMode))
