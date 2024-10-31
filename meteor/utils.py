@@ -8,6 +8,7 @@ import numpy as np
 import reciprocalspaceship as rs
 from pandas import DataFrame, Index
 from reciprocalspaceship.decorators import cellify, spacegroupify
+from reciprocalspaceship import DataSet
 from reciprocalspaceship.utils import canonicalize_phases
 
 CellType = Sequence[float] | np.ndarray | gemmi.UnitCell
@@ -17,7 +18,7 @@ SpacegroupType = str | int | gemmi.SpaceGroup
 class ShapeMismatchError(Exception): ...
 
 
-def filter_common_indices(df1: DataFrame, df2: DataFrame) -> tuple[DataFrame, DataFrame]:
+def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
     df2_common = df2.loc[common_indices].copy()

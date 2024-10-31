@@ -54,6 +54,17 @@ def test_compute_scale_factors_shuffle_indices(miller_dataseries: rs.DataSeries)
     assert (scale_factors == 1.0).all()
 
 
+def test_compute_scale_factors_nans(miller_dataseries: rs.DataSeries) -> None:
+    with_nans = miller_dataseries.copy()
+    with_nans.iloc[0] = np.nan
+    miller_dataseries.iloc[1] = np.nan
+    scale_factors = scale.compute_scale_factors(
+        reference_values=miller_dataseries,
+        values_to_scale=with_nans,
+    )
+    assert (scale_factors == 1.0).all()
+
+
 def test_compute_scale_factors_scalar(miller_dataseries: rs.DataSeries) -> None:
     multiple = 2.0
     doubled_miller_dataseries = miller_dataseries / multiple

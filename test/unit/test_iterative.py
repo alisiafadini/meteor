@@ -89,6 +89,30 @@ def test_complex_derivative_from_iterative_tv() -> None:
     assert 1.05 * noisy_error < denoised_error
 
 
+def test_iterative_tv_different_indices(noise_free_map: Map, very_noisy_map: Map) -> None:
+    # regression test to make sure we can accept maps with different indices
+    labels = pd.MultiIndex.from_arrays(
+        [
+            (1, 2),
+        ]
+        * 3,
+        names=("H", "K", "L"),
+    )
+    n = len(very_noisy_map)
+    very_noisy_map.drop(labels, inplace=True)
+    assert len(very_noisy_map) == n - 2
+
+    denoised_map, metadata = iterative_tv_phase_retrieval(
+        very_noisy_map,
+        noise_free_map,
+        tv_weights_to_scan=[0.1],
+        max_iterations=100,
+        convergence_tolerance=0.01,
+    )
+    assert isinstance(metadata, pd.DataFrame)
+    assert isinstance(denoised_map, Map)
+
+
 def test_iterative_tv(noise_free_map: Map, very_noisy_map: Map) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
