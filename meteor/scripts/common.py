@@ -184,7 +184,6 @@ class DiffmapArgParser(argparse.ArgumentParser):
         )
 
         mtz = rs.read_mtz(str(mtz_file))
-        mtz.dropna(axis="index", how="any", inplace=True)  # hotfix #52
 
         if PHASE_COLUMN_NAME in mtz.columns:
             log.warning(
@@ -207,6 +206,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             else uncertainty_column
         )
         log.info("  uncertainties", sought=uncertainty_column, found=found_uncertainty_column)
+
+        mtz.dropna(axis="index", how="any", subset=found_amplitude_column, inplace=True)
 
         return Map(
             mtz,

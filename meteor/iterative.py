@@ -214,8 +214,7 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
-    # hotfix #52
-    initial_derivative, native = filter_common_indices(initial_derivative, native)  # type: ignore[assignment]
+    initial_derivative, native = filter_common_indices(initial_derivative, native)
 
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information

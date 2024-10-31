@@ -85,6 +85,9 @@ def compute_scale_factors(
     ----------
     [1] SCALEIT https://www.ccp4.ac.uk/html/scaleit.html
     """
+    reference_values.dropna(axis="index", how="any", inplace=True)
+    values_to_scale.dropna(axis="index", how="any", inplace=True)
+
     common_miller_indices: pd.Index = reference_values.index.intersection(values_to_scale.index)
     common_reference_values: np.ndarray = reference_values.loc[common_miller_indices].to_numpy()
     common_values_to_scale: np.ndarray = values_to_scale.loc[common_miller_indices].to_numpy()

@@ -81,6 +81,16 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     pd.testing.assert_frame_equal(random_difference_map, output, atol=1e-2, rtol=1e-2)
 
 
+def test_tv_denoise_nan_input(random_difference_map: Map) -> None:
+    weight = 0.0
+    random_difference_map.iloc[0] = np.nan
+    _ = tv.tv_denoise_difference_map(
+        random_difference_map,
+        weights_to_scan=[weight],
+        full_output=False,
+    )
+
+
 @pytest.mark.parametrize("weights_to_scan", [None, DEFAULT_WEIGHTS_TO_SCAN])
 def test_tv_denoise_map(
     weights_to_scan: None | Sequence[float],
