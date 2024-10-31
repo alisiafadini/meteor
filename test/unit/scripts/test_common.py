@@ -25,10 +25,12 @@ def mocked_read_mtz(dummy_filename: str) -> rs.DataSet:
     # if read_mtz gets a Path, it freaks out; requires str
     assert isinstance(dummy_filename, str)
 
-    index = pd.MultiIndex.from_arrays([[1, 1, 5], [1, 2, 5], [1, 3, 5]], names=("H", "K", "L"))
+    index = pd.MultiIndex.from_arrays(
+        [[1, 1, 5, 6], [1, 2, 5, 6], [1, 3, 5, 6]], names=("H", "K", "L")
+    )
     data = {
-        "F": np.array([2.0, 3.0, 1.0]),
-        "SIGF": np.array([0.5, 0.5, 1.0]),
+        "F": np.array([2.0, 3.0, 1.0, np.nan]),
+        "SIGF": np.array([0.5, 0.5, 1.0, np.nan]),
     }
     return rs.DataSet(data, index=index).infer_mtz_dtypes()
 
