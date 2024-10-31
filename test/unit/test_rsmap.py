@@ -195,6 +195,10 @@ def test_compute_dhkl(noise_free_map: Map) -> None:
     assert np.min(d_hkl) == 1.0
     assert d_hkl.shape == noise_free_map.amplitudes.shape
 
+    noise_free_map.cell = None
+    with pytest.raises(AttributeError):
+        _ = noise_free_map.compute_dHKL()
+
 
 def test_resolution_limits(random_difference_map: Map) -> None:
     dmax, dmin = random_difference_map.resolution_limits

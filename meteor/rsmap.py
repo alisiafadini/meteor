@@ -8,9 +8,12 @@ import gemmi
 import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
+from reciprocalspaceship.decorators import cellify, spacegroupify
 
 from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
+    CellType,
+    SpacegroupType,
     canonicalize_amplitudes,
     complex_array_to_rs_dataseries,
     numpy_array_to_map,
@@ -63,6 +66,8 @@ class Map(rs.DataSet):
     # in addition, __init__ specifies 3 columns special that can be named dynamically to support:
     # amplitudes, phases, uncertainties; all other columns are forbidden
 
+    @cellify
+    @spacegroupify
     def __init__(
         self,
         data: dict | pd.DataFrame | rs.DataSet,
@@ -208,6 +213,9 @@ class Map(rs.DataSet):
     def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
         # rs adds a "dHKL" column to the DataFrame
         # that could be enabled by adding "dHKL" to _allowed_columns - @tjlane
+        if not hasattr(self, "cell"):
+            msg = "no `cell` attribute set, cannot compute resolution (d-values)"
+            raise AttributeError(msg)
         d_hkl = self.cell.calculate_d_array(self.get_hkls())
         return rs.DataSeries(d_hkl, dtype="R", index=self.index)
 
@@ -288,13 +296,15 @@ class Map(rs.DataSet):
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
     @classmethod
+    @cellify("cell")
+    @spacegroupify("spacegroup")
     def from_structurefactor(
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
         index: pd.Index,
-        cell: Any = None,
-        spacegroup: Any = None,
+        cell: CellType | None = None,
+        spacegroup: SpacegroupType | None = None,
     ) -> Map:
         # 1. `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
         #    part of the dataset; having such a (redundant) column is forbidden by `Map`
@@ -326,8 +336,9 @@ class Map(rs.DataSet):
         )
 
     @classmethod
+    @cellify("cell")
     def from_3d_numpy_map(
-        cls, map_grid: np.ndarray, *, spacegroup: Any, cell: Any, high_resolution_limit: float
+        cls, map_grid: np.ndarray, *, spacegroup: Any, cell: CellType, high_resolution_limit: float
     ) -> Map:
         """
         Create a `Map` from a 3d grid of voxel values stored in a numpy array.

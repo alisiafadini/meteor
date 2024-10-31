@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Literal, overload
 
 import gemmi
@@ -7,7 +8,11 @@ import numpy as np
 import reciprocalspaceship as rs
 from pandas import Index
 from reciprocalspaceship import DataSet
+from reciprocalspaceship.decorators import cellify, spacegroupify
 from reciprocalspaceship.utils import canonicalize_phases
+
+CellType = Sequence[float] | np.ndarray | gemmi.UnitCell
+SpacegroupType = str | int | gemmi.SpaceGroup
 
 
 class ShapeMismatchError(Exception): ...
@@ -147,11 +152,13 @@ def complex_array_to_rs_dataseries(
     return amplitudes, phases
 
 
+@cellify("cell")
+@spacegroupify("spacegroup")
 def numpy_array_to_map(
     array: np.ndarray,
     *,
-    spacegroup: str | int | gemmi.SpaceGroup,
-    cell: tuple[float, float, float, float, float, float] | gemmi.UnitCell,
+    spacegroup: SpacegroupType,
+    cell: CellType,
 ) -> gemmi.Ccp4Map:
     ccp4_map = gemmi.Ccp4Map()
     ccp4_map.grid = gemmi.FloatGrid(array.astype(np.float32))
