@@ -106,50 +106,39 @@ exclude = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-
-
 [tool.tox]
-envlist = py{311}-{linux,macos,windows}, ruff, mypy, docs
-minversion = 3.11
+envlist = "py{311}-{linux,macos,windows}, ruff, mypy"
+requires = ["tox>=4.19"]
 isolated_build = true
-toxworkdir=/tmp/.tox
+toxworkdir="/tmp/.tox"
 
 [tool.tox.gh-actions]
-python =
-    3.11: py311
+python = [
+    "3.11: py311",
+]
 
-[tool.tox.gh-actions:env]
-PLATFORM =
-    ubuntu-latest: linux
-    macos-latest: macos
-    windows-latest: windows
+[tool.tox.gh-actions.env]
+PLATFORM = [
+    "ubuntu-latest: linux",
+    "macos-latest: macos",
+    "windows-latest: windows",
+]
 
-[tool.tox.testenv]
-platform =
-    macos: darwin
-    linux: linux
-    windows: win32
-setenv =
-    PYTHONPATH = {toxinidir}
-extras =
-    tests
-commands =
-    pytest -n 4 -v --cov=meteor/ --cov-report=xml --color=yes --basetemp={envtmpdir} {posargs}
+[tool.tox.env_run_base]
+setenv = "PYTHONPATH = {toxinidir}"
+extras = ["tests"]
+commands = [["pytest", "-n", "4", "-v", "--cov=meteor/", "-cov-report=xml", "--color=yes"]]
 
-
-[tool.tox.testenv:ruff]
-basepython = python3.11
+[tool.tox.env.ruff]
 skip_install = true
-deps =
-    ruff
-commands =
-    ruff check --output-format=github .
+deps = ["ruff"]
+commands = [["ruff", "check", "--output-format=github", "."]]
 
-
-[tool.tox.testenv:mypy]
-basepython = python3.11
-skip_install = true
-deps =
-    mypy
-commands =
-    mypy --install-types --non-interactive meteor/ test/
+[tool.tox.env.mypy]
+skip_install = false
+deps = ["mypy"]
+commands = [
+    ["mypy", "--install-types", "--non-interactive"],
+    ["mypy", "meteor/"],
+    ["mypy", "test/"],
+]
