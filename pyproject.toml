@@ -24,6 +24,7 @@ dependencies = [
 tests = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 ]
 
 [project.scripts]
@@ -32,6 +33,9 @@ tests = [
 
 [tool.setuptools_scm]
 version_file = "meteor/_version.py"
+
+[tool.pytest.ini_options]
+addopts = "--cov=meteor --cov-report=xml"
 
 [tool.mypy]
 disallow_untyped_calls = true
@@ -101,6 +105,3 @@ exclude = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.pytest.ini_options]
-addopts = "--cov=meteor --cov-report=xml"

@@ -7,6 +7,11 @@ from meteor.rsmap import Map
 from meteor.scripts import compute_iterative_tv_map
 from meteor.scripts.common import read_combined_metadata
 from meteor.utils import filter_common_indices
+from meteor import settings
+
+# faster tests
+settings.MAP_SAMPLING = 1
+settings.TV_MAX_NUM_ITER = 10
 
 
 def test_script_produces_consistent_results(

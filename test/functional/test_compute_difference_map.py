@@ -9,7 +9,11 @@ from meteor.scripts import compute_difference_map
 from meteor.scripts.common import WeightMode
 from meteor.tv import TvDenoiseResult
 from meteor.utils import filter_common_indices
+from meteor import settings
 
+# faster tests
+settings.MAP_SAMPLING = 1
+settings.TV_MAX_NUM_ITER = 10
 
 @pytest.mark.parametrize("kweight_mode", list(WeightMode))
 @pytest.mark.parametrize("tv_weight_mode", list(WeightMode))
