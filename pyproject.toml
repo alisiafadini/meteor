@@ -11,7 +11,6 @@ authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
 ]
-requires-python = ">=3.11"
 dependencies = [
     "numpy >= 1.26",
     "scipy >= 1.14.0",
