@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "meteor"
 description = "denoise crystallographic difference maps"
 dynamic = ["version"]
-requires-python = ">3.11"
+requires-python = ">=3.11"
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },
     { name = "Thomas Lane", email = "thomas.lane@desy.de" }
