@@ -1,8 +1,4 @@
-"""
-`meteor` is a tool for computing crystallographic difference maps
-
-.. include:: ./documentation.md
-"""
+""".. include:: ../README.md"""
 
 __all__ = ["__version__", "version"]
 
