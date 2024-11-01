@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "meteor-maps"
 description = "denoise crystallographic difference maps"
+readme = "README.md"
 dynamic = ["version"]
 authors = [
     { name = "Alisia Fadini", email = "af840@cam.ac.uk" },

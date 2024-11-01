@@ -1,6 +1,12 @@
 name: ruff
 
-on: [pull_request]
+on:
+  pull_request:
+  workflow_call:
+    inputs:
+      job:
+        required: true
+        type: string
 
 jobs:
   build:
