@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.1">
+<title>meteor API documentation</title>
+<meta name="description" content="METEOR
+…">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Package <code>meteor</code></h1>
+</header>
+<section id="section-intro">
+<h1 id="meteor">METEOR</h1>
+<hr>
+<p><strong>Map Enhancement Tools for Ephemeral Occupancy Refinement</strong></p>
+<p><a href="https://github.com/your_username/your_repo/actions/workflows/tests.yml"><img alt="Pytest" src="https://github.com/alisiafadini/meteor/actions/workflows/tests.yml/badge.svg"></a>
+<a href="https://github.com/your_username/your_repo/actions/workflows/mypy.yml"><img alt="Mypy" src="https://github.com/alisiafadini/meteor/actions/workflows/mypy.yml/badge.svg"></a>
+<a href="https://github.com/your_username/your_repo/actions/workflows/lint.yml"><img alt="Ruff" src="https://github.com/alisiafadini/meteor/actions/workflows/lint.yml/badge.svg"></a>
+<a href="https://codecov.io/gh/alisiafadini/meteor"><img alt="codecov" src="https://codecov.io/gh/alisiafadini/meteor/graph/badge.svg?token=NCYMP06MNS"></a>
+<img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/rs-station/meteor"></p>
+<p><code><a title="meteor" href="#meteor">meteor</a></code> is a tool for computing crystallographic difference maps. </p>
+<p><code><a title="meteor" href="#meteor">meteor</a></code> specializes the robust identification of weak signals arising from minor but scientifically interesting populations, such as bound ligands or changes that occur in time-resolved experiments. That said, if you need an difference map, <code><a title="meteor" href="#meteor">meteor</a></code> can do it!</p>
+<h2 id="quickstart">quickstart</h2>
+<p>❗ <code><a title="meteor" href="#meteor">meteor</a></code> is currently <strong>in beta</strong>. We re-wrote everything recently, moving from a research code to something that can be robustly used as a tool. If you are willing to put up with a few sharp edges, it would be great if you give it a spin and then send us feedback: on how easy/not it was to use and what kinds of scientific results you obtain.</p>
+<p>Finally: a word of caution. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with <code><a title="meteor" href="#meteor">meteor</a></code> until we exit <code>beta</code>. </p>
+<p>First, meteor needs a <code>python3.11</code> environment. We're working hard to extend this to as many versions as possible. To be sure things work, we recommend <a href="https://docs.anaconda.com/miniconda/">installing conda</a> and creating a fresh environment,</p>
+<pre><code>conda create --name meteor python==3.11 --yes
+conda activate meteor
+</code></pre>
+<p>Then install <code><a title="meteor" href="#meteor">meteor</a></code> using pip</p>
+<pre><code>pip install meteor-maps
+</code></pre>
+<p>Once installed, you will have two command-line scripts. Ask for more info using <code>-h</code>:</p>
+<pre><code>meteor.diffmap -h
+meteor.phaseboost -h
+</code></pre>
+<p>these scripts compute denoised difference maps using the constant-phase approximation <em>vs.</em> iterative phase retrieval, respectively. See below for additional detail</p>
+<h2 id="the-science-behind-meteor">the science behind <code><a title="meteor" href="#meteor">meteor</a></code></h2>
+<h3 id="philosophy-better-science-through-automation">philosophy: better science through automation</h3>
+<p><code><a title="meteor" href="#meteor">meteor</a></code> aims to:</p>
+<ol>
+<li>maximize signal to noise</li>
+<li>be objective and reproducible (minimize user choice &amp; bias)</li>
+<li>be easy to use</li>
+</ol>
+<p>Aim 1 is met using structure factor amplitude weighting (e.g. k-weighting, existing art) and <a href="https://en.wikipedia.org/wiki/Total_variation_denoising">TV denoising</a> (new in the context of crystallography). Aims 2 and 3 are met through automatically setting parameters using negentropy maximization (as in <a href="https://en.wikipedia.org/wiki/Independent_component_analysis">ICA</a>). For all the details, see our paper (coming soon to a preprint server near you).</p>
+<h3 id="isomorphous-data-please">isomorphous data, please</h3>
+<p>METEOR is only for isomorphous difference maps, meaning the lattices/symmetries of the <em>native</em> and <em>derivative</em> datasets are comparable. If you need to compare non-isomorphous lattices, check out <a href="https://github.com/rs-station/matchmaps">matchmaps</a>.</p>
+<h2 id="command-line-details">command-line details</h2>
+<p><code><a title="meteor" href="#meteor">meteor</a></code> provides two command-line scripts that most users will want. If you prefer working in Jupyter notebooks or want to develop against <code><a title="meteor" href="#meteor">meteor</a></code>'s library, refer to the <a href="https://rs-station.github.io/meteor/">API documentation</a>.</p>
+<p>Both of <code><a title="meteor" href="#meteor">meteor</a></code>'s scripts generate difference maps (MTZs). We recommend starting with <code>meteor.diffmap</code>. This script applies k-weighting then TV-denoising, and picks parameters for both by maximizing negentropy. It's relatively fast to run (expect about a minute) and has fewer nobs to turn. After you've tried <code>meteor.diffmap</code>, you can give <code>meteor.phaseboost</code> a try. This script iteratively applys TV denoising, and adjusts the phases of the <em>derivative</em> data to try and produce a denoised map. At the end, it applies a k-weighting and TV denoising pass. It often results in slightly better maps, at the cost of additional compute (many minutes).</p>
+<p>Note that individual steps in both of these scripts can be turned off or modified using command-line flags, as described below.</p>
+<p>One note: in the lingo we adopt, we compute <em>derivative</em> minus <em>native</em> maps. Initial phases typically from a model of the <em>native</em> data, computed from a CIF/PDB model. Usually the derivative data are ligand bound, time-resolved-activated, or similar&hellip; but in the end, the use case is defined by you!</p>
+<h3 id="meteordiffmap">meteor.diffmap</h3>
+<p>Compute difference maps, including k-weighting and TV-denoising options. To see the full help, just run <code>meteor.diffmap -h</code>. Here are some examples that highlight common use cases:</p>
+<p>Computing a k-weighted, TV-denoised diffmap, with <code><a title="meteor" href="#meteor">meteor</a></code> making some smart default choices for me:</p>
+<pre><code>meteor.diffmap derivative.mtz native.mtz -s native.pdb
+</code></pre>
+<p>note that the order of <code>derivative.mtz</code> and <code>native.mtz</code> matters!</p>
+<p>Suppose I have some non-standard column names. Using <code>gemmi mtz &lt;my.mtz&gt;</code> might be smart to find out what they should be; then,</p>
+<pre><code>meteor.diffmap derivative.mtz --derivative-amplitude-column F_ON --derivative-uncertainty-column SIGF_ON native.mtz -s native.pdb
+</code></pre>
+<p>or, equivalently,</p>
+<pre><code>meteor.diffmap derivative.mtz --da F_ON --du SIGF_ON native.mtz -s native.pdb
+</code></pre>
+<p>what if I want to compute a k-weighted map, with k-parameter of <code>0.05</code>, and no TV?</p>
+<pre><code>meteor.diffmap derivative.mtz native.mtz -s native.pdb --kweight-mode fixed --kweight-parameter 0.05 --tv-denoise-mode none 
+</code></pre>
+<p>To note and remember:</p>
+<ul>
+<li>the k-parameter sets how strongly outlier difference structure factor amplitudes are suppressed</li>
+<li>k-weighting with k-parameter of <code>0.0</code> is NOT the same as with k-weighting totally turned off!</li>
+<li>the TV-weight trades off the smoothness (lack of noise) in the final map <em>vs.</em> fidelity to the original map. A higher TV weight means more denoising, and a greater departure from the original data</li>
+</ul>
+<h3 id="meteorphaseboost">meteor.phaseboost</h3>
+<p>Compute iterative-TV denoised difference maps. The usage is very similar to <code>meteor.diffmap</code>, so let's focus on the three new flags:</p>
+<ul>
+<li><code>--tv-weights-to-scan</code> sets what TV weights are assessed at every iteration &ndash; you may want to try and play with this. Increasing the number of scanned points will probably result in more stable runs, and perhaps slightly better results, at the cost of computation</li>
+<li><code>--convergence-tolerance</code> dictactes the phase change at which the algorithm stops. The default is pretty good, but if you notice the negentropy is still increasing at the end of your run, try lowering this. If instead, you have a lot of maps to denoise and you notice things converge early, you can lower this</li>
+<li><code>--max-iterations</code> is mostly just there to force the algorithm to bail out just in case it starts to thrash; so far, we haven't seen cases where it's necessary to adjust this</li>
+</ul>
+<h3 id="advanced-options">advanced options</h3>
+<p>If you feel adventurous, check out <code>meteor/settings.py</code>. Default values are collected there, and you could ducktype to your heart's content. Not recommended for 99% of users!</p>
+<h3 id="what-the-heck-are-these-meteor_metadatajson-files">what the heck are these <code>meteor_metadata.json</code> files?</h3>
+<p>These are flat text files that contain information about how <code><a title="meteor" href="#meteor">meteor</a></code> ran. The primary intent is for debugging purposes, but you can also <a href="https://github.com/rs-station/meteor/blob/64f96ca0a293520cbd0163267768ddbfd68c7b0b/meteor/scripts/common.py#L331">read them with <code>meteor</code></a> or any standard JSON parser, and make some plots to better understand <code><a title="meteor" href="#meteor">meteor</a></code>'s runtime behavior.</p>
+</section>
+<section>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+<dl>
+<dt><code class="name"><a title="meteor.diffmaps" href="diffmaps.html">meteor.diffmaps</a></code></dt>
+<dd>
+<div class="desc"><p>library for computing difference density maps</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.io" href="io.html">meteor.io</a></code></dt>
+<dd>
+<div class="desc"><p>MTZ input/output helper functions</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.iterative" href="iterative.html">meteor.iterative</a></code></dt>
+<dd>
+<div class="desc"><p>iterative TV-based phase retrieval</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.rsmap" href="rsmap.html">meteor.rsmap</a></code></dt>
+<dd>
+<div class="desc"><p>Map class definition and related functions</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.scale" href="scale.html">meteor.scale</a></code></dt>
+<dd>
+<div class="desc"><p>(anisotropic) scaling of crystallographic datasets</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.scripts" href="scripts/index.html">meteor.scripts</a></code></dt>
+<dd>
+<div class="desc"><p><code><a title="meteor" href="#meteor">meteor</a></code> CLI</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.settings" href="settings.html">meteor.settings</a></code></dt>
+<dd>
+<div class="desc"><p>runtime settings for <code><a title="meteor" href="#meteor">meteor</a></code></p></div>
+</dd>
+<dt><code class="name"><a title="meteor.sfcalc" href="sfcalc.html">meteor.sfcalc</a></code></dt>
+<dd>
+<div class="desc"><p>computing structure factors from models</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.testing" href="testing.html">meteor.testing</a></code></dt>
+<dd>
+<div class="desc"><p>used during testing</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.tv" href="tv.html">meteor.tv</a></code></dt>
+<dd>
+<div class="desc"><p>total variation denoising of maps</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.utils" href="utils.html">meteor.utils</a></code></dt>
+<dd>
+<div class="desc"><p>crystallographic helper functions</p></div>
+</dd>
+<dt><code class="name"><a title="meteor.validate" href="validate.html">meteor.validate</a></code></dt>
+<dd>
+<div class="desc"><p>map quality assessment: negentropy and negentropy maximization</p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul>
+<li><a href="#meteor">METEOR</a><ul>
+<li><a href="#quickstart">quickstart</a></li>
+<li><a href="#the-science-behind-meteor">the science behind meteor</a><ul>
+<li><a href="#philosophy-better-science-through-automation">philosophy: better science through automation</a></li>
+<li><a href="#isomorphous-data-please">isomorphous data, please</a></li>
+</ul>
+</li>
+<li><a href="#command-line-details">command-line details</a><ul>
+<li><a href="#meteordiffmap">meteor.diffmap</a></li>
+<li><a href="#meteorphaseboost">meteor.phaseboost</a></li>
+<li><a href="#advanced-options">advanced options</a></li>
+<li><a href="#what-the-heck-are-these-meteor_metadatajson-files">what the heck are these meteor_metadata.json files?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="meteor.diffmaps" href="diffmaps.html">meteor.diffmaps</a></code></li>
+<li><code><a title="meteor.io" href="io.html">meteor.io</a></code></li>
+<li><code><a title="meteor.iterative" href="iterative.html">meteor.iterative</a></code></li>
+<li><code><a title="meteor.rsmap" href="rsmap.html">meteor.rsmap</a></code></li>
+<li><code><a title="meteor.scale" href="scale.html">meteor.scale</a></code></li>
+<li><code><a title="meteor.scripts" href="scripts/index.html">meteor.scripts</a></code></li>
+<li><code><a title="meteor.settings" href="settings.html">meteor.settings</a></code></li>
+<li><code><a title="meteor.sfcalc" href="sfcalc.html">meteor.sfcalc</a></code></li>
+<li><code><a title="meteor.testing" href="testing.html">meteor.testing</a></code></li>
+<li><code><a title="meteor.tv" href="tv.html">meteor.tv</a></code></li>
+<li><code><a title="meteor.utils" href="utils.html">meteor.utils</a></code></li>
+<li><code><a title="meteor.validate" href="validate.html">meteor.validate</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.1</a>.</p>
+</footer>
+</body>
+</html>
