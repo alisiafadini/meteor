@@ -14,8 +14,6 @@ UNIT_CELL = gemmi.UnitCell(a=10.0, b=10.0, c=10.0, alpha=90, beta=90, gamma=90)
 SPACE_GROUP = gemmi.find_spacegroup_by_name("P1")
 CARBON1_POSITION = (5.0, 5.0, 5.0)
 
-NP_RNG = np.random.default_rng()
-
 
 @pytest.fixture
 def tv_denoise_result_source_data() -> dict:
@@ -39,10 +37,10 @@ def test_map_columns() -> MapColumns:
     )
 
 
-def single_atom_map_coefficients(*, noise_sigma: float) -> Map:
+def single_atom_map_coefficients(*, noise_sigma: float, np_rng: np.random.Generator) -> Map:
     density_map = single_carbon_density(CARBON1_POSITION, SPACE_GROUP, UNIT_CELL, RESOLUTION)
     density_array = np.array(density_map.grid)
-    grid_values = density_array + noise_sigma * NP_RNG.normal(size=density_array.shape)
+    grid_values = density_array + noise_sigma * np_rng.normal(size=density_array.shape)
     ccp4_map = numpy_array_to_map(grid_values, spacegroup=SPACE_GROUP, cell=UNIT_CELL)
 
     map_coefficients = Map.from_ccp4_map(ccp4_map=ccp4_map, high_resolution_limit=RESOLUTION)
@@ -60,22 +58,22 @@ def ccp4_map() -> gemmi.Ccp4Map:
 
 
 @pytest.fixture
-def noise_free_map() -> Map:
-    return single_atom_map_coefficients(noise_sigma=0.0)
+def noise_free_map(np_rng: np.random.Generator) -> Map:
+    return single_atom_map_coefficients(noise_sigma=0.0, np_rng=np_rng)
 
 
 @pytest.fixture
-def noisy_map() -> Map:
-    return single_atom_map_coefficients(noise_sigma=0.03)
+def noisy_map(np_rng: np.random.Generator) -> Map:
+    return single_atom_map_coefficients(noise_sigma=0.03, np_rng=np_rng)
 
 
 @pytest.fixture
-def very_noisy_map() -> Map:
-    return single_atom_map_coefficients(noise_sigma=1.0)
+def very_noisy_map(np_rng: np.random.Generator) -> Map:
+    return single_atom_map_coefficients(noise_sigma=1.0, np_rng=np_rng)
 
 
 @pytest.fixture
-def random_difference_map(test_map_columns: MapColumns) -> Map:
+def random_difference_map(test_map_columns: MapColumns, np_rng: np.random.Generator) -> Map:
     hall = rs.utils.generate_reciprocal_asu(UNIT_CELL, SPACE_GROUP, RESOLUTION, anomalous=False)
     sigma = 1.0
 
@@ -87,8 +85,8 @@ def random_difference_map(test_map_columns: MapColumns) -> Map:
             "H": h,
             "K": k,
             "L": l,
-            test_map_columns.amplitude: sigma * NP_RNG.normal(size=number_of_reflections),
-            test_map_columns.phase: NP_RNG.uniform(-180, 180, size=number_of_reflections),
+            test_map_columns.amplitude: sigma * np_rng.normal(size=number_of_reflections),
+            test_map_columns.phase: np_rng.uniform(-180, 180, size=number_of_reflections),
         },
         spacegroup=SPACE_GROUP,
         cell=UNIT_CELL,
