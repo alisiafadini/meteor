@@ -14,14 +14,13 @@ on:
 
 jobs:
   build:
-    name: publish-docs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
             python-version: '3.11'
 
@@ -33,6 +32,7 @@ jobs:
       - name: Generate documentation with pdoc3
         run: |
             mkdir -p docs
+            pip install '.[tests]'
             pdoc --html meteor --output-dir docs --force
 
       - name: Deploy to GitHub Pages
