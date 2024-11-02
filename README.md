@@ -61,11 +61,11 @@ METEOR is only for isomorphous difference maps, meaning the lattices/symmetries 
 
 `meteor` provides two command-line scripts that most users will want. If you prefer working in Jupyter notebooks or want to develop against `meteor`'s library, refer to the [API documentation](https://rs-station.github.io/meteor/).
 
-Both of `meteor`'s scripts generate difference maps (MTZs). We recommend starting with `meteor.diffmap`. This script applies k-weighting then TV-denoising, and picks parameters for both by maximizing negentropy. It's relatively fast to run (expect about a minute) and has fewer nobs to turn. After you've tried `meteor.diffmap`, you can give `meteor.phaseboost` a try. This script iteratively applys TV denoising, and adjusts the phases of the _derivative_ data to try and produce a denoised map. At the end, it applies a k-weighting and TV denoising pass. It often results in slightly better maps, at the cost of additional compute (many minutes). We also have noticed the algorithm can become unstable in rare circumstances. If you think that might be happening to you, please get in touch.
+Both of `meteor`'s scripts generate difference maps (MTZs). We recommend starting with `meteor.diffmap`. This script applies k-weighting then TV-denoising, and picks parameters for both by maximizing negentropy. It's relatively fast to run (expect about a minute) and has fewer nobs to turn. After you've tried `meteor.diffmap`, you can give `meteor.phaseboost` a try. This script iteratively applys TV denoising, and adjusts the phases of the _derivative_ data to try and produce a denoised map. At the end, it applies a k-weighting and TV denoising pass. It often results in slightly better maps, at the cost of additional compute (many minutes).
 
 Note that individual steps in both of these scripts can be turned off or modified using command-line flags, as described below.
 
-One note: in the lingo we adope, we compute _derivative_ minus _native_ maps. Initial phases typically from a model of the _native_ data, computed from a CIF/PDB model. Usually the derivative data are ligand bound, time-resolved-activated, or similar... but in the end, the use case is defined by you!
+One note: in the lingo we adopt, we compute _derivative_ minus _native_ maps. Initial phases typically from a model of the _native_ data, computed from a CIF/PDB model. Usually the derivative data are ligand bound, time-resolved-activated, or similar... but in the end, the use case is defined by you!
 
 ### meteor.diffmap
 
@@ -109,7 +109,7 @@ Compute iterative-TV denoised difference maps. The usage is very similar to `met
 
 ### advanced options
 
-If you feel adventerous, check out `meteor/settings.py`. Default values are collected there, and you could ducktype to your heart's content. Not recommended for 99% of users!
+If you feel adventurous, check out `meteor/settings.py`. Default values are collected there, and you could ducktype to your heart's content. Not recommended for 99% of users!
 
 
 ### what the heck are these `meteor_metadata.json` files?
