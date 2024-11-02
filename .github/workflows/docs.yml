@@ -7,10 +7,6 @@ on:
       job:
         required: true
         type: string
-    secrets:
-      GH_TOKEN:
-        description: 'A token passed from the caller workflow'
-        required: true
 
 jobs:
   build:
