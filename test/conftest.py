@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 
 from meteor.testing import check_test_file_exists
 
