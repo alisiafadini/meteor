@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import numpy as np
 import pandas as pd
 import reciprocalspaceship as rs
 import structlog
+from reciprocalspaceship.decorators import cellify, spacegroupify
 
 from .rsmap import Map
 from .settings import (
@@ -16,145 +15,165 @@ from .settings import (
     ITERATIVE_TV_MAX_ITERATIONS,
 )
 from .tv import TvDenoiseResult, tv_denoise_difference_map
-from .utils import (
-    average_phase_diff_in_degrees,
-    filter_common_indices,
-)
+from .utils import CellType, SpacegroupType, average_phase_diff_in_degrees, filter_common_indices
 
 log = structlog.get_logger()
 
 
-# TODO: do we need this function?
-def _project_derivative_on_experimental_set(
-    *,
-    native: np.ndarray | rs.DataSeries,
-    derivative_amplitudes: np.ndarray | rs.DataSeries,
-    difference: np.ndarray | rs.DataSeries,
-) -> np.ndarray | rs.DataSeries:
-    """
-    Project the `derivative` structure factor onto the set of experimentally observed amplitudes.
+class _IterativeTvDenoiser:
+    @cellify("cell")
+    @spacegroupify("spacegroup")
+    def __init__(  # noqa: PLR0913
+        self,
+        *,
+        cell: CellType,
+        spacegroup: SpacegroupType,
+        convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
+        max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
+        tv_weights_to_scan: list[float] = DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
+        verbose: bool = False,
+    ) -> None:
+        """
+        Initialize a TV denoiser.
 
-    Specifically, we change the amplitude of the complex-valued `derivative` to ensure that both
+        Parameters
+        ----------
+        cell: gemmi.Cell | Sequence[float] | np.ndarray
+            Unit cell, should match both the `native` and `derivative` datasets (usual: use native)
 
-        difference = derivative - native
+        spacegroup: gemmi.SpaceGroup | str | int
+            The spacegroup; both the `native` and `derivative` datasets
 
-    and that the modulus |derivative| is equal to the specified (user-input) `derivative_amplitudes`
+        convergance_tolerance: float
+            If the change in the estimated derivative SFs drops below this value (phase,
+            per-component) then return. Default 1e-4.
 
-    Parameters
-    ----------
-    native: np.ndarray
-        The experimentally observed native amplitudes and computed phases, as a complex array.
+        max_iterations: int
+            If this number of iterations is reached, stop early. Default 1000.
 
-    derivative_amplitudes: np.ndarray
-        An array of the experimentally observed derivative amplitudes. Typically real-valued, but
-        a complex-valued array with arbitrary phase can be passed (phases discarded).
+        tv_weights_to_scan : list[float], optional
+            A list of TV regularization weights (λ values) to be scanned for optimal results,
+            by default [0.001, 0.01, 0.1, 1.0].
 
-    difference: np.ndarray
-        The estimated complex structure factor difference, derivative-minus-native.
+        verbose: bool
+            Log or not.
+        """
+        self.cell = cell
+        self.spacegroup = spacegroup
+        self.tv_weights_to_scan = tv_weights_to_scan
+        self.convergence_tolerance = convergence_tolerance
+        self.max_iterations = max_iterations
+        self.verbose = verbose
 
-    Returns
-    -------
-    projected_derivative: np.ndarray
-        The complex-valued derivative structure factors, with experimental amplitude and phase
-        adjusted to ensure that difference = derivative - native.
-    """
-    projected_derivative = difference + native
-    projected_derivative *= np.abs(derivative_amplitudes) / np.abs(projected_derivative)
-    return projected_derivative
-
-
-def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
-    *,
-    native: rs.DataSeries,
-    initial_derivative: rs.DataSeries,
-    tv_denoise_function: Callable[[rs.DataSeries], tuple[rs.DataSeries, TvDenoiseResult]],
-    convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
-    max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
-    verbose: bool = False,
-) -> tuple[rs.DataSeries, pd.DataFrame]:
-    """
-    Estimate the derivative phases using the iterative TV algorithm.
-
-    This function contains the algorithm logic.
-
-    Parameters
-    ----------
-    native: rs.DataSeries
-        The complex native structure factors, usually experimental amplitudes and calculated phases
-
-    initial_complex_derivative : rs.DataSeries
-        The complex derivative structure factors, usually with experimental amplitudes and esimated
-        phases (often calculated from the native structure)
-
-    tv_denoise_function: Callable[[rs.DataSeries], tuple[rs.DataSeries, TvDenoiseResult]]
-        A function capable of applying the TV denoising operation to *Fourier space* objects. This
-        function should therefore map one complex rs.DataSeries to a denoised complex rs.DataSeries
-        and the TvDenoiseResult for that TV run.
-
-    convergance_tolerance: float
-        If the change in the estimated derivative SFs drops below this value (phase, per-component)
-        then return. Default 1e-4.
-
-    max_iterations: int
-        If this number of iterations is reached, stop early. Default 1000.
-
-    verbose: bool
-        Log or not.
-
-    Returns
-    -------
-    estimated_complex_derivative: np.ndarray
-        The derivative SFs, with the same amplitudes but phases altered to minimize the TV.
-
-    metadata: pd.DataFrame
-        Information about the algorithm run as a function of iteration. For each step, includes:
-        the tv_weight used, the negentropy (after the TV step), and the average phase change in
-        degrees.
-    """
-    derivative = initial_derivative.copy()
-
-    # do the difference as rs.DataSeries, handles missing indices
-    difference = initial_derivative - native
-
-    converged: bool = False
-    num_iterations: int = 0
-    metadata: list[dict[str, float]] = []
-
-    while not converged:
-        difference_tvd, tv_metadata = tv_denoise_function(difference)
-        updated_derivative = _project_derivative_on_experimental_set(
-            native=native,
-            derivative_amplitudes=np.abs(derivative),
-            difference=difference_tvd,
-        )
-
-        phase_change = average_phase_diff_in_degrees(derivative, updated_derivative)
-        derivative = updated_derivative
-        difference = derivative - native
-
-        converged = phase_change < convergence_tolerance
-        num_iterations += 1
-
-        metadata.append(
-            {
-                "iteration": num_iterations,
-                "tv_weight": tv_metadata.optimal_tv_weight,
-                "negentropy_after_tv": tv_metadata.optimal_negentropy,
-                "average_phase_change": phase_change,
-            },
-        )
         if verbose:
             log.info(
-                f"  iteration {num_iterations:04d}",  # noqa: G004
-                phase_change=round(phase_change, 4),
-                negentropy=round(tv_metadata.optimal_negentropy, 4),
-                tv_weight=tv_metadata.optimal_tv_weight,
+                "convergence criteria:",
+                phase_tolerance=convergence_tolerance,
+                max_iterations=max_iterations,
             )
 
-        if num_iterations > max_iterations:
-            break
+    def _tv_denoise_complex_difference_sf(
+        self, complex_difference_sf: rs.DataSeries
+    ) -> tuple[rs.DataSeries, TvDenoiseResult]:
+        """Apply a single iteration of TV denoising to set of complex SFs, return complex SFs"""
+        diffmap = Map.from_structurefactor(
+            complex_difference_sf,
+            index=complex_difference_sf.index,
+            cell=self.cell,
+            spacegroup=self.spacegroup,
+        )
 
-    return derivative, pd.DataFrame(metadata)
+        denoised_map, tv_metadata = tv_denoise_difference_map(
+            diffmap,
+            weights_to_scan=self.tv_weights_to_scan,
+            full_output=True,
+        )
+
+        return denoised_map.to_structurefactor(), tv_metadata
+
+    def __call__(
+        self,
+        *,
+        native: rs.DataSeries,
+        initial_derivative: rs.DataSeries,
+    ) -> tuple[rs.DataSeries, pd.DataFrame]:
+        """
+        Estimate the derivative phases using the iterative TV algorithm.
+
+        This function contains the algorithm logic.
+
+        Parameters
+        ----------
+        native: rs.DataSeries
+            The complex native structure factors, usually experimental amplitudes and calculated phases
+
+        initial_complex_derivative : rs.DataSeries
+            The complex derivative structure factors, usually with experimental amplitudes and esimated
+            phases (often calculated from the native structure)
+
+        Returns
+        -------
+        estimated_complex_derivative: rs.DataSeries
+            The derivative SFs, with the same amplitudes but phases altered to minimize the TV.
+
+        metadata: pd.DataFrame
+            Information about the algorithm run as a function of iteration. For each step, includes:
+            the tv_weight used, the negentropy (after the TV step), and the average phase change in
+            degrees.
+        """
+        if not isinstance(native, rs.DataSeries):
+            msg = f"`native` must be type rs.DataSeries, got {type(native)}"
+            raise TypeError(msg)
+
+        if not isinstance(initial_derivative, rs.DataSeries):
+            msg = f"`initial_derivative` must be type rs.DataSeries, got {type(initial_derivative)}"
+            raise TypeError(msg)
+
+        derivative = initial_derivative.copy()
+        converged: bool = False
+        num_iterations: int = 0
+        metadata: list[dict[str, float]] = []
+
+        # do differences with rs.DataSeries, handles missing indices
+        difference: rs.DataSeries = initial_derivative - native
+
+        while not converged:
+            denoised_difference, tv_metadata = self._tv_denoise_complex_difference_sf(difference)
+
+            # project onto the native amplitudes to obtain an "updated_derivative"
+            #   Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]
+            updated_derivative: rs.DataSeries = denoised_difference + native
+            updated_derivative *= np.abs(derivative) / np.abs(updated_derivative)
+
+            # compute phase change, THEN set: derivative <- updated_derivative
+            phase_change = average_phase_diff_in_degrees(derivative, updated_derivative)
+            derivative = updated_derivative
+
+            difference = derivative - native
+
+            converged = phase_change < self.convergence_tolerance
+            num_iterations += 1
+
+            metadata.append(
+                {
+                    "iteration": num_iterations,
+                    "tv_weight": tv_metadata.optimal_tv_weight,
+                    "negentropy_after_tv": tv_metadata.optimal_negentropy,
+                    "average_phase_change": phase_change,
+                },
+            )
+            if self.verbose:
+                log.info(
+                    f"  iteration {num_iterations:04d}",  # noqa: G004
+                    phase_change=round(phase_change, 4),
+                    negentropy=round(tv_metadata.optimal_negentropy, 4),
+                    tv_weight=tv_metadata.optimal_tv_weight,
+                )
+
+            if num_iterations > self.max_iterations:
+                break
+
+        return derivative, pd.DataFrame(metadata)
 
 
 def iterative_tv_phase_retrieval(  # noqa: PLR0913
@@ -221,51 +240,30 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
     """
     initial_derivative, native = filter_common_indices(initial_derivative, native)
 
-    # clean TV denoising interface that is crystallographically intelligent
-    # maintains state for the HKL index, spacegroup, and cell information
-    def tv_denoise_closure(
-        complex_difference_sf: rs.DataSeries,
-    ) -> tuple[rs.DataSeries, TvDenoiseResult]:
-        diffmap = Map.from_structurefactor(
-            complex_difference_sf,
-            index=complex_difference_sf.index,
-            cell=native.cell,
-            spacegroup=native.spacegroup,
-        )
-        denoised_map, tv_metadata = tv_denoise_difference_map(
-            diffmap,
-            weights_to_scan=tv_weights_to_scan,
-            full_output=True,
-        )
-        return denoised_map.to_structurefactor(), tv_metadata
-
-    # estimate the derivative phases using the iterative TV algorithm
-    if verbose:
-        log.info(
-            "convergence criteria:",
-            phase_tolerance=convergence_tolerance,
-            max_iterations=max_iterations,
-        )
-
-    it_tv_complex_derivative, metadata = _complex_derivative_from_iterative_tv(
-        native=native.to_structurefactor(),
-        initial_derivative=initial_derivative.to_structurefactor(),
-        tv_denoise_function=tv_denoise_closure,
+    denoiser = _IterativeTvDenoiser(
+        cell=native.cell,
+        spacegroup=native.spacegroup,
         convergence_tolerance=convergence_tolerance,
         max_iterations=max_iterations,
+        tv_weights_to_scan=tv_weights_to_scan,
         verbose=verbose,
     )
 
-    updated_derivative = Map.from_structurefactor(
+    it_tv_complex_derivative, metadata = denoiser(
+        native=native.to_structurefactor(),
+        initial_derivative=initial_derivative.to_structurefactor(),
+    )
+
+    updated_derivative_map = Map.from_structurefactor(
         it_tv_complex_derivative,
         cell=initial_derivative.cell,
         spacegroup=initial_derivative.spacegroup,
     )
 
     if initial_derivative.has_uncertainties:
-        updated_derivative.set_uncertainties(
+        updated_derivative_map.set_uncertainties(
             initial_derivative.uncertainties,
             column_name=initial_derivative.uncertainties_column_name,
         )
 
-    return updated_derivative, metadata
+    return updated_derivative_map, metadata

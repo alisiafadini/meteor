@@ -10,21 +10,10 @@ import pytest
 
 from meteor import tv
 from meteor.rsmap import Map
+from meteor.testing import rms_between_coefficients
 from meteor.validate import map_negentropy
 
 DEFAULT_WEIGHTS_TO_SCAN = np.logspace(-2, 0, 25)
-
-
-def rms_between_coefficients(map1: Map, map2: Map) -> float:
-    map_sampling = 3
-    map1_array = np.array(map1.to_ccp4_map(map_sampling=map_sampling).grid)
-    map2_array = np.array(map2.to_ccp4_map(map_sampling=map_sampling).grid)
-
-    # standardize
-    map1_array /= map1_array.std()
-    map2_array /= map2_array.std()
-
-    return float(np.linalg.norm(map2_array - map1_array))
 
 
 def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
