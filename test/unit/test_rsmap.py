@@ -8,7 +8,7 @@ import reciprocalspaceship as rs
 
 from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, _assert_is_map
 from meteor.testing import assert_phases_allclose
-from meteor.utils import filter_common_indices
+from meteor.utils import filter_common_indices, ShapeMismatchError
 
 
 def test_assert_is_map(noise_free_map: Map) -> None:
@@ -286,14 +286,42 @@ def test_to_structurefactor(noise_free_map: Map) -> None:
     np.testing.assert_almost_equal(result.to_numpy(), expected)
 
 
-def from_structurefactor(noise_free_map: Map) -> None:
-    map2 = Map.from_structurefactor(noise_free_map.to_structurefactor(), index=noise_free_map.index)
+def from_structurefactor_dataseries(noise_free_map: Map) -> None:
+    sf_dataseries = noise_free_map.to_structurefactor()
+    assert isinstance(sf_dataseries, rs.DataSeries)
+    map2 = Map.from_structurefactor(sf_dataseries)
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
-    map3 = Map.from_structurefactor(
-        noise_free_map.to_structurefactor().to_numpy(), index=noise_free_map.index
+
+def from_structurefactor_numpy(noise_free_map: Map) -> None:
+    sf_numpy = noise_free_map.to_structurefactor().to_numpy()
+    assert isinstance(sf_numpy, np.ndarray)
+    
+    map2 = Map.from_structurefactor(sf_numpy, index=noise_free_map.index)
+    pd.testing.assert_frame_equal(noise_free_map, map2)
+
+    with pytest.raises(ShapeMismatchError):
+        _ = Map.from_structurefactor(sf_numpy, index=noise_free_map.index[1:])
+
+    # index required
+    with pytest.raises(ValueError, match="`complex_structurefactor`"):
+        _ = Map.from_structurefactor(sf_numpy)
+
+
+def test_from_structurefactor_correctness() -> None:
+    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+    index = pd.Index(np.arange(4))
+
+    expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
+        rs.StructureFactorAmplitudeDtype(),
     )
-    pd.testing.assert_frame_equal(noise_free_map, map3)
+    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
+        rs.PhaseDtype(),
+    )
+
+    c_map = Map.from_structurefactor(carray, index=index)
+    pd.testing.assert_series_equal(c_map.amplitudes, expected_amp)
+    pd.testing.assert_series_equal(c_map.phases, expected_phase)
 
 
 def test_to_ccp4_map(noise_free_map: Map) -> None:

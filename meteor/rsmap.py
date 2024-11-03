@@ -15,9 +15,9 @@ from reciprocalspaceship.decorators import cellify, spacegroupify
 from .settings import GEMMI_HIGH_RESOLUTION_BUFFER
 from .utils import (
     CellType,
+    ShapeMismatchError,
     SpacegroupType,
     canonicalize_amplitudes,
-    complex_array_to_rs_dataseries,
     numpy_array_to_map,
 )
 
@@ -312,7 +312,28 @@ class Map(rs.DataSet):
         """Return a DataSeries of complex structure factor amplitudes"""
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
-    # TODO: overload typing, docstring
+    @overload
+    @classmethod
+    def from_structurefactor(
+        cls,
+        complex_structurefactor: rs.DataSeries,
+        *,
+        index: None = None,
+        cell: CellType | None = None,
+        spacegroup: SpacegroupType | None = None,
+    ) -> Map: ...
+
+    @overload
+    @classmethod
+    def from_structurefactor(
+        cls,
+        complex_structurefactor: np.ndarray,
+        *,
+        index: pd.Index,
+        cell: CellType | None = None,
+        spacegroup: SpacegroupType | None = None,
+    ) -> Map: ...
+
     @classmethod
     @cellify("cell")
     @spacegroupify("spacegroup")
@@ -327,25 +348,47 @@ class Map(rs.DataSet):
         # 1. `rs.DataSet.from_structurefactor` exists, but it operates on a column that's already
         #    part of the dataset; having such a (redundant) column is forbidden by `Map`
         # 2. recprocalspaceship has a `from_structurefactor` method, but it is occasionally
-        #    mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
+        #    mangling indices for me when the input is a numpy array, as of 16 OCT 24
+        #
+        # hopefully we can resolve these and reuse code! - @tjlane
 
         if index is None:
             if isinstance(complex_structurefactor, rs.DataSeries) and hasattr(
                 complex_structurefactor, "index"
             ):
                 index = complex_structurefactor.index
+
             else:
                 msg = "if `complex_structurefactor` is not a `DataSeries` with an `index` attribute"
                 msg += ", and index must be provided"
                 raise ValueError(msg)
 
-        amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
+        elif index.shape != complex_structurefactor.shape:
+            msg = f"`complex_structurefactor` {complex_structurefactor.shape} does not have same "
+            msg += f"shape as `index` {index.shape}"
+            raise ShapeMismatchError(msg)
+
+        amplitudes = rs.DataSeries(
+            np.abs(complex_structurefactor),
+            index=index,
+            dtype=rs.StructureFactorAmplitudeDtype(),
+            name="F",
+        )
+
+        phases = rs.DataSeries(
+            np.angle(complex_structurefactor, deg=True),
+            index=index,
+            dtype=rs.PhaseDtype(),
+            name="PHI",
+        )
+
         dataset = rs.DataSet(
-            rs.concat([amplitudes.rename("F"), phases.rename("PHI")], axis=1),
+            rs.concat([amplitudes, phases], axis=1),
             index=index,
             cell=cell,
             spacegroup=spacegroup,
         )
+
         return cls(dataset)
 
     @classmethod

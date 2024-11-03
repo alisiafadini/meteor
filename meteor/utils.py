@@ -8,7 +8,6 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from pandas import Index
 from reciprocalspaceship import DataSet
 from reciprocalspaceship.decorators import cellify, spacegroupify
 from reciprocalspaceship.utils import canonicalize_phases
@@ -102,65 +101,6 @@ def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> flo
     diff = (diff + 180) % 360 - 180
 
     return float(np.sum(np.abs(diff)) / float(np.prod(array1.shape)))
-
-
-# TODO: remove this function and subsume it into rsmap.from_structurefactor(...)
-def complex_array_to_rs_dataseries(
-    complex_structure_factors: np.ndarray,
-    *,
-    index: Index,
-) -> tuple[rs.DataSeries, rs.DataSeries]:
-    """
-    Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one
-    representing the structure factor amplitudes and one for the phases.
-
-    Parameters
-    ----------
-    complex_structure_factors: np.ndarray
-        the complex-valued structure factors, as a numpy array
-    index: pandas.Index
-        the indices (HKL) for each structure factor in `complex_structure_factors`
-
-    Returns
-    -------
-    amplitudes: DataSeries
-        with StructureFactorAmplitudeDtype
-    phases: DataSeries
-        with PhaseDtype
-
-    Raises
-    ------
-    ValueError
-        if `complex_structure_factors and `index` do not have the same shape
-
-    See Also
-    --------
-    `reciprocalspaceship/utils/structurefactors.from_structurefactor(...)`
-        An equivalent function, that does not require the index and does less index/data
-        checking.
-    """
-    if complex_structure_factors.shape != index.shape:
-        msg = (
-            f"shape of `complex_structure_factors` ({complex_structure_factors.shape}) does not "
-            f"match shape of `index` ({index.shape})"
-        )
-        raise ShapeMismatchError(msg)
-
-    amplitudes = rs.DataSeries(
-        np.abs(complex_structure_factors),
-        index=index,
-        dtype=rs.StructureFactorAmplitudeDtype(),
-        name="F",
-    )
-
-    phases = rs.DataSeries(
-        np.angle(complex_structure_factors, deg=True),
-        index=index,
-        dtype=rs.PhaseDtype(),
-        name="PHI",
-    )
-
-    return amplitudes, phases
 
 
 @cellify("cell")

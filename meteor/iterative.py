@@ -24,12 +24,13 @@ from .utils import (
 log = structlog.get_logger()
 
 
+# TODO: do we need this function?
 def _project_derivative_on_experimental_set(
     *,
-    native: np.ndarray,
-    derivative_amplitudes: np.ndarray,
-    difference: np.ndarray,
-) -> np.ndarray:
+    native: np.ndarray | rs.DataSeries,
+    derivative_amplitudes: np.ndarray | rs.DataSeries,
+    difference: np.ndarray | rs.DataSeries,
+) -> np.ndarray | rs.DataSeries:
     """
     Project the `derivative` structure factor onto the set of experimentally observed amplitudes.
 
@@ -66,7 +67,7 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
     *,
     native: rs.DataSeries,
     initial_derivative: rs.DataSeries,
-    tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]],
+    tv_denoise_function: Callable[[rs.DataSeries], tuple[rs.DataSeries, TvDenoiseResult]],
     convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
     max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
     verbose: bool = False,
@@ -85,10 +86,10 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
         The complex derivative structure factors, usually with experimental amplitudes and esimated
         phases (often calculated from the native structure)
 
-    tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]]
+    tv_denoise_function: Callable[[rs.DataSeries], tuple[rs.DataSeries, TvDenoiseResult]]
         A function capable of applying the TV denoising operation to *Fourier space* objects. This
-        function should therefore map one complex np.ndarray to a denoised complex np.ndarray and
-        the TvDenoiseResult for that TV run.
+        function should therefore map one complex rs.DataSeries to a denoised complex rs.DataSeries
+        and the TvDenoiseResult for that TV run.
 
     convergance_tolerance: float
         If the change in the estimated derivative SFs drops below this value (phase, per-component)
@@ -222,7 +223,6 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
 
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
-    # TODO: swap to DataSeries...
     def tv_denoise_closure(
         complex_difference_sf: rs.DataSeries,
     ) -> tuple[rs.DataSeries, TvDenoiseResult]:

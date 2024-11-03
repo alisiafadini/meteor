@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-import reciprocalspaceship as rs
-from pandas import testing as pdt
 
 from meteor import utils
 from meteor.rsmap import Map
@@ -102,26 +100,3 @@ def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
     arr2 = np.ones(3)
     with pytest.raises(utils.ShapeMismatchError):
         utils.average_phase_diff_in_degrees(arr1, arr2)
-
-
-def test_complex_array_to_rs_dataseries() -> None:
-    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
-    index = pd.Index(np.arange(4))
-
-    expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
-        rs.StructureFactorAmplitudeDtype(),
-    )
-    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
-        rs.PhaseDtype(),
-    )
-
-    amp, phase = utils.complex_array_to_rs_dataseries(carray, index=index)
-    pdt.assert_series_equal(amp, expected_amp)
-    pdt.assert_series_equal(phase, expected_phase)
-
-
-def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
-    carray = np.array([1.0]) + 1j * np.array([1.0])
-    index = pd.Index(np.arange(2))
-    with pytest.raises(utils.ShapeMismatchError):
-        utils.complex_array_to_rs_dataseries(carray, index=index)
