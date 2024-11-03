@@ -4,26 +4,24 @@ from numpy.testing import assert_almost_equal
 from meteor import validate
 from meteor.rsmap import Map
 
-NP_RNG = np.random.default_rng()
-
 
 def parabolic_objective(x: float) -> float:
     # has a maximum of y = 0 at x = 1
     return -(x**2) + 2 * x - 1
 
 
-def test_negentropy_gaussian() -> None:
+def test_negentropy_gaussian(np_rng: np.random.Generator) -> None:
     n_samples = 10000
-    samples = NP_RNG.normal(size=n_samples)
+    samples = np_rng.normal(size=n_samples)
     negentropy = validate.negentropy(samples)
 
     # negentropy should be zero for a Gaussian sample
     assert np.abs(negentropy) < 1e-2
 
 
-def test_negentropy_uniform() -> None:
+def test_negentropy_uniform(np_rng: np.random.Generator) -> None:
     n_samples = 1000000
-    samples = NP_RNG.uniform(size=n_samples)
+    samples = np_rng.uniform(size=n_samples)
     negentropy = validate.negentropy(samples)
 
     uniform_negentropy = (1.0 / 2.0) * np.log(np.pi * np.exp(1) / 6.0)
