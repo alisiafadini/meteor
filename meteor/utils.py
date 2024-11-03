@@ -84,9 +84,9 @@ def canonicalize_amplitudes(
     return None
 
 
-def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> float:
-    # TODO: make this work for numpy and DataSeries, test
-
+def average_phase_diff_in_degrees(
+    array1: np.ndarray | rs.DataSeries, array2: np.ndarray | rs.DataSeries
+) -> float:
     if isinstance(array1, rs.DataSeries) and isinstance(array2, rs.DataSeries):
         array1, array2 = filter_common_indices(array1, array2)
 

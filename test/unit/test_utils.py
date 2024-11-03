@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import reciprocalspaceship as rs
 
 from meteor import utils
 from meteor.rsmap import Map
@@ -100,3 +101,17 @@ def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
     arr2 = np.ones(3)
     with pytest.raises(utils.ShapeMismatchError):
         utils.average_phase_diff_in_degrees(arr1, arr2)
+
+
+def test_average_phase_diff_in_degrees_dataseries() -> None:
+    ser1 = rs.DataSeries(np.ones(2), index=np.arange(2))
+    ser2 = rs.DataSeries(np.ones(3), index=np.arange(3))
+    result = utils.average_phase_diff_in_degrees(ser1, ser2)
+    assert np.allclose(result, 0.0)
+
+
+def test_average_phase_diff_in_degrees_mixed_types() -> None:
+    ser1 = np.ones(3)
+    ser2 = rs.DataSeries(np.ones(3), index=np.arange(3))
+    result = utils.average_phase_diff_in_degrees(ser1, ser2)
+    assert np.allclose(result, 0.0)

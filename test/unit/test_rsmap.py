@@ -8,7 +8,7 @@ import reciprocalspaceship as rs
 
 from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, _assert_is_map
 from meteor.testing import assert_phases_allclose
-from meteor.utils import filter_common_indices, ShapeMismatchError
+from meteor.utils import ShapeMismatchError, filter_common_indices
 
 
 def test_assert_is_map(noise_free_map: Map) -> None:
@@ -296,7 +296,7 @@ def from_structurefactor_dataseries(noise_free_map: Map) -> None:
 def from_structurefactor_numpy(noise_free_map: Map) -> None:
     sf_numpy = noise_free_map.to_structurefactor().to_numpy()
     assert isinstance(sf_numpy, np.ndarray)
-    
+
     map2 = Map.from_structurefactor(sf_numpy, index=noise_free_map.index)
     pd.testing.assert_frame_equal(noise_free_map, map2)
 
