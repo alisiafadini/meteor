@@ -300,11 +300,6 @@ class Map(rs.DataSet):
         msg = "uncertainties not set for Map object"
         raise AttributeError(msg)
 
-    # TODO: combine with complex_structurefactor()
-    @property
-    def complex_amplitudes(self) -> np.ndarray:
-        return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
-
     def canonicalize_amplitudes(self) -> None:
         canonicalize_amplitudes(
             self,
@@ -314,6 +309,7 @@ class Map(rs.DataSet):
         )
 
     def to_structurefactor(self) -> rs.DataSeries:
+        """Return a DataSeries of complex structure factor amplitudes"""
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
     # TODO: overload typing, docstring

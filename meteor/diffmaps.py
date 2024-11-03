@@ -56,8 +56,8 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
 
     derivative, native = filter_common_indices(derivative, native)
 
-    delta_complex = derivative.complex_amplitudes - native.complex_amplitudes
-    delta = Map.from_structurefactor(delta_complex, index=native.index)
+    delta_complex = derivative.to_structurefactor() - native.to_structurefactor()
+    delta = Map.from_structurefactor(delta_complex)
 
     set_common_crystallographic_metadata(derivative, native, output=delta)
 
