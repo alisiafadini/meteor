@@ -8,7 +8,7 @@ import numpy as np
 import reciprocalspaceship as rs
 
 from .rsmap import Map, _assert_is_map
-from .settings import DEFAULT_KPARAMS_TO_SCAN, MAP_SAMPLING
+from .settings import DEFAULT_KPARAMS_TO_SCAN
 from .utils import filter_common_indices
 from .validate import ScalarMaximizer, map_negentropy
 

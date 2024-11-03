@@ -134,11 +134,11 @@ def test_tv_denoise_map(
     )
 
 
-def test_final_map_has_reported_negentropy(random_difference_map: Map) -> None:
+def test_final_map_has_reported_negentropy(noisy_map: Map) -> None:
     # regression test -- previously the written map had different indices --> discrepency
     weight = 0.01
     output_map, metadata = tv.tv_denoise_difference_map(
-        random_difference_map,
+        noisy_map,
         weights_to_scan=[weight],
         full_output=True,
     )

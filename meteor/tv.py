@@ -191,15 +191,6 @@ def tv_denoise_difference_map(
     if difference_map.has_uncertainties:
         final_map.set_uncertainties(difference_map.uncertainties)
 
-    # sometimes `from_ccp4_map` adds reflections -- systematic absences or
-    # reflections just beyond the resolution limt; remove those
-    extra_indices = final_map.index.difference(difference_map.index)
-    final_map.drop(extra_indices, inplace=True)
-    sym_diff = difference_map.index.symmetric_difference(final_map.index)
-    if len(sym_diff) > 0:
-        msg = "something went wrong, input and output coefficients do not have identical indices"
-        raise IndexError(msg)
-
     if full_output:
         initial_negentropy = negentropy(realspace_map_array)
         tv_result = TvDenoiseResult(

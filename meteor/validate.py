@@ -7,8 +7,9 @@ from collections.abc import Callable, Sequence
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.stats import differential_entropy
-from .settings import MAP_SAMPLING
+
 from .rsmap import Map
+from .settings import MAP_SAMPLING
 
 
 def negentropy(samples: np.ndarray, *, tolerance: float = 0.1) -> float:
@@ -63,7 +64,7 @@ def negentropy(samples: np.ndarray, *, tolerance: float = 0.1) -> float:
     return float(neg_e)
 
 
-def map_negentropy(map: Map, *, tolerance: float = 0.1) -> float:
+def map_negentropy(map_to_assess: Map, *, tolerance: float = 0.1) -> float:
     """
     Computes the negentropy of a crystallographic map.
 
@@ -74,8 +75,8 @@ def map_negentropy(map: Map, *, tolerance: float = 0.1) -> float:
 
     Parameters
     ----------
-    samples: np.ndarray
-        A numpy array of sample data for which to calculate the negentropy.
+    map_to_assess: Map
+        The map (coefficients) we will compute the negentropy for.
 
     tolerance: float
         Tolerance level determining if the negentropy is suspiciously negative. Defaults to 0.1.
@@ -90,7 +91,7 @@ def map_negentropy(map: Map, *, tolerance: float = 0.1) -> float:
     ValueError: If the computed negentropy is less than the negative tolerance,
                 indicating potential issues with the computation.
     """
-    realspace_map = map.to_ccp4_map(map_sampling=MAP_SAMPLING)
+    realspace_map = map_to_assess.to_ccp4_map(map_sampling=MAP_SAMPLING)
     realspace_map_array = np.array(realspace_map.grid)
     return negentropy(realspace_map_array, tolerance=tolerance)
 
