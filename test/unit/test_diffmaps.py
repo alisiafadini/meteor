@@ -14,7 +14,7 @@ from meteor.diffmaps import (
     set_common_crystallographic_metadata,
 )
 from meteor.rsmap import Map
-from meteor.validate import negentropy
+from meteor.validate import map_negentropy
 
 
 @pytest.fixture
@@ -156,9 +156,8 @@ def test_kweight_optimization(noise_free_map: rs.DataSet, noisy_map: rs.DataSet)
             noise_free_map,
             k_parameter=k_parameter,
         )
-        realspace_map = kweighted_diffmap.to_ccp4_map(map_sampling=3)
-        map_negentropy = negentropy(np.array(realspace_map.grid))
-        negentropies.append(map_negentropy)
+        diffmap_negentropy = map_negentropy(kweighted_diffmap)
+        negentropies.append(diffmap_negentropy)
 
     # the optimal k-weight should have the highest negentropy
     assert negentropies[0] <= negentropies[1]

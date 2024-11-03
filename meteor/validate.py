@@ -7,9 +7,11 @@ from collections.abc import Callable, Sequence
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.stats import differential_entropy
+from .settings import MAP_SAMPLING
+from .rsmap import Map
 
 
-def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
+def negentropy(samples: np.ndarray, *, tolerance: float = 0.1) -> float:
     """
     Computes the negentropy of a given sample array.
 
@@ -45,7 +47,6 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
     >>> samples = np.random.normal(size=1000)
     >>> negentropy(samples)
     0.0012  # Example output, varies with input samples.
-
     """
     std = np.std(samples.flatten())
     if std <= 0.0:
@@ -60,6 +61,38 @@ def negentropy(samples: np.ndarray, tolerance: float = 0.1) -> float:
         raise ValueError(msg)
 
     return float(neg_e)
+
+
+def map_negentropy(map: Map, *, tolerance: float = 0.1) -> float:
+    """
+    Computes the negentropy of a crystallographic map.
+
+    Negentropy is defined as the difference between the entropy of a given
+    distribution and the entropy of a Gaussian distribution with the same variance.
+    It is a measure of non-Gaussianity, with higher values indicating greater deviation
+    from Gaussianity.
+
+    Parameters
+    ----------
+    samples: np.ndarray
+        A numpy array of sample data for which to calculate the negentropy.
+
+    tolerance: float
+        Tolerance level determining if the negentropy is suspiciously negative. Defaults to 0.1.
+
+    Returns
+    -------
+    negentropy: float
+        The negentropy of the distribution of the (implicitly computed) map voxels.
+
+    Raises
+    ------
+    ValueError: If the computed negentropy is less than the negative tolerance,
+                indicating potential issues with the computation.
+    """
+    realspace_map = map.to_ccp4_map(map_sampling=MAP_SAMPLING)
+    realspace_map_array = np.array(realspace_map.grid)
+    return negentropy(realspace_map_array, tolerance=tolerance)
 
 
 class ScalarMaximizer:

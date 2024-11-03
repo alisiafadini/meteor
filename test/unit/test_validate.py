@@ -2,6 +2,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 
 from meteor import validate
+from meteor.rsmap import Map
 
 NP_RNG = np.random.default_rng()
 
@@ -32,6 +33,10 @@ def test_negentropy_uniform() -> None:
 def test_negentropy_zero() -> None:
     negentropy = validate.negentropy(np.zeros(100))
     assert negentropy == -np.inf
+
+
+def test_map_negentropy(noise_free_map: Map, very_noisy_map: Map) -> None:
+    assert validate.map_negentropy(noise_free_map) > validate.map_negentropy(very_noisy_map)
 
 
 def test_negentropy_maximizer_explicit() -> None:

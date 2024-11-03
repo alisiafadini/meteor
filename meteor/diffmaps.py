@@ -10,7 +10,7 @@ import reciprocalspaceship as rs
 from .rsmap import Map, _assert_is_map
 from .settings import DEFAULT_KPARAMS_TO_SCAN, MAP_SAMPLING
 from .utils import filter_common_indices
-from .validate import ScalarMaximizer, negentropy
+from .validate import ScalarMaximizer, map_negentropy
 
 
 def set_common_crystallographic_metadata(map1: Map, map2: Map, *, output: Map) -> None:
@@ -163,14 +163,12 @@ def max_negentropy_kweighted_difference_map(
     _assert_is_map(native, require_uncertainties=True)
 
     def negentropy_objective(k_parameter: float) -> float:
-        kweighted_dataset = compute_kweighted_difference_map(
+        kweighted_map = compute_kweighted_difference_map(
             derivative,
             native,
             k_parameter=k_parameter,
         )
-        k_weighted_map = kweighted_dataset.to_ccp4_map(map_sampling=MAP_SAMPLING)
-        k_weighted_map_array = np.array(k_weighted_map.grid)
-        return negentropy(k_weighted_map_array)
+        return map_negentropy(kweighted_map)
 
     maximizer = ScalarMaximizer(objective=negentropy_objective)
     maximizer.optimize_over_explicit_values(arguments_to_scan=k_parameter_values_to_scan)

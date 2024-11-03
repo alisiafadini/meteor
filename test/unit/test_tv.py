@@ -10,6 +10,7 @@ import pytest
 
 from meteor import tv
 from meteor.rsmap import Map
+from meteor.validate import map_negentropy
 
 DEFAULT_WEIGHTS_TO_SCAN = np.logspace(-2, 0, 25)
 
@@ -131,3 +132,16 @@ def test_tv_denoise_map(
     np.testing.assert_allclose(
         result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight"
     )
+
+
+def test_final_map_has_reported_negentropy(random_difference_map: Map) -> None:
+    # regression test -- previously the written map had different indices --> discrepency
+    weight = 0.01
+    output_map, metadata = tv.tv_denoise_difference_map(
+        random_difference_map,
+        weights_to_scan=[weight],
+        full_output=True,
+    )
+    actual_negentropy = map_negentropy(output_map)
+    assert np.isclose(actual_negentropy, metadata.optimal_negentropy), "final/metadata mismatch"
+    assert np.isclose(actual_negentropy, metadata.negentropy_at_weights[-1]), "final/optimizer"
