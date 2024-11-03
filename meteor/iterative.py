@@ -114,7 +114,6 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
 
     # do the difference as rs.DataSeries, handles missing indices
     difference = initial_derivative - native
-    difference = difference
 
     converged: bool = False
     num_iterations: int = 0
@@ -154,12 +153,6 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
         if num_iterations > max_iterations:
             break
 
-    # derivative_as_rs_series = rs.DataSeries(
-    #     derivative,
-    #     index=initial_derivative.index,
-    #     dtype=initial_derivative.dtypes,
-    #     name="derivative"
-    # )
     return derivative, pd.DataFrame(metadata)
 
 
