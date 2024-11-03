@@ -8,8 +8,6 @@ from meteor import utils
 from meteor.rsmap import Map
 from meteor.testing import MapColumns
 
-NP_RNG = np.random.default_rng()
-
 
 def omit_nones_in_list(input_list: list) -> list:
     return [x for x in input_list if x]

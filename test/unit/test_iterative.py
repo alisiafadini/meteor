@@ -16,8 +16,6 @@ from meteor.rsmap import Map
 from meteor.tv import TvDenoiseResult
 from meteor.validate import negentropy
 
-NP_RNG = np.random.default_rng()
-
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
     diff = np.array(map1.grid) - np.array(map2.grid)
@@ -46,10 +44,10 @@ def normalized_rms(x: np.ndarray, y: np.ndarray) -> float:
 
 
 @pytest.mark.parametrize("scalar", [0.01, 1.0, 2.0, 100.0])
-def test_projected_derivative(scalar: float) -> None:
+def test_projected_derivative(scalar: float, np_rng: np.random.Generator) -> None:
     n = 16
-    native = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
-    derivative = NP_RNG.normal(size=n) + 1j * NP_RNG.normal(size=n)
+    native = np_rng.normal(size=n) + 1j * np_rng.normal(size=n)
+    derivative = np_rng.normal(size=n) + 1j * np_rng.normal(size=n)
     difference = derivative - native
 
     # ensure the projection removes a scalar multiple of the native & difference
@@ -63,13 +61,13 @@ def test_projected_derivative(scalar: float) -> None:
     np.testing.assert_allclose(proj_derivative, derivative)
 
 
-def test_complex_derivative_from_iterative_tv() -> None:
+def test_complex_derivative_from_iterative_tv(np_rng: np.random.Generator) -> None:
     test_image = binary_blobs(length=64)  # type: ignore[no-untyped-call]
 
     constant_image = np.ones_like(test_image) / 2.0
     constant_image_ft = np.fft.fftn(constant_image)
 
-    test_image_noisy = test_image + 0.2 * NP_RNG.normal(size=test_image.shape)
+    test_image_noisy = test_image + 0.2 * np_rng.normal(size=test_image.shape)
     test_image_noisy_ft = np.fft.fftn(test_image_noisy)
 
     denoised_derivative, _ = _complex_derivative_from_iterative_tv(
