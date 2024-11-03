@@ -97,14 +97,14 @@ def test_filter_common_indices_with_maps(noise_free_map: Map) -> None:
 
 def test_verify_type(noise_free_map: Map) -> None:
     dataseries = rs.DataSeries([1, 2, 3])
-    assert dataseries.dtype == int
+    assert np.issubdtype(dataseries.dtype, np.integer)
     noise_free_map._verify_type("foo", [int], dataseries, fix=False, cast_fix_to=int)
 
     with pytest.raises(AssertionError):
         noise_free_map._verify_type("foo", [float], dataseries, fix=False, cast_fix_to=float)
 
     output = noise_free_map._verify_type("foo", [float], dataseries, fix=True, cast_fix_to=float)
-    assert output.dtype == float
+    assert np.issubdtype(output.dtype, np.floating)
 
 
 @pytest.mark.parametrize("fix", [False, True])
