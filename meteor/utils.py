@@ -86,16 +86,25 @@ def canonicalize_amplitudes(
 
 
 def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> float:
+    # TODO: make this work for numpy and DataSeries, test
+
+    if isinstance(array1, rs.DataSeries) and isinstance(array2, rs.DataSeries):
+        array1, array2 = filter_common_indices(array1, array2)
+
     if array1.shape != array2.shape:
         msg = f"inputs not same shape: {array1.shape} vs {array2.shape}"
         raise ShapeMismatchError(msg)
+
     phase1 = np.rad2deg(np.angle(array1))
     phase2 = np.rad2deg(np.angle(array2))
+
     diff = phase2 - phase1
     diff = (diff + 180) % 360 - 180
+
     return float(np.sum(np.abs(diff)) / float(np.prod(array1.shape)))
 
 
+# TODO: remove this function and subsume it into rsmap.from_structurefactor(...)
 def complex_array_to_rs_dataseries(
     complex_structure_factors: np.ndarray,
     *,

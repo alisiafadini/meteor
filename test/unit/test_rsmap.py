@@ -46,6 +46,18 @@ def test_amplitude_and_phase_required(noise_free_map: Map) -> None:
         Map(ds)
 
 
+def test_column_name_properties(random_difference_map: Map) -> None:
+    assert random_difference_map.amplitude_column_name == "F"
+    assert random_difference_map.phase_column_name == "PHI"
+    assert random_difference_map.uncertainties_column_name == "SIGF"
+
+    # this tests if we ask for the column with no uncertainties
+    del random_difference_map["SIGF"]
+    assert not random_difference_map.has_uncertainties
+    with pytest.raises(AttributeError):
+        _ = random_difference_map.uncertainties_column_name
+
+
 def test_loc_indexing(random_difference_map: Map) -> None:
     ds = rs.DataSet(random_difference_map).rename(columns={"F": "amps", "PHI": "phases"})
     non_std_map = Map(ds, amplitude_column="amps", phase_column="phases")

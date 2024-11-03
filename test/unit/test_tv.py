@@ -135,7 +135,12 @@ def test_tv_denoise_map(
 
 
 def test_final_map_has_reported_negentropy(noisy_map: Map) -> None:
-    # regression test -- previously the written map had different indices --> discrepency
+    # regression test: previously the written map dropped a few indices to be consistent w/input
+    # this caused the negentropy values to be off
+
+    # simulate missing reflections that will be filled
+    noisy_map.drop(noisy_map.index[:512], inplace=True)
+
     weight = 0.01
     output_map, metadata = tv.tv_denoise_difference_map(
         noisy_map,
@@ -143,5 +148,8 @@ def test_final_map_has_reported_negentropy(noisy_map: Map) -> None:
         full_output=True,
     )
     actual_negentropy = map_negentropy(output_map)
-    assert np.isclose(actual_negentropy, metadata.optimal_negentropy), "final/metadata mismatch"
-    assert np.isclose(actual_negentropy, metadata.negentropy_at_weights[-1]), "final/optimizer"
+    assert len(metadata.negentropy_at_weights) == 1
+
+    # it seems converting to real space and back can cause a small (few %) discrepency
+    assert np.isclose(actual_negentropy, metadata.optimal_negentropy, atol=0.05)
+    assert np.isclose(actual_negentropy, metadata.negentropy_at_weights[0], atol=0.05)

@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
+import reciprocalspaceship as rs
 import structlog
 
 from .rsmap import Map
@@ -17,7 +18,6 @@ from .settings import (
 from .tv import TvDenoiseResult, tv_denoise_difference_map
 from .utils import (
     average_phase_diff_in_degrees,
-    complex_array_to_rs_dataseries,
     filter_common_indices,
 )
 
@@ -64,13 +64,13 @@ def _project_derivative_on_experimental_set(
 
 def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
     *,
-    native: np.ndarray,
-    initial_derivative: np.ndarray,
+    native: rs.DataSeries,
+    initial_derivative: rs.DataSeries,
     tv_denoise_function: Callable[[np.ndarray], tuple[np.ndarray, TvDenoiseResult]],
     convergence_tolerance: float = ITERATIVE_TV_CONVERGENCE_TOLERANCE,
     max_iterations: int = ITERATIVE_TV_MAX_ITERATIONS,
     verbose: bool = False,
-) -> tuple[np.ndarray, pd.DataFrame]:
+) -> tuple[rs.DataSeries, pd.DataFrame]:
     """
     Estimate the derivative phases using the iterative TV algorithm.
 
@@ -78,10 +78,10 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
 
     Parameters
     ----------
-    native: np.ndarray
+    native: rs.DataSeries
         The complex native structure factors, usually experimental amplitudes and calculated phases
 
-    initial_complex_derivative : np.ndarray
+    initial_complex_derivative : rs.DataSeries
         The complex derivative structure factors, usually with experimental amplitudes and esimated
         phases (often calculated from the native structure)
 
@@ -110,8 +110,11 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
         the tv_weight used, the negentropy (after the TV step), and the average phase change in
         degrees.
     """
-    derivative = np.copy(initial_derivative)
+    derivative = initial_derivative.copy()
+
+    # do the difference as rs.DataSeries, handles missing indices
     difference = initial_derivative - native
+    difference = difference
 
     converged: bool = False
     num_iterations: int = 0
@@ -151,6 +154,12 @@ def _complex_derivative_from_iterative_tv(  # noqa: PLR0913
         if num_iterations > max_iterations:
             break
 
+    # derivative_as_rs_series = rs.DataSeries(
+    #     derivative,
+    #     index=initial_derivative.index,
+    #     dtype=initial_derivative.dtypes,
+    #     name="derivative"
+    # )
     return derivative, pd.DataFrame(metadata)
 
 
@@ -220,18 +229,22 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
 
     # clean TV denoising interface that is crystallographically intelligent
     # maintains state for the HKL index, spacegroup, and cell information
-    def tv_denoise_closure(difference: np.ndarray) -> tuple[np.ndarray, TvDenoiseResult]:
-        diffmap = Map.from_structurefactor(difference, index=native.index)
-        diffmap.cell = native.cell
-        diffmap.spacegroup = native.spacegroup
-
+    # TODO: swap to DataSeries...
+    def tv_denoise_closure(
+        complex_difference_sf: rs.DataSeries,
+    ) -> tuple[rs.DataSeries, TvDenoiseResult]:
+        diffmap = Map.from_structurefactor(
+            complex_difference_sf,
+            index=complex_difference_sf.index,
+            cell=native.cell,
+            spacegroup=native.spacegroup,
+        )
         denoised_map, tv_metadata = tv_denoise_difference_map(
             diffmap,
             weights_to_scan=tv_weights_to_scan,
             full_output=True,
         )
-
-        return denoised_map.complex_amplitudes, tv_metadata
+        return denoised_map.to_structurefactor(), tv_metadata
 
     # estimate the derivative phases using the iterative TV algorithm
     if verbose:
@@ -240,21 +253,26 @@ def iterative_tv_phase_retrieval(  # noqa: PLR0913
             phase_tolerance=convergence_tolerance,
             max_iterations=max_iterations,
         )
+
     it_tv_complex_derivative, metadata = _complex_derivative_from_iterative_tv(
-        native=native.complex_amplitudes,
-        initial_derivative=initial_derivative.complex_amplitudes,
+        native=native.to_structurefactor(),
+        initial_derivative=initial_derivative.to_structurefactor(),
         tv_denoise_function=tv_denoise_closure,
         convergence_tolerance=convergence_tolerance,
         max_iterations=max_iterations,
         verbose=verbose,
     )
-    _, derivative_phases = complex_array_to_rs_dataseries(
+
+    updated_derivative = Map.from_structurefactor(
         it_tv_complex_derivative,
-        index=initial_derivative.index,
+        cell=initial_derivative.cell,
+        spacegroup=initial_derivative.spacegroup,
     )
 
-    # combine the determined derivative phases with the input to generate a complete output
-    output_dataset = initial_derivative.copy()
-    output_dataset.phases = derivative_phases
+    if initial_derivative.has_uncertainties:
+        updated_derivative.set_uncertainties(
+            initial_derivative.uncertainties,
+            column_name=initial_derivative.uncertainties_column_name,
+        )
 
-    return output_dataset, metadata
+    return updated_derivative, metadata

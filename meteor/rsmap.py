@@ -236,6 +236,10 @@ class Map(rs.DataSet):
         self[self._amplitude_column] = values
 
     @property
+    def amplitude_column_name(self) -> str:
+        return self._amplitude_column
+
+    @property
     def phases(self) -> rs.DataSeries:
         return self[self._phase_column]
 
@@ -243,6 +247,10 @@ class Map(rs.DataSet):
     def phases(self, values: rs.DataSeries) -> None:
         values = self._verify_phase_type(values)
         self[self._phase_column] = values
+
+    @property
+    def phase_column_name(self) -> str:
+        return self._phase_column
 
     @property
     def has_uncertainties(self) -> bool:
@@ -283,8 +291,24 @@ class Map(rs.DataSet):
             )
 
     @property
-    def complex_amplitudes(self) -> np.ndarray:
-        return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
+    def uncertainties_column_name(self) -> str:
+        if self.has_uncertainties:
+            if not isinstance(self._uncertainty_column, str):
+                msg = "misconfigured uncertainty column"
+                raise RuntimeError(msg)
+            return self._uncertainty_column
+        msg = "uncertainties not set for Map object"
+        raise AttributeError(msg)
+
+    # TODO: this is redundant with to_structurefactor
+    @property
+    def complex_amplitudes(self, *, astype: Literal["numpy", "DataSeries"] = "numpy") -> np.ndarray:
+        # TODO: work, test
+        if astype == "numpy":
+            return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
+        if astype == "DataSeries":
+            return self.amplitudes * np.exp(1j * np.deg2rad(self.phases))
+        raise ValueError  # TODO: write
 
     def canonicalize_amplitudes(self) -> None:
         canonicalize_amplitudes(
@@ -297,6 +321,7 @@ class Map(rs.DataSet):
     def to_structurefactor(self) -> rs.DataSeries:
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
 
+    # TODO: overload typing, docstring
     @classmethod
     @cellify("cell")
     @spacegroupify("spacegroup")
@@ -304,7 +329,7 @@ class Map(rs.DataSet):
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
-        index: pd.Index,
+        index: pd.Index | None = None,
         cell: CellType | None = None,
         spacegroup: SpacegroupType | None = None,
     ) -> Map:
@@ -312,6 +337,17 @@ class Map(rs.DataSet):
         #    part of the dataset; having such a (redundant) column is forbidden by `Map`
         # 2. recprocalspaceship has a `from_structurefactor` method, but it is occasionally
         #    mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
+
+        if index is None:
+            if isinstance(complex_structurefactor, rs.DataSeries) and hasattr(
+                complex_structurefactor, "index"
+            ):
+                index = complex_structurefactor.index
+            else:
+                msg = "if `complex_structurefactor` is not a `DataSeries` with an `index` attribute"
+                msg += ", and index must be provided"
+                raise ValueError(msg)
+
         amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
         dataset = rs.DataSet(
             rs.concat([amplitudes.rename("F"), phases.rename("PHI")], axis=1),
