@@ -9,6 +9,7 @@ import gemmi
 import numpy as np
 
 from .rsmap import Map
+from .settings import MAP_SAMPLING
 
 
 @dataclass
@@ -27,11 +28,9 @@ def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol: float =
         raise AssertionError(msg)
 
 
-# TODO: test
-def rms_between_coefficients(map1: Map, map2: Map) -> float:
-    map_sampling = 3
-    map1_array = np.array(map1.to_ccp4_map(map_sampling=map_sampling).grid)
-    map2_array = np.array(map2.to_ccp4_map(map_sampling=map_sampling).grid)
+def diffmap_realspace_rms(map1: Map, map2: Map) -> float:
+    map1_array = np.array(map1.to_ccp4_map(map_sampling=MAP_SAMPLING).grid)
+    map2_array = np.array(map2.to_ccp4_map(map_sampling=MAP_SAMPLING).grid)
 
     # standardize
     map1_array /= map1_array.std()

@@ -8,7 +8,7 @@ from meteor.iterative import (
     iterative_tv_phase_retrieval,
 )
 from meteor.rsmap import Map
-from meteor.testing import rms_between_coefficients
+from meteor.testing import diffmap_realspace_rms
 from meteor.validate import map_negentropy
 
 
@@ -45,9 +45,14 @@ def test_tv_denoise_complex_difference_sf() -> None:
 
 def test_iterative_tv_different_indices(noise_free_map: Map, very_noisy_map: Map) -> None:
     # regression test to make sure we can accept maps with different indices
-    hkl = [(1, 2),] * 3,
-    labels = pd.MultiIndex.from_arrays(hkl, names=("H", "K", "L"))
-    
+    labels = pd.MultiIndex.from_arrays(
+        [
+            (1, 2),
+        ]
+        * 3,
+        names=("H", "K", "L"),
+    )
+
     n = len(very_noisy_map)
     very_noisy_map.drop(labels, inplace=True)
     assert len(very_noisy_map) == n - 2
@@ -79,8 +84,8 @@ def test_iterative_tv(noise_free_map: Map, very_noisy_map: Map) -> None:
     assert isinstance(metadata, pd.DataFrame)
 
     # test correctness by comparing denoised dataset to noise-free
-    noisy_error = rms_between_coefficients(very_noisy_map, noise_free_map)
-    denoised_error = rms_between_coefficients(denoised_map, noise_free_map)
+    noisy_error = diffmap_realspace_rms(very_noisy_map, noise_free_map)
+    denoised_error = diffmap_realspace_rms(denoised_map, noise_free_map)
 
     # insist on 1% or better improvement
     assert 1.01 * denoised_error < noisy_error

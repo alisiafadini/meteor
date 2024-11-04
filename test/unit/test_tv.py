@@ -10,7 +10,7 @@ import pytest
 
 from meteor import tv
 from meteor.rsmap import Map
-from meteor.testing import rms_between_coefficients
+from meteor.testing import diffmap_realspace_rms
 from meteor.validate import map_negentropy
 
 DEFAULT_WEIGHTS_TO_SCAN = np.logspace(-2, 0, 25)
@@ -88,7 +88,7 @@ def test_tv_denoise_map(
     noisy_map: Map,
 ) -> None:
     def rms_to_noise_free(test_map: Map) -> float:
-        return rms_between_coefficients(test_map, noise_free_map)
+        return diffmap_realspace_rms(test_map, noise_free_map)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know the ground truth, work around this to test all possible results.

@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from meteor import testing as mt
+from meteor.rsmap import Map
 
 
 def test_map_columns_smoke() -> None:
@@ -19,6 +20,19 @@ def test_phases_allclose() -> None:
 
     with pytest.raises(AssertionError):
         mt.assert_phases_allclose(close1, far)
+
+
+def test_diffmap_realspace_rms(noise_free_map: Map) -> None:
+    assert mt.diffmap_realspace_rms(noise_free_map, noise_free_map) == 0.0
+
+    map2 = noise_free_map.copy()
+    map2 += 1
+    map3 = noise_free_map.copy()
+    map3 += 2
+
+    dist12 = mt.diffmap_realspace_rms(noise_free_map, map2)
+    dist13 = mt.diffmap_realspace_rms(noise_free_map, map3)
+    assert dist13 > dist12
 
 
 def test_single_carbon_structure_smoke() -> None:
