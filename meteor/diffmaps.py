@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import numpy as np
 import reciprocalspaceship as rs
 
-from .rsmap import Map, _assert_is_map
+from .rsmap import Map, assert_is_map
 from .settings import DEFAULT_KPARAMS_TO_SCAN
 from .utils import filter_common_indices
 from .validate import ScalarMaximizer, map_negentropy
@@ -51,8 +51,8 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     diffmap: Map
         map corresponding to the complex difference (derivative - native)
     """
-    _assert_is_map(derivative, require_uncertainties=False)
-    _assert_is_map(native, require_uncertainties=False)
+    assert_is_map(derivative, require_uncertainties=False)
+    assert_is_map(native, require_uncertainties=False)
 
     derivative, native = filter_common_indices(derivative, native)
 
@@ -85,7 +85,7 @@ def compute_kweights(difference_map: Map, *, k_parameter: float) -> rs.DataSerie
         A series of computed weights, where higher uncertainties and larger differences lead to
         lower weights.
     """
-    _assert_is_map(difference_map, require_uncertainties=True)
+    assert_is_map(difference_map, require_uncertainties=True)
 
     inverse_weights = (
         1
@@ -117,8 +117,8 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
         the k-weighted difference map
     """
     # require uncertainties at the beginning
-    _assert_is_map(derivative, require_uncertainties=True)
-    _assert_is_map(native, require_uncertainties=True)
+    assert_is_map(derivative, require_uncertainties=True)
+    assert_is_map(native, require_uncertainties=True)
 
     difference_map = compute_difference_map(derivative, native)
     weights = compute_kweights(difference_map, k_parameter=k_parameter)
@@ -159,8 +159,8 @@ def max_negentropy_kweighted_difference_map(
     opt_k_parameter: float
         optimized k-weighting parameter
     """
-    _assert_is_map(derivative, require_uncertainties=True)
-    _assert_is_map(native, require_uncertainties=True)
+    assert_is_map(derivative, require_uncertainties=True)
+    assert_is_map(native, require_uncertainties=True)
 
     def negentropy_objective(k_parameter: float) -> float:
         kweighted_map = compute_kweighted_difference_map(

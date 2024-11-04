@@ -19,7 +19,46 @@ from .utils import CellType, SpacegroupType, average_phase_diff_in_degrees
 log = structlog.get_logger()
 
 
+def _assert_are_dataseries(*args: list[rs.DataSeries]) -> None:
+    for arg in args:
+        if not isinstance(arg, rs.DataSeries):
+            msg = f"`{arg!s}` must be type rs.DataSeries, got {type(arg)}"
+            raise TypeError(msg)
+
+
 class IterativeTvDenoiser:
+    """
+    An implementation of `meteor`'s iterative TV phase update algorithm.
+
+    The big idea is to iteratively TV denoise a map, then project it back onto the set of:
+     - experimentally determined structure factor amplitudes
+     - fixed (likely computed) phases for the `native` dataset
+
+    The only thing left to change are the `derivative` phases, which are latent.
+
+    Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex
+    unless explicitly annotated |*|.
+
+        Input: |F|, |Fh|, phi_c
+        Note: F = |F| * exp{ phi_c } is the native/dark data,
+            |Fh| represents the derivative/triggered/light data
+
+        Initialize:
+        - D_F = ( |Fh| - |F| ) * exp{ phi_c }
+
+        while not converged:
+            D_rho = FT{ D_F }                       Fourier transform
+            D_rho' = TV{ D_rho }                    TV denoise: apply real space prior
+            D_F' = FT-1{ D_rho' }                   back Fourier transform
+            Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]  Fourier space projection to experimental set
+            D_F = Fh' - F
+
+    Where the TV weight parameter is determined at each step by optimizing over a fixed range of
+    values. Golden-section search could also be used, but tests have revealed a limited set of about
+    three order-of-magnitude values to scan leads to faster convergence in most cases. The algorithm
+    iterates until the changes in the derivative phase drop below a specified threshold.
+    """
+
     def __init__(
         self,
         *,
@@ -29,7 +68,7 @@ class IterativeTvDenoiser:
         verbose: bool = False,
     ) -> None:
         """
-        Initialize a TV denoiser.
+        Initialize an iterative TV denoiser.
 
         Parameters
         ----------
@@ -58,19 +97,6 @@ class IterativeTvDenoiser:
                 phase_tolerance=convergence_tolerance,
                 max_iterations=max_iterations,
             )
-
-    def _check_valid_isomorphous_inputs(
-        self, native: rs.DataSeries, initial_derivative: rs.DataSeries
-    ) -> None:
-        if not isinstance(native, rs.DataSeries):
-            msg = f"`native` must be type rs.DataSeries, got {type(native)}"
-            raise TypeError(msg)
-
-        if not isinstance(initial_derivative, rs.DataSeries):
-            msg = f"`initial_derivative` must be type rs.DataSeries, got {type(initial_derivative)}"
-            raise TypeError(msg)
-
-        # TODO: isomorphous bit
 
     def _tv_denoise_complex_difference_sf(
         self,
@@ -134,7 +160,7 @@ class IterativeTvDenoiser:
             degrees.
         """
         derivative = initial_derivative.copy()
-        self._check_valid_isomorphous_inputs(native, derivative)
+        _assert_are_dataseries(native, derivative)
 
         converged: bool = False
         num_iterations: int = 0
@@ -190,25 +216,7 @@ class IterativeTvDenoiser:
         native: Map,
     ) -> tuple[Map, pd.DataFrame]:
         """
-        Here is a brief pseudocode sketch of the alogrithm. Structure factors F below are complex
-        unless explicitly annotated |*|.
-
-            Input: |F|, |Fh|, phi_c
-            Note: F = |F| * exp{ phi_c } is the native/dark data,
-                |Fh| represents the derivative/triggered/light data
-
-            Initialize:
-            - D_F = ( |Fh| - |F| ) * exp{ phi_c }
-
-            while not converged:
-                D_rho = FT{ D_F }                       Fourier transform
-                D_rho' = TV{ D_rho }                    TV denoise: apply real space prior
-                D_F' = FT-1{ D_rho' }                   back Fourier transform
-                Fh' = (D_F' + F) * [|Fh| / |D_F' + F|]  Fourier space projection to experimental set
-                D_F = Fh' - F
-
-        Where the TV weight parameter is determined using golden section optimization. The algorithm
-        iterates until the changes in the derivative phase drop below a specified threshold.
+        Denoise by estimating new, low-TV phases for the `derivative` dataset.
 
         Parameters
         ----------

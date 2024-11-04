@@ -28,7 +28,7 @@ class MissingUncertaintiesError(AttributeError): ...
 class MapMutabilityError(RuntimeError): ...
 
 
-def _assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
+def assert_is_map(obj: Any, *, require_uncertainties: bool) -> None:
     if not isinstance(obj, Map):
         msg = f"expected {obj} to be a rsmap.Map, got {type(obj)}"
         raise TypeError(msg)

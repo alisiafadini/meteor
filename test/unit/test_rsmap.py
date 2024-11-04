@@ -6,22 +6,22 @@ import pandas as pd
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, _assert_is_map
+from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, assert_is_map
 from meteor.testing import assert_phases_allclose
 from meteor.utils import ShapeMismatchError, filter_common_indices
 
 
-def test_assert_is_map(noise_free_map: Map) -> None:
-    _assert_is_map(noise_free_map, require_uncertainties=True)  # should work
+def testassert_is_map(noise_free_map: Map) -> None:
+    assert_is_map(noise_free_map, require_uncertainties=True)  # should work
 
     del noise_free_map["SIGF"]
-    _assert_is_map(noise_free_map, require_uncertainties=False)  # should work
+    assert_is_map(noise_free_map, require_uncertainties=False)  # should work
     with pytest.raises(MissingUncertaintiesError):
-        _assert_is_map(noise_free_map, require_uncertainties=True)
+        assert_is_map(noise_free_map, require_uncertainties=True)
 
     not_a_map = rs.DataSet(noise_free_map)
     with pytest.raises(TypeError):
-        _assert_is_map(not_a_map, require_uncertainties=False)
+        assert_is_map(not_a_map, require_uncertainties=False)
 
 
 def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
