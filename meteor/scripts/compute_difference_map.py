@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import structlog
 
 from meteor.rsmap import Map
 from meteor.settings import MAP_SAMPLING, TV_WEIGHT_DEFAULT
 from meteor.tv import TvDenoiseResult, tv_denoise_difference_map
-from meteor.validate import negentropy
+from meteor.validate import map_negentropy
 
 from .common import (
     DiffmapArgParser,
@@ -117,16 +116,14 @@ def denoise_diffmap_according_to_mode(
 
     elif tv_denoise_mode == WeightMode.none:
         final_map = diffmap
-
-        realspace_map = final_map.to_ccp4_map(map_sampling=MAP_SAMPLING)
-        map_negetropy = negentropy(np.array(realspace_map.grid))
+        final_negentropy = map_negentropy(final_map)
         metadata = TvDenoiseResult(
-            initial_negentropy=map_negetropy,
-            optimal_negentropy=map_negetropy,
+            initial_negentropy=final_negentropy,
+            optimal_negentropy=final_negentropy,
             optimal_tv_weight=0.0,
             map_sampling_used_for_tv=MAP_SAMPLING,
             tv_weights_scanned=[0.0],
-            negentropy_at_weights=[map_negetropy],
+            negentropy_at_weights=[final_negentropy],
         )
 
         log.info("Requested no TV denoising")

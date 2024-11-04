@@ -1,8 +1,8 @@
+import gemmi
 import numpy as np
 import pandas as pd
 import pytest
 import reciprocalspaceship as rs
-from pandas import testing as pdt
 
 from meteor import utils
 from meteor.rsmap import Map
@@ -11,6 +11,21 @@ from meteor.testing import MapColumns
 
 def omit_nones_in_list(input_list: list) -> list:
     return [x for x in input_list if x]
+
+
+def test_assert_isomorphous(random_difference_map: Map) -> None:
+    utils.assert_isomorphous(derivative=random_difference_map, native=random_difference_map)
+
+    different_map = random_difference_map.copy()
+    different_map.spacegroup = gemmi.SpaceGroup(141)  # I41
+    assert random_difference_map.spacegroup != gemmi.SpaceGroup(141)
+    with pytest.raises(utils.NotIsomorphousError):
+        utils.assert_isomorphous(derivative=random_difference_map, native=different_map)
+
+    different_map = random_difference_map.copy()
+    different_map.cell = gemmi.UnitCell(*[100.0, 1.0, 1.0, 90.0, 90.0, 90.0])
+    with pytest.raises(utils.NotIsomorphousError):
+        utils.assert_isomorphous(derivative=random_difference_map, native=different_map)
 
 
 def test_filter_common_indices() -> None:
@@ -104,24 +119,15 @@ def test_average_phase_diff_in_degrees_shape_mismatch() -> None:
         utils.average_phase_diff_in_degrees(arr1, arr2)
 
 
-def test_complex_array_to_rs_dataseries() -> None:
-    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
-    index = pd.Index(np.arange(4))
-
-    expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
-        rs.StructureFactorAmplitudeDtype(),
-    )
-    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
-        rs.PhaseDtype(),
-    )
-
-    amp, phase = utils.complex_array_to_rs_dataseries(carray, index=index)
-    pdt.assert_series_equal(amp, expected_amp)
-    pdt.assert_series_equal(phase, expected_phase)
+def test_average_phase_diff_in_degrees_dataseries() -> None:
+    ser1 = rs.DataSeries(np.ones(2), index=np.arange(2))
+    ser2 = rs.DataSeries(np.ones(3), index=np.arange(3))
+    result = utils.average_phase_diff_in_degrees(ser1, ser2)
+    assert np.allclose(result, 0.0)
 
 
-def test_complex_array_to_rs_dataseries_index_mismatch() -> None:
-    carray = np.array([1.0]) + 1j * np.array([1.0])
-    index = pd.Index(np.arange(2))
-    with pytest.raises(utils.ShapeMismatchError):
-        utils.complex_array_to_rs_dataseries(carray, index=index)
+def test_average_phase_diff_in_degrees_mixed_types() -> None:
+    ser1 = np.ones(3)
+    ser2 = rs.DataSeries(np.ones(3), index=np.arange(3))
+    result = utils.average_phase_diff_in_degrees(ser1, ser2)
+    assert np.allclose(result, 0.0)

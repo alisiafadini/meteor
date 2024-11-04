@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from io import StringIO
@@ -34,7 +33,6 @@ INFER_COLUMN_NAME: str = "infer"
 PHASE_COLUMN_NAME: str = "PHI"
 DEFAULT_OUTPUT_MTZ: Path = Path("meteor_difference_map.mtz")
 DEFAULT_OUTPUT_METADATA_FILE: Path = Path("meteor_metadata.json")
-FLOAT_REGEX: re.Pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
 
 class InvalidWeightModeError(ValueError): ...

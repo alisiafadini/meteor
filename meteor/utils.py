@@ -8,7 +8,6 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from pandas import Index
 from reciprocalspaceship import DataSet
 from reciprocalspaceship.decorators import cellify, spacegroupify
 from reciprocalspaceship.utils import canonicalize_phases
@@ -18,6 +17,17 @@ SpacegroupType = str | int | gemmi.SpaceGroup
 
 
 class ShapeMismatchError(Exception): ...
+
+
+class NotIsomorphousError(RuntimeError): ...
+
+
+def assert_isomorphous(*, derivative: rs.DataSet, native: rs.DataSet) -> None:
+    if not native.is_isomorphous(derivative):
+        msg = "`derivative` and `native` datasets are not similar enough; "
+        msg += f"they have cell/spacegroup: {derivative.cell}/{native.cell} and "
+        msg += f"{derivative.spacegroup}/{native.spacegroup} respectively"
+        raise NotIsomorphousError(msg)
 
 
 def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]:
@@ -85,73 +95,23 @@ def canonicalize_amplitudes(
     return None
 
 
-def average_phase_diff_in_degrees(array1: np.ndarray, array2: np.ndarray) -> float:
+def average_phase_diff_in_degrees(
+    array1: np.ndarray | rs.DataSeries, array2: np.ndarray | rs.DataSeries
+) -> float:
+    if isinstance(array1, rs.DataSeries) and isinstance(array2, rs.DataSeries):
+        array1, array2 = filter_common_indices(array1, array2)
+
     if array1.shape != array2.shape:
         msg = f"inputs not same shape: {array1.shape} vs {array2.shape}"
         raise ShapeMismatchError(msg)
+
     phase1 = np.rad2deg(np.angle(array1))
     phase2 = np.rad2deg(np.angle(array2))
+
     diff = phase2 - phase1
     diff = (diff + 180) % 360 - 180
+
     return float(np.sum(np.abs(diff)) / float(np.prod(array1.shape)))
-
-
-def complex_array_to_rs_dataseries(
-    complex_structure_factors: np.ndarray,
-    *,
-    index: Index,
-) -> tuple[rs.DataSeries, rs.DataSeries]:
-    """
-    Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one
-    representing the structure factor amplitudes and one for the phases.
-
-    Parameters
-    ----------
-    complex_structure_factors: np.ndarray
-        the complex-valued structure factors, as a numpy array
-    index: pandas.Index
-        the indices (HKL) for each structure factor in `complex_structure_factors`
-
-    Returns
-    -------
-    amplitudes: DataSeries
-        with StructureFactorAmplitudeDtype
-    phases: DataSeries
-        with PhaseDtype
-
-    Raises
-    ------
-    ValueError
-        if `complex_structure_factors and `index` do not have the same shape
-
-    See Also
-    --------
-    `reciprocalspaceship/utils/structurefactors.from_structurefactor(...)`
-        An equivalent function, that does not require the index and does less index/data
-        checking.
-    """
-    if complex_structure_factors.shape != index.shape:
-        msg = (
-            f"shape of `complex_structure_factors` ({complex_structure_factors.shape}) does not "
-            f"match shape of `index` ({index.shape})"
-        )
-        raise ShapeMismatchError(msg)
-
-    amplitudes = rs.DataSeries(
-        np.abs(complex_structure_factors),
-        index=index,
-        dtype=rs.StructureFactorAmplitudeDtype(),
-        name="F",
-    )
-
-    phases = rs.DataSeries(
-        np.angle(complex_structure_factors, deg=True),
-        index=index,
-        dtype=rs.PhaseDtype(),
-        name="PHI",
-    )
-
-    return amplitudes, phases
 
 
 @cellify("cell")

@@ -11,10 +11,10 @@ from meteor.diffmaps import (
     compute_kweighted_difference_map,
     compute_kweights,
     max_negentropy_kweighted_difference_map,
-    set_common_crystallographic_metadata,
 )
 from meteor.rsmap import Map
-from meteor.validate import negentropy
+from meteor.utils import NotIsomorphousError
+from meteor.validate import map_negentropy
 
 
 @pytest.fixture
@@ -40,36 +40,6 @@ def dummy_native() -> Map:
     return Map(native, index=index).infer_mtz_dtypes()
 
 
-def test_set_common_crystallographic_metadata(dummy_native: Map) -> None:
-    dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    dummy_native.spacegroup = 1
-    map1 = dummy_native
-    map2 = dummy_native.copy()
-    output = dummy_native.copy()
-
-    # ensure things are copied when missing initially
-    del output._cell
-    del output._spacegroup
-    assert not hasattr(output, "cell")
-    assert not hasattr(output, "spacegroup")
-
-    set_common_crystallographic_metadata(map1, map2, output=output)
-
-    assert output.cell == map1.cell
-    assert output.spacegroup == map2.spacegroup
-
-    map2.spacegroup = 19
-    with pytest.raises(AttributeError):
-        set_common_crystallographic_metadata(map1, map2, output=output)
-
-    map2.spacegroup = 1
-    set_common_crystallographic_metadata(map1, map2, output=output)
-
-    dummy_native.cell = (15.0, 15.0, 15.0, 90.0, 90.0, 90.0)
-    with pytest.raises(AttributeError):
-        set_common_crystallographic_metadata(map1, map2, output=output)
-
-
 def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_native: Map) -> None:
     # Manually calculated expected amplitude and phase differences
     expected_amplitudes = np.array([3.0, 5.0])
@@ -77,43 +47,59 @@ def test_compute_difference_map_vs_analytical(dummy_derivative: Map, dummy_nativ
     assert isinstance(dummy_native, Map)
     assert isinstance(dummy_derivative, Map)
 
-    result = compute_difference_map(dummy_derivative, dummy_native)
+    result = compute_difference_map(dummy_derivative, dummy_native, check_isomorphous=False)
     assert_almost_equal(result.amplitudes, expected_amplitudes, decimal=4)
     assert_almost_equal(result.phases, expected_phases, decimal=4)
 
 
 @pytest.mark.parametrize(
     "diffmap_fxn",
+    # lambdas to make the call signatures for these functions match `compute_difference_map`
     [
-        compute_difference_map,
-        # lambdas to make the call signatures for these functions match `compute_difference_map`
-        lambda d, n: compute_kweighted_difference_map(d, n, k_parameter=0.5),
-        lambda d, n: max_negentropy_kweighted_difference_map(d, n)[0],
+        lambda d, n, check: compute_difference_map(d, n, check_isomorphous=check),
+        lambda d, n, check: compute_kweighted_difference_map(
+            d, n, k_parameter=0.5, check_isomorphous=check
+        ),
+        lambda d, n, check: max_negentropy_kweighted_difference_map(d, n, check_isomorphous=check)[
+            0
+        ],
     ],
 )
+@pytest.mark.parametrize("check_isomorphous", [True, False])
 def test_cell_spacegroup_propogation(
     diffmap_fxn: Callable,
     dummy_derivative: Map,
     dummy_native: Map,
+    check_isomorphous: bool,
 ) -> None:
+    # these should all cast to gemmi objects
     dummy_derivative.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-    dummy_derivative.spacegroup = 1  # will cast to gemmi.SpaceGroup
-    dummy_native.cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    dummy_derivative.spacegroup = 1
+    dummy_native.cell = (10.01, 10.01, 10.01, 90.01, 90.01, 90.01)
     dummy_native.spacegroup = 1
 
-    result = diffmap_fxn(dummy_derivative, dummy_native)
+    # ensure the native cell is propogated
+    result = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
     assert result.cell == dummy_native.cell
     assert result.spacegroup == dummy_native.spacegroup
 
+    # check we raise or dont with a spacegroup mismatch
     dummy_native.spacegroup = 19
-    with pytest.raises(AttributeError):
-        result = diffmap_fxn(dummy_derivative, dummy_native)
+    if check_isomorphous:
+        with pytest.raises(NotIsomorphousError):
+            _ = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
+    else:
+        _ = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
 
+    # check we raise or dont with a cell mismatch
     dummy_native.spacegroup = 1
-    _ = compute_difference_map(dummy_derivative, dummy_native)
-    dummy_native.cell = (15.0, 15.0, 15.0, 90.0, 90.0, 90.0)
-    with pytest.raises(AttributeError):
-        result = diffmap_fxn(dummy_derivative, dummy_native)
+    _ = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
+    dummy_native.cell = (20.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    if check_isomorphous:
+        with pytest.raises(NotIsomorphousError):
+            _ = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
+    else:
+        _ = diffmap_fxn(dummy_derivative, dummy_native, check_isomorphous)
 
 
 def test_compute_kweights_vs_analytical() -> None:
@@ -133,7 +119,9 @@ def test_compute_kweighted_difference_map_vs_analytical(
     dummy_derivative: Map,
     dummy_native: Map,
 ) -> None:
-    kwt_diffmap = compute_kweighted_difference_map(dummy_derivative, dummy_native, k_parameter=0.5)
+    kwt_diffmap = compute_kweighted_difference_map(
+        dummy_derivative, dummy_native, k_parameter=0.5, check_isomorphous=False
+    )
     expected_weighted_amplitudes = np.array([1.3247, 1.8280])  # calculated by hand
     expected_weighted_uncertainties = np.array([0.3122, 0.2585])
     assert_almost_equal(kwt_diffmap.amplitudes, expected_weighted_amplitudes, decimal=4)
@@ -156,9 +144,8 @@ def test_kweight_optimization(noise_free_map: rs.DataSet, noisy_map: rs.DataSet)
             noise_free_map,
             k_parameter=k_parameter,
         )
-        realspace_map = kweighted_diffmap.to_ccp4_map(map_sampling=3)
-        map_negentropy = negentropy(np.array(realspace_map.grid))
-        negentropies.append(map_negentropy)
+        diffmap_negentropy = map_negentropy(kweighted_diffmap)
+        negentropies.append(diffmap_negentropy)
 
     # the optimal k-weight should have the highest negentropy
     assert negentropies[0] <= negentropies[1]

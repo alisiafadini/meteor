@@ -6,7 +6,7 @@ from typing import Any
 
 import structlog
 
-from meteor.iterative import iterative_tv_phase_retrieval
+from meteor.iterative import IterativeTvDenoiser
 from meteor.settings import (
     DEFAULT_TV_WEIGHTS_TO_SCAN_AT_EACH_ITERATION,
     ITERATIVE_TV_CONVERGENCE_TOLERANCE,
@@ -74,15 +74,13 @@ def main(command_line_arguments: list[str] | None = None) -> None:
 
     log.info("Launching iterative TV phase retrieval", tv_weights_to_scan=args.tv_weights_to_scan)
     log.info("This will take time, typically minutes...")
-    new_derivative_map, it_tv_metadata = iterative_tv_phase_retrieval(
-        mapset.derivative,
-        mapset.native,
+    denoiser = IterativeTvDenoiser(
         tv_weights_to_scan=args.tv_weights_to_scan,
         convergence_tolerance=args.convergence_tolerance,
         max_iterations=args.max_iterations,
         verbose=True,
     )
-    mapset.derivative = new_derivative_map
+    mapset.derivative, it_tv_metadata = denoiser(derivative=mapset.derivative, native=mapset.native)
     log.info("Convergence.")
 
     diffmap, kparameter_used = kweight_diffmap_according_to_mode(

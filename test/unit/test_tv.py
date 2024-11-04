@@ -10,20 +10,10 @@ import pytest
 
 from meteor import tv
 from meteor.rsmap import Map
+from meteor.testing import diffmap_realspace_rms
+from meteor.validate import map_negentropy
 
 DEFAULT_WEIGHTS_TO_SCAN = np.logspace(-2, 0, 25)
-
-
-def rms_between_coefficients(map1: Map, map2: Map) -> float:
-    map_sampling = 3
-    map1_array = np.array(map1.to_ccp4_map(map_sampling=map_sampling).grid)
-    map2_array = np.array(map2.to_ccp4_map(map_sampling=map_sampling).grid)
-
-    # standardize
-    map1_array /= map1_array.std()
-    map2_array /= map2_array.std()
-
-    return float(np.linalg.norm(map2_array - map1_array))
 
 
 def test_tv_denoise_result(tv_denoise_result_source_data: dict) -> None:
@@ -98,7 +88,7 @@ def test_tv_denoise_map(
     noisy_map: Map,
 ) -> None:
     def rms_to_noise_free(test_map: Map) -> float:
-        return rms_between_coefficients(test_map, noise_free_map)
+        return diffmap_realspace_rms(test_map, noise_free_map)
 
     # Normally, the `tv_denoise_difference_map` function only returns the best result -- since we
     # know the ground truth, work around this to test all possible results.
@@ -131,3 +121,24 @@ def test_tv_denoise_map(
     np.testing.assert_allclose(
         result.optimal_tv_weight, best_weight, rtol=0.5, err_msg="opt weight"
     )
+
+
+def test_final_map_has_reported_negentropy(noisy_map: Map) -> None:
+    # regression test: previously the written map dropped a few indices to be consistent w/input
+    # this caused the negentropy values to be off
+
+    # simulate missing reflections that will be filled
+    noisy_map.drop(noisy_map.index[:512], inplace=True)
+
+    weight = 0.01
+    output_map, metadata = tv.tv_denoise_difference_map(
+        noisy_map,
+        weights_to_scan=[weight],
+        full_output=True,
+    )
+    actual_negentropy = map_negentropy(output_map)
+    assert len(metadata.negentropy_at_weights) == 1
+
+    # it seems converting to real space and back can cause a small (few %) discrepency
+    assert np.isclose(actual_negentropy, metadata.optimal_negentropy, atol=0.05)
+    assert np.isclose(actual_negentropy, metadata.negentropy_at_weights[0], atol=0.05)

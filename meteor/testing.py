@@ -8,6 +8,9 @@ from pathlib import Path
 import gemmi
 import numpy as np
 
+from .rsmap import Map
+from .settings import MAP_SAMPLING
+
 
 @dataclass
 class MapColumns:
@@ -23,6 +26,17 @@ def assert_phases_allclose(array1: np.ndarray, array2: np.ndarray, atol: float =
     if not absolute_difference < atol:
         msg = f"per element diff {absolute_difference} > tolerance {atol}"
         raise AssertionError(msg)
+
+
+def diffmap_realspace_rms(map1: Map, map2: Map) -> float:
+    map1_array = np.array(map1.to_ccp4_map(map_sampling=MAP_SAMPLING).grid)
+    map2_array = np.array(map2.to_ccp4_map(map_sampling=MAP_SAMPLING).grid)
+
+    # standardize
+    map1_array /= map1_array.std()
+    map2_array /= map2_array.std()
+
+    return float(np.linalg.norm(map2_array - map1_array))
 
 
 def check_test_file_exists(path: Path) -> None:

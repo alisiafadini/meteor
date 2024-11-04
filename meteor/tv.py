@@ -126,10 +126,12 @@ def tv_denoise_difference_map(
     difference_map : Map
         The input dataset containing the difference map coefficients (amplitude and phase)
         that will be used to compute the difference map.
+
     full_output : bool, optional
         If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult`
          object containing the optimal weight and the associated negentropy. If `False`, only
          the denoised map coefficients are returned. Default is `False`.
+
     weights_to_scan : Sequence[float] | None, optional
         A sequence of weight values to explicitly scan for determining the optimal value. If
         `None`, the function uses the golden-section search method to determine the optimal
@@ -190,15 +192,6 @@ def tv_denoise_difference_map(
     # propogate uncertainties
     if difference_map.has_uncertainties:
         final_map.set_uncertainties(difference_map.uncertainties)
-
-    # sometimes `from_ccp4_map` adds reflections -- systematic absences or
-    # reflections just beyond the resolution limt; remove those
-    extra_indices = final_map.index.difference(difference_map.index)
-    final_map.drop(extra_indices, inplace=True)
-    sym_diff = difference_map.index.symmetric_difference(final_map.index)
-    if len(sym_diff) > 0:
-        msg = "something went wrong, input and output coefficients do not have identical indices"
-        raise IndexError(msg)
 
     if full_output:
         initial_negentropy = negentropy(realspace_map_array)

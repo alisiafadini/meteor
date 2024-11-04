@@ -6,22 +6,22 @@ import pandas as pd
 import pytest
 import reciprocalspaceship as rs
 
-from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, _assert_is_map
+from meteor.rsmap import Map, MapMutabilityError, MissingUncertaintiesError, assert_is_map
 from meteor.testing import assert_phases_allclose
-from meteor.utils import filter_common_indices
+from meteor.utils import ShapeMismatchError, filter_common_indices
 
 
-def test_assert_is_map(noise_free_map: Map) -> None:
-    _assert_is_map(noise_free_map, require_uncertainties=True)  # should work
+def testassert_is_map(noise_free_map: Map) -> None:
+    assert_is_map(noise_free_map, require_uncertainties=True)  # should work
 
     del noise_free_map["SIGF"]
-    _assert_is_map(noise_free_map, require_uncertainties=False)  # should work
+    assert_is_map(noise_free_map, require_uncertainties=False)  # should work
     with pytest.raises(MissingUncertaintiesError):
-        _assert_is_map(noise_free_map, require_uncertainties=True)
+        assert_is_map(noise_free_map, require_uncertainties=True)
 
     not_a_map = rs.DataSet(noise_free_map)
     with pytest.raises(TypeError):
-        _assert_is_map(not_a_map, require_uncertainties=False)
+        assert_is_map(not_a_map, require_uncertainties=False)
 
 
 def test_initialization_leaves_input_unmodified(noise_free_map: Map) -> None:
@@ -44,6 +44,18 @@ def test_amplitude_and_phase_required(noise_free_map: Map) -> None:
     del ds["F"]
     with pytest.raises(KeyError):
         Map(ds)
+
+
+def test_column_name_properties(random_difference_map: Map) -> None:
+    assert random_difference_map.amplitude_column_name == "F"
+    assert random_difference_map.phase_column_name == "PHI"
+    assert random_difference_map.uncertainties_column_name == "SIGF"
+
+    # this tests if we ask for the column with no uncertainties
+    del random_difference_map["SIGF"]
+    assert not random_difference_map.has_uncertainties
+    with pytest.raises(AttributeError):
+        _ = random_difference_map.uncertainties_column_name
 
 
 def test_loc_indexing(random_difference_map: Map) -> None:
@@ -250,24 +262,6 @@ def test_misconfigured_columns() -> None:
         test_map.set_uncertainties(rs.DataSeries([2.0, 3.0, 4.0]))
 
 
-def test_complex_amplitudes_smoke(noise_free_map: Map) -> None:
-    c_array = noise_free_map.complex_amplitudes
-    assert isinstance(c_array, np.ndarray)
-    assert np.issubdtype(c_array.dtype, np.complexfloating)
-
-
-def test_complex_amplitudes() -> None:
-    index = pd.Index(np.arange(4))
-    amp = rs.DataSeries(np.ones(4), index=index, name="F")
-    phase = rs.DataSeries(np.arange(4) * 90.0, index=index, name="PHI")
-
-    ds = rs.concat([amp, phase], axis=1)
-    rsmap = Map(ds)
-
-    expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
-    np.testing.assert_almost_equal(rsmap.complex_amplitudes, expected)
-
-
 def test_from_dataset(noise_free_map: Map) -> None:
     map_as_dataset = rs.DataSet(noise_free_map)
     map2 = Map(
@@ -280,14 +274,54 @@ def test_from_dataset(noise_free_map: Map) -> None:
 
 
 def test_to_structurefactor(noise_free_map: Map) -> None:
-    c_dataseries = noise_free_map.to_structurefactor()
-    c_array = noise_free_map.complex_amplitudes
-    np.testing.assert_almost_equal(c_dataseries.to_numpy(), c_array)
+    index = pd.Index(np.arange(4))
+    amp = rs.DataSeries(np.ones(4), index=index, name="F")
+    phase = rs.DataSeries(np.arange(4) * 90.0, index=index, name="PHI")
+
+    ds = rs.concat([amp, phase], axis=1)
+    rsmap = Map(ds)
+
+    expected = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+    result = rsmap.to_structurefactor()
+    np.testing.assert_almost_equal(result.to_numpy(), expected)
 
 
-def from_structurefactor(noise_free_map: Map) -> None:
-    map2 = Map.from_structurefactor(noise_free_map.complex_amplitudes, index=noise_free_map.index)
+def from_structurefactor_dataseries(noise_free_map: Map) -> None:
+    sf_dataseries = noise_free_map.to_structurefactor()
+    assert isinstance(sf_dataseries, rs.DataSeries)
+    map2 = Map.from_structurefactor(sf_dataseries)
     pd.testing.assert_frame_equal(noise_free_map, map2)
+
+
+def from_structurefactor_numpy(noise_free_map: Map) -> None:
+    sf_numpy = noise_free_map.to_structurefactor().to_numpy()
+    assert isinstance(sf_numpy, np.ndarray)
+
+    map2 = Map.from_structurefactor(sf_numpy, index=noise_free_map.index)
+    pd.testing.assert_frame_equal(noise_free_map, map2)
+
+    with pytest.raises(ShapeMismatchError):
+        _ = Map.from_structurefactor(sf_numpy, index=noise_free_map.index[1:])
+
+    # index required
+    with pytest.raises(ValueError, match="`complex_structurefactor`"):
+        _ = Map.from_structurefactor(sf_numpy)
+
+
+def test_from_structurefactor_correctness() -> None:
+    carray = np.array([1.0, 0.0, -1.0, 0.0]) + 1j * np.array([0.0, 1.0, 0.0, -1.0])
+    index = pd.Index(np.arange(4))
+
+    expected_amp = rs.DataSeries(np.ones(4), index=index, name="F").astype(
+        rs.StructureFactorAmplitudeDtype(),
+    )
+    expected_phase = rs.DataSeries([0.0, 90.0, 180.0, -90.0], index=index, name="PHI").astype(
+        rs.PhaseDtype(),
+    )
+
+    c_map = Map.from_structurefactor(carray, index=index)
+    pd.testing.assert_series_equal(c_map.amplitudes, expected_amp)
+    pd.testing.assert_series_equal(c_map.phases, expected_phase)
 
 
 def test_to_ccp4_map(noise_free_map: Map) -> None:
