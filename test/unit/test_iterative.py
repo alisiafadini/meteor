@@ -12,6 +12,7 @@ from meteor.iterative import (
 from meteor.rsmap import Map
 from meteor.testing import diffmap_realspace_rms
 from meteor.validate import map_negentropy
+from meteor.tv import TvDenoiseResult
 
 
 @pytest.fixture
@@ -37,25 +38,38 @@ def test_init(testing_denoiser: IterativeTvDenoiser) -> None:
 
 
 def test_tv_denoise_complex_difference_sf(
-    testing_denoiser: IterativeTvDenoiser, np_rng: np.random.Generator
+    testing_denoiser: IterativeTvDenoiser, random_difference_map: Map,
 ) -> None:
     # use a huge TV weight, make sure random noise goes down
     testing_denoiser.tv_weights_to_scan = [100.0]
-    size = 256
-    noise = rs.DataSeries(np_rng.normal(size) + 1j * np_rng.normal(size), index=np.arange(size))
+    noise = random_difference_map.to_structurefactor()
 
-    cell = [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
     denoised_sfs, metadata = testing_denoiser._tv_denoise_complex_difference_sf(
-        noise, cell=cell, spacegroup=1
+        noise, cell=random_difference_map.cell, spacegroup=random_difference_map.spacegroup
     )
 
     assert isinstance(denoised_sfs, rs.DataSeries)
-    assert isinstance(metadata, pd.DataFrame)
+    assert isinstance(metadata, TvDenoiseResult)
 
+    # weak check, but makes sure something happened
     assert np.sum(np.abs(denoised_sfs)) < np.sum(np.abs(noise))
 
 
-def test_iteratively_denoise_sf_amplitudes() -> None: ...
+def test_iteratively_denoise_sf_amplitudes_smoke(testing_denoiser: IterativeTvDenoiser, random_difference_map: Map) -> None:
+    # tests for correctness below
+
+    denoised_sfs, metadata = testing_denoiser._iteratively_denoise_sf_amplitudes(
+        initial_derivative=random_difference_map.to_structurefactor(),
+        native=random_difference_map.to_structurefactor() + 1.0,
+        cell=random_difference_map.cell,
+        spacegroup=random_difference_map.spacegroup
+    )
+
+    assert isinstance(denoised_sfs, rs.DataSeries)
+    assert np.issubdtype(denoised_sfs.dtype, np.complexfloating)
+
+    assert isinstance(metadata, pd.DataFrame)
+    assert len(metadata) > 1
 
 
 def test_iterative_tv_denoiser_different_indices(
@@ -99,5 +113,6 @@ def test_iterative_tv_denoiser(
     # insist on 1% or better improvement
     assert 1.01 * denoised_error < noisy_error
 
-    # insist that the negentropy improves after denoising
-    assert map_negentropy(denoised_map) > map_negentropy(very_noisy_map)
+    # insist that the negentropy and phase change decrease at every iteration
+    assert (metadata["negentropy_after_tv"].diff()[1:] >= 0).all()
+    assert (metadata["average_phase_change"].diff()[1:] <= 0).all()
