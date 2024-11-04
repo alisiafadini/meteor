@@ -1,5 +1,4 @@
 # ☄️ METEOR
-----------
 
 **Map Enhancement Tools for Ephemeral Occupancy Refinement**
 
