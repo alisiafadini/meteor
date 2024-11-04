@@ -3,10 +3,10 @@
 
 **Map Enhancement Tools for Ephemeral Occupancy Refinement**
 
-[![Pytest](https://github.com/alisiafadini/meteor/actions/workflows/tests.yml/badge.svg)](https://github.com/your_username/your_repo/actions/workflows/tests.yml)
-[![Mypy](https://github.com/alisiafadini/meteor/actions/workflows/mypy.yml/badge.svg)](https://github.com/your_username/your_repo/actions/workflows/mypy.yml)
-[![Ruff](https://github.com/alisiafadini/meteor/actions/workflows/lint.yml/badge.svg)](https://github.com/your_username/your_repo/actions/workflows/lint.yml)
-[![codecov](https://codecov.io/gh/alisiafadini/meteor/graph/badge.svg?token=NCYMP06MNS)](https://codecov.io/gh/alisiafadini/meteor)
+[![Pytest](https://github.com/rs-station/meteor/actions/workflows/tests.yml/badge.svg)](https://github.com/rs-station/meteor/actions/workflows/tests.yml)
+[![Mypy](https://github.com/rs-station/meteor/actions/workflows/mypy.yml/badge.svg)](https://github.com/rs-station/meteor/actions/workflows/mypy.yml)
+[![Ruff](https://github.com/rs-station/meteor/actions/workflows/lint.yml/badge.svg)](https://github.com/rs-station/meteor/actions/workflows/lint.yml)
+[![codecov](https://codecov.io/github/rs-station/meteor/graph/badge.svg?token=pn9lOy3fMp)](https://codecov.io/github/rs-station/meteor)
 ![GitHub Tag](https://img.shields.io/github/v/tag/rs-station/meteor)
 
 
