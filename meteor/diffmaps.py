@@ -9,26 +9,11 @@ import reciprocalspaceship as rs
 
 from .rsmap import Map, assert_is_map
 from .settings import DEFAULT_KPARAMS_TO_SCAN
-from .utils import filter_common_indices
+from .utils import assert_isomorphous, filter_common_indices
 from .validate import ScalarMaximizer, map_negentropy
 
 
-def set_common_crystallographic_metadata(map1: Map, map2: Map, *, output: Map) -> None:
-    if hasattr(map1, "cell"):
-        if hasattr(map2, "cell") and (map1.cell != map2.cell):
-            msg = f"`map1.cell` {map1.cell} != `map2.cell` {map2.cell}"
-            raise AttributeError(msg)
-        output.cell = map1.cell
-
-    if hasattr(map1, "spacegroup"):
-        if hasattr(map2, "spacegroup") and (map1.spacegroup != map2.spacegroup):
-            msg = f"`map1.spacegroup` {map1.spacegroup} != "
-            msg += f"`map2.spacegroup` {map2.spacegroup}"
-            raise AttributeError(msg)
-        output.spacegroup = map1.spacegroup
-
-
-def compute_difference_map(derivative: Map, native: Map) -> Map:
+def compute_difference_map(derivative: Map, native: Map, *, check_isomorphous: bool = True) -> Map:
     """
     Computes amplitude and phase differences between native and derivative structure factor sets.
 
@@ -43,8 +28,12 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     ----------
     derivative: Map
         the derivative amplitudes, phases, uncertainties
+
     native: Map
         the native amplitudes, phases, uncertainties
+
+    check_isomorphous: bool
+        perform a check to ensure the two datasets are isomorphous; recommended. Default: True.
 
     Returns
     -------
@@ -53,13 +42,16 @@ def compute_difference_map(derivative: Map, native: Map) -> Map:
     """
     assert_is_map(derivative, require_uncertainties=False)
     assert_is_map(native, require_uncertainties=False)
+    if check_isomorphous:
+        assert_isomorphous(derivative=derivative, native=native)
 
     derivative, native = filter_common_indices(derivative, native)
 
     delta_complex = derivative.to_structurefactor() - native.to_structurefactor()
     delta = Map.from_structurefactor(delta_complex)
 
-    set_common_crystallographic_metadata(derivative, native, output=delta)
+    delta.cell = native.cell
+    delta.spacegroup = native.spacegroup
 
     if derivative.has_uncertainties and native.has_uncertainties:
         prop_uncertainties = np.sqrt(derivative.uncertainties**2 + native.uncertainties**2)
@@ -76,6 +68,7 @@ def compute_kweights(difference_map: Map, *, k_parameter: float) -> rs.DataSerie
     ----------
     difference_map: Map
         A map of structure factor differences (DeltaF).
+
     k_parameter: float
         A scaling factor applied to the squared `df` values in the weight calculation.
 
@@ -95,7 +88,9 @@ def compute_kweights(difference_map: Map, *, k_parameter: float) -> rs.DataSerie
     return 1.0 / inverse_weights
 
 
-def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_parameter: float) -> Map:
+def compute_kweighted_difference_map(
+    derivative: Map, native: Map, *, k_parameter: float, check_isomorphous: bool = True
+) -> Map:
     """
     Compute k-weighted derivative - native structure factor map.
 
@@ -108,8 +103,12 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
     ----------
     derivative: Map
         the derivative amplitudes, phases, uncertainties
+
     native: Map
         the native amplitudes, phases, uncertainties
+
+    check_isomorphous: bool
+        perform a check to ensure the two datasets are isomorphous; recommended. Default: True.
 
     Returns
     -------
@@ -119,8 +118,10 @@ def compute_kweighted_difference_map(derivative: Map, native: Map, *, k_paramete
     # require uncertainties at the beginning
     assert_is_map(derivative, require_uncertainties=True)
     assert_is_map(native, require_uncertainties=True)
+    if check_isomorphous:
+        assert_isomorphous(derivative=derivative, native=native)
 
-    difference_map = compute_difference_map(derivative, native)
+    difference_map = compute_difference_map(derivative, native, check_isomorphous=check_isomorphous)
     weights = compute_kweights(difference_map, k_parameter=k_parameter)
 
     difference_map.amplitudes *= weights
@@ -134,6 +135,7 @@ def max_negentropy_kweighted_difference_map(
     native: Map,
     *,
     k_parameter_values_to_scan: np.ndarray | Sequence[float] = DEFAULT_KPARAMS_TO_SCAN,
+    check_isomorphous: bool = True,
 ) -> rs.DataSet:
     """
     Compute k-weighted differences between native and derivative amplitudes and phases.
@@ -146,10 +148,15 @@ def max_negentropy_kweighted_difference_map(
     ----------
     derivative: Map
         the derivative amplitudes, phases, uncertainties
+
     native: Map
         the native amplitudes, phases, uncertainties
+
     k_parameter_values_to_scan : np.ndarray | Sequence[float]
         The values to scan to optimize the k-weighting parameter, by default is 0.00, 0.01 ... 1.00
+
+    check_isomorphous: bool
+        perform a check to ensure the two datasets are isomorphous; recommended. Default: True.
 
     Returns
     -------
@@ -161,12 +168,15 @@ def max_negentropy_kweighted_difference_map(
     """
     assert_is_map(derivative, require_uncertainties=True)
     assert_is_map(native, require_uncertainties=True)
+    if check_isomorphous:
+        assert_isomorphous(derivative=derivative, native=native)
 
     def negentropy_objective(k_parameter: float) -> float:
         kweighted_map = compute_kweighted_difference_map(
             derivative,
             native,
             k_parameter=k_parameter,
+            check_isomorphous=check_isomorphous,
         )
         return map_negentropy(kweighted_map)
 
@@ -178,6 +188,7 @@ def max_negentropy_kweighted_difference_map(
         derivative,
         native,
         k_parameter=opt_k_parameter,
+        check_isomorphous=check_isomorphous,
     )
 
     return kweighted_dataset, opt_k_parameter

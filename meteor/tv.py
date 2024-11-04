@@ -126,10 +126,12 @@ def tv_denoise_difference_map(
     difference_map : Map
         The input dataset containing the difference map coefficients (amplitude and phase)
         that will be used to compute the difference map.
+
     full_output : bool, optional
         If `True`, the function returns both the denoised map coefficients and a `TvDenoiseResult`
          object containing the optimal weight and the associated negentropy. If `False`, only
          the denoised map coefficients are returned. Default is `False`.
+
     weights_to_scan : Sequence[float] | None, optional
         A sequence of weight values to explicitly scan for determining the optimal value. If
         `None`, the function uses the golden-section search method to determine the optimal

@@ -14,7 +14,7 @@ from .settings import (
     ITERATIVE_TV_MAX_ITERATIONS,
 )
 from .tv import TvDenoiseResult, tv_denoise_difference_map
-from .utils import CellType, SpacegroupType, average_phase_diff_in_degrees
+from .utils import CellType, SpacegroupType, assert_isomorphous, average_phase_diff_in_degrees
 
 log = structlog.get_logger()
 
@@ -214,6 +214,7 @@ class IterativeTvDenoiser:
         *,
         derivative: Map,
         native: Map,
+        check_isomorphous: bool = True,
     ) -> tuple[Map, pd.DataFrame]:
         """
         Denoise by estimating new, low-TV phases for the `derivative` dataset.
@@ -226,6 +227,9 @@ class IterativeTvDenoiser:
         native: Map
             the native amplitudes, phases
 
+        check_isomorphous: bool
+            perform a check to ensure the two datasets are isomorphous; recommended. Default: True.
+
         Returns
         -------
         updated_derivative: Map
@@ -236,10 +240,8 @@ class IterativeTvDenoiser:
             the tv_weight used, the negentropy (after the TV step), and the average phase change in
             degrees.
         """
-        # TODO: do we need this?
-        # initial_derivative, native = filter_common_indices(initial_derivative, native)
-
-        # TODO: check isomorphous
+        if check_isomorphous:
+            assert_isomorphous(derivative=derivative, native=native)
 
         it_tv_complex_derivative, metadata = self._iteratively_denoise_sf_amplitudes(
             native=native.to_structurefactor(),

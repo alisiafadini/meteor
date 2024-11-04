@@ -1,3 +1,4 @@
+import gemmi
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,6 +11,21 @@ from meteor.testing import MapColumns
 
 def omit_nones_in_list(input_list: list) -> list:
     return [x for x in input_list if x]
+
+
+def test_assert_isomorphous(random_difference_map: Map) -> None:
+    utils.assert_isomorphous(derivative=random_difference_map, native=random_difference_map)
+
+    different_map = random_difference_map.copy()
+    different_map.spacegroup = gemmi.SpaceGroup(141)  # I41
+    assert random_difference_map.spacegroup != gemmi.SpaceGroup(141)
+    with pytest.raises(utils.NotIsomorphousError):
+        utils.assert_isomorphous(derivative=random_difference_map, native=different_map)
+
+    different_map = random_difference_map.copy()
+    different_map.cell = gemmi.UnitCell(*[100.0, 1.0, 1.0, 90.0, 90.0, 90.0])
+    with pytest.raises(utils.NotIsomorphousError):
+        utils.assert_isomorphous(derivative=random_difference_map, native=different_map)
 
 
 def test_filter_common_indices() -> None:

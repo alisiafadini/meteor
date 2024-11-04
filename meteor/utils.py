@@ -19,6 +19,17 @@ SpacegroupType = str | int | gemmi.SpaceGroup
 class ShapeMismatchError(Exception): ...
 
 
+class NotIsomorphousError(RuntimeError): ...
+
+
+def assert_isomorphous(*, derivative: rs.DataSet, native: rs.DataSet) -> None:
+    if not native.is_isomorphous(derivative):
+        msg = "`derivative` and `native` datasets are not similar enough; "
+        msg += f"they have cell/spacegroup: {derivative.cell}/{native.cell} and "
+        msg += f"{derivative.spacegroup}/{native.spacegroup} respectively"
+        raise NotIsomorphousError(msg)
+
+
 def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
