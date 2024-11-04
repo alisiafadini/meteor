@@ -3,13 +3,23 @@ from __future__ import annotations
 import gemmi
 import numpy as np
 import pandas as pd
+import pytest
 
 from meteor.iterative import (
-    iterative_tv_phase_retrieval,
+    IterativeTvDenoiser,
 )
 from meteor.rsmap import Map
 from meteor.testing import diffmap_realspace_rms
 from meteor.validate import map_negentropy
+
+
+@pytest.fixture
+def testing_denoiser() -> IterativeTvDenoiser:
+    return IterativeTvDenoiser(
+        tv_weights_to_scan=[0.1],
+        convergence_tolerance=0.01,
+        max_iterations=100,
+    )
 
 
 def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
@@ -19,13 +29,6 @@ def map_norm(map1: gemmi.Ccp4Map, map2: gemmi.Ccp4Map) -> float:
 
 def test_IterativeTvDenoiser() -> None:
     raise NotImplementedError
-
-    # denoiser = _IterativeTvDenoiser(
-    #     cell=noise_free_map.cell,
-    #     spacegroup=noise_free_map.spacegroup,
-    #     convergence_tolerance=0.001,
-    #     max_iterations=1000,
-    # )
 
     # denoised_derivative, _ = denoiser(
     #     native=noise_free_map.to_structurefactor(),
@@ -43,7 +46,9 @@ def test_tv_denoise_complex_difference_sf() -> None:
     raise NotImplementedError
 
 
-def test_iterative_tv_different_indices(noise_free_map: Map, very_noisy_map: Map) -> None:
+def test_iterative_tv_different_indices(
+    noise_free_map: Map, very_noisy_map: Map, testing_denoiser: IterativeTvDenoiser
+) -> None:
     # regression test to make sure we can accept maps with different indices
     labels = pd.MultiIndex.from_arrays(
         [
@@ -57,28 +62,18 @@ def test_iterative_tv_different_indices(noise_free_map: Map, very_noisy_map: Map
     very_noisy_map.drop(labels, inplace=True)
     assert len(very_noisy_map) == n - 2
 
-    denoised_map, metadata = iterative_tv_phase_retrieval(
-        very_noisy_map,
-        noise_free_map,
-        tv_weights_to_scan=[0.1],
-        max_iterations=100,
-        convergence_tolerance=0.01,
-    )
+    denoised_map, metadata = testing_denoiser(derivative=very_noisy_map, native=noise_free_map)
     assert isinstance(metadata, pd.DataFrame)
     assert isinstance(denoised_map, Map)
 
 
-def test_iterative_tv(noise_free_map: Map, very_noisy_map: Map) -> None:
+def test_iterative_tv(
+    noise_free_map: Map, very_noisy_map: Map, testing_denoiser: IterativeTvDenoiser
+) -> None:
     # the test case is the denoising of a difference: between a noisy map and its noise-free origin
     # such a diffmap is ideally totally flat, so should have very low TV
 
-    denoised_map, metadata = iterative_tv_phase_retrieval(
-        very_noisy_map,
-        noise_free_map,
-        tv_weights_to_scan=[0.01, 0.1, 1.0],
-        max_iterations=100,
-        convergence_tolerance=0.01,
-    )
+    denoised_map, metadata = testing_denoiser(derivative=very_noisy_map, native=noise_free_map)
 
     # make sure metadata exists
     assert isinstance(metadata, pd.DataFrame)
