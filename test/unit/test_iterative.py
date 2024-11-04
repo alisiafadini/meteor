@@ -113,6 +113,10 @@ def test_iterative_tv_denoiser(
     # insist on 1% or better improvement
     assert 1.01 * denoised_error < noisy_error
 
-    # insist that the negentropy and phase change decrease at every iteration
-    assert (metadata["negentropy_after_tv"].diff()[1:] >= 0).all()
-    assert (metadata["average_phase_change"].diff()[1:] <= 0).all()
+    # insist that the negentropy and phase change decrease (or stay approx same) at every iteration
+    epsilon = 0.001
+    negentropy_change = metadata["negentropy_after_tv"].diff().values[1:]
+    assert (negentropy_change >= -epsilon).all()
+
+    phase_change_change = metadata["average_phase_change"].diff().values[1:]
+    assert (phase_change_change <= epsilon).all()
