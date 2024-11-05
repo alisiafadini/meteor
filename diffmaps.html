@@ -35,7 +35,7 @@ hljs.highlightAll();
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="meteor.diffmaps.compute_difference_map"><code class="name flex">
-<span>def <span class="ident">compute_difference_map</span></span>(<span>derivative: Map, native: Map) ‑> <a title="meteor.rsmap.Map" href="rsmap.html#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">compute_difference_map</span></span>(<span>derivative: Map, native: Map, *, check_isomorphous: bool = True) ‑> <a title="meteor.rsmap.Map" href="rsmap.html#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Computes amplitude and phase differences between native and derivative structure factor sets.</p>
@@ -50,6 +50,8 @@ uncertainty of the difference in amplitudes.</p>
 <dd>the derivative amplitudes, phases, uncertainties</dd>
 <dt><strong><code>native</code></strong> :&ensp;<code>Map</code></dt>
 <dd>the native amplitudes, phases, uncertainties</dd>
+<dt><strong><code>check_isomorphous</code></strong> :&ensp;<code>bool</code></dt>
+<dd>perform a check to ensure the two datasets are isomorphous; recommended. Default: True.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -58,7 +60,7 @@ uncertainty of the difference in amplitudes.</p>
 </dl></div>
 </dd>
 <dt id="meteor.diffmaps.compute_kweighted_difference_map"><code class="name flex">
-<span>def <span class="ident">compute_kweighted_difference_map</span></span>(<span>derivative: Map, native: Map, *, k_parameter: float) ‑> <a title="meteor.rsmap.Map" href="rsmap.html#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">compute_kweighted_difference_map</span></span>(<span>derivative: Map, native: Map, *, k_parameter: float, check_isomorphous: bool = True) ‑> <a title="meteor.rsmap.Map" href="rsmap.html#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Compute k-weighted derivative - native structure factor map.</p>
@@ -71,6 +73,8 @@ Then, it applies k-weighting to the amplitude differences based on the provided 
 <dd>the derivative amplitudes, phases, uncertainties</dd>
 <dt><strong><code>native</code></strong> :&ensp;<code>Map</code></dt>
 <dd>the native amplitudes, phases, uncertainties</dd>
+<dt><strong><code>check_isomorphous</code></strong> :&ensp;<code>bool</code></dt>
+<dd>perform a check to ensure the two datasets are isomorphous; recommended. Default: True.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -109,7 +113,7 @@ lower weights.</dd>
 0.77, 0.78, 0.79, 0.8 , 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87,
 0.88, 0.89, 0.9 , 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98,
 0.99, 1.
-])) ‑> reciprocalspaceship.dataset.DataSet</span>
+]), check_isomorphous: bool = True) ‑> reciprocalspaceship.dataset.DataSet</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Compute k-weighted differences between native and derivative amplitudes and phases.</p>
@@ -124,6 +128,8 @@ before calling this function.</p>
 <dd>the native amplitudes, phases, uncertainties</dd>
 <dt><strong><code>k_parameter_values_to_scan</code></strong> :&ensp;<code>np.ndarray | Sequence[float]</code></dt>
 <dd>The values to scan to optimize the k-weighting parameter, by default is 0.00, 0.01 &hellip; 1.00</dd>
+<dt><strong><code>check_isomorphous</code></strong> :&ensp;<code>bool</code></dt>
+<dd>perform a check to ensure the two datasets are isomorphous; recommended. Default: True.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -132,12 +138,6 @@ before calling this function.</p>
 <dt><strong><code>opt_k_parameter</code></strong> :&ensp;<code>float</code></dt>
 <dd>optimized k-weighting parameter</dd>
 </dl></div>
-</dd>
-<dt id="meteor.diffmaps.set_common_crystallographic_metadata"><code class="name flex">
-<span>def <span class="ident">set_common_crystallographic_metadata</span></span>(<span>map1: Map, map2: Map, *, output: Map) ‑> None</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
 </dd>
 </dl>
 </section>
@@ -160,7 +160,6 @@ before calling this function.</p>
 <li><code><a title="meteor.diffmaps.compute_kweighted_difference_map" href="#meteor.diffmaps.compute_kweighted_difference_map">compute_kweighted_difference_map</a></code></li>
 <li><code><a title="meteor.diffmaps.compute_kweights" href="#meteor.diffmaps.compute_kweights">compute_kweights</a></code></li>
 <li><code><a title="meteor.diffmaps.max_negentropy_kweighted_difference_map" href="#meteor.diffmaps.max_negentropy_kweighted_difference_map">max_negentropy_kweighted_difference_map</a></code></li>
-<li><code><a title="meteor.diffmaps.set_common_crystallographic_metadata" href="#meteor.diffmaps.set_common_crystallographic_metadata">set_common_crystallographic_metadata</a></code></li>
 </ul>
 </li>
 </ul>

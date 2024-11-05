@@ -32,6 +32,15 @@ hljs.highlightAll();
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="meteor.rsmap.assert_is_map"><code class="name flex">
+<span>def <span class="ident">assert_is_map</span></span>(<span>obj: Any, *, require_uncertainties: bool) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -261,6 +270,10 @@ these relatively simple operations.</p></div>
         self[self._amplitude_column] = values
 
     @property
+    def amplitude_column_name(self) -&gt; str:
+        return self._amplitude_column
+
+    @property
     def phases(self) -&gt; rs.DataSeries:
         return self[self._phase_column]
 
@@ -268,6 +281,10 @@ these relatively simple operations.</p></div>
     def phases(self, values: rs.DataSeries) -&gt; None:
         values = self._verify_phase_type(values)
         self[self._phase_column] = values
+
+    @property
+    def phase_column_name(self) -&gt; str:
+        return self._phase_column
 
     @property
     def has_uncertainties(self) -&gt; bool:
@@ -308,8 +325,14 @@ these relatively simple operations.</p></div>
             )
 
     @property
-    def complex_amplitudes(self) -&gt; np.ndarray:
-        return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))
+    def uncertainties_column_name(self) -&gt; str:
+        if self.has_uncertainties:
+            if not isinstance(self._uncertainty_column, str):
+                msg = &#34;misconfigured uncertainty column&#34;
+                raise RuntimeError(msg)
+            return self._uncertainty_column
+        msg = &#34;uncertainties not set for Map object&#34;
+        raise AttributeError(msg)
 
     def canonicalize_amplitudes(self) -&gt; None:
         canonicalize_amplitudes(
@@ -320,7 +343,30 @@ these relatively simple operations.</p></div>
         )
 
     def to_structurefactor(self) -&gt; rs.DataSeries:
+        &#34;&#34;&#34;Return a DataSeries of complex structure factor amplitudes&#34;&#34;&#34;
         return super().to_structurefactor(self._amplitude_column, self._phase_column)
+
+    @overload
+    @classmethod
+    def from_structurefactor(
+        cls,
+        complex_structurefactor: rs.DataSeries,
+        *,
+        index: None = None,
+        cell: CellType | None = None,
+        spacegroup: SpacegroupType | None = None,
+    ) -&gt; Map: ...
+
+    @overload
+    @classmethod
+    def from_structurefactor(
+        cls,
+        complex_structurefactor: np.ndarray,
+        *,
+        index: pd.Index,
+        cell: CellType | None = None,
+        spacegroup: SpacegroupType | None = None,
+    ) -&gt; Map: ...
 
     @classmethod
     @cellify(&#34;cell&#34;)
@@ -329,21 +375,54 @@ these relatively simple operations.</p></div>
         cls,
         complex_structurefactor: np.ndarray | rs.DataSeries,
         *,
-        index: pd.Index,
+        index: pd.Index | None = None,
         cell: CellType | None = None,
         spacegroup: SpacegroupType | None = None,
     ) -&gt; Map:
         # 1. `rs.DataSet.from_structurefactor` exists, but it operates on a column that&#39;s already
         #    part of the dataset; having such a (redundant) column is forbidden by `Map`
         # 2. recprocalspaceship has a `from_structurefactor` method, but it is occasionally
-        #    mangling indices for me when the input is a numpy array, as of 16 OCT 24 - @tjlane
-        amplitudes, phases = complex_array_to_rs_dataseries(complex_structurefactor, index=index)
+        #    mangling indices for me when the input is a numpy array, as of 16 OCT 24
+        #
+        # hopefully we can resolve these and reuse code! - @tjlane
+
+        if index is None:
+            if isinstance(complex_structurefactor, rs.DataSeries) and hasattr(
+                complex_structurefactor, &#34;index&#34;
+            ):
+                index = complex_structurefactor.index
+
+            else:
+                msg = &#34;if `complex_structurefactor` is not a `DataSeries` with an `index` attribute&#34;
+                msg += &#34;, and index must be provided&#34;
+                raise ValueError(msg)
+
+        elif index.shape != complex_structurefactor.shape:
+            msg = f&#34;`complex_structurefactor` {complex_structurefactor.shape} does not have same &#34;
+            msg += f&#34;shape as `index` {index.shape}&#34;
+            raise ShapeMismatchError(msg)
+
+        amplitudes = rs.DataSeries(
+            np.abs(complex_structurefactor),
+            index=index,
+            dtype=rs.StructureFactorAmplitudeDtype(),
+            name=&#34;F&#34;,
+        )
+
+        phases = rs.DataSeries(
+            np.angle(complex_structurefactor, deg=True),
+            index=index,
+            dtype=rs.PhaseDtype(),
+            name=&#34;PHI&#34;,
+        )
+
         dataset = rs.DataSet(
-            rs.concat([amplitudes.rename(&#34;F&#34;), phases.rename(&#34;PHI&#34;)], axis=1),
+            rs.concat([amplitudes, phases], axis=1),
             index=index,
             cell=cell,
             spacegroup=spacegroup,
         )
+
         return cls(dataset)
 
     @classmethod
@@ -535,7 +614,7 @@ label partial or centric reflections, respectively.</p>
 </dl></div>
 </dd>
 <dt id="meteor.rsmap.Map.from_structurefactor"><code class="name flex">
-<span>def <span class="ident">from_structurefactor</span></span>(<span>cls, complex_structurefactor: np.ndarray | rs.DataSeries, *, index: pd.Index, cell: CellType | None = None, spacegroup: SpacegroupType | None = None) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">from_structurefactor</span></span>(<span>cls, complex_structurefactor: np.ndarray | rs.DataSeries, *, index: pd.Index | None = None, cell: CellType | None = None, spacegroup: SpacegroupType | None = None) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -549,6 +628,18 @@ label partial or centric reflections, respectively.</p>
 </dl>
 <h3>Instance variables</h3>
 <dl>
+<dt id="meteor.rsmap.Map.amplitude_column_name"><code class="name">prop <span class="ident">amplitude_column_name</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def amplitude_column_name(self) -&gt; str:
+    return self._amplitude_column</code></pre>
+</details>
+</dd>
 <dt id="meteor.rsmap.Map.amplitudes"><code class="name">prop <span class="ident">amplitudes</span> : rs.DataSeries</code></dt>
 <dd>
 <div class="desc"></div>
@@ -561,18 +652,6 @@ def amplitudes(self) -&gt; rs.DataSeries:
     return self[self._amplitude_column]</code></pre>
 </details>
 </dd>
-<dt id="meteor.rsmap.Map.complex_amplitudes"><code class="name">prop <span class="ident">complex_amplitudes</span> : np.ndarray</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def complex_amplitudes(self) -&gt; np.ndarray:
-    return self.amplitudes.to_numpy() * np.exp(1j * np.deg2rad(self.phases.to_numpy()))</code></pre>
-</details>
-</dd>
 <dt id="meteor.rsmap.Map.has_uncertainties"><code class="name">prop <span class="ident">has_uncertainties</span> : bool</code></dt>
 <dd>
 <div class="desc"></div>
@@ -583,6 +662,18 @@ def complex_amplitudes(self) -&gt; np.ndarray:
 <pre><code class="python">@property
 def has_uncertainties(self) -&gt; bool:
     return self._uncertainty_column in self.columns</code></pre>
+</details>
+</dd>
+<dt id="meteor.rsmap.Map.phase_column_name"><code class="name">prop <span class="ident">phase_column_name</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def phase_column_name(self) -&gt; str:
+    return self._phase_column</code></pre>
 </details>
 </dd>
 <dt id="meteor.rsmap.Map.phases"><code class="name">prop <span class="ident">phases</span> : rs.DataSeries</code></dt>
@@ -621,6 +712,24 @@ def resolution_limits(self) -&gt; tuple[float, float]:
 def uncertainties(self) -&gt; rs.DataSeries:
     if self.has_uncertainties:
         return self[self._uncertainty_column]
+    msg = &#34;uncertainties not set for Map object&#34;
+    raise AttributeError(msg)</code></pre>
+</details>
+</dd>
+<dt id="meteor.rsmap.Map.uncertainties_column_name"><code class="name">prop <span class="ident">uncertainties_column_name</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def uncertainties_column_name(self) -&gt; str:
+    if self.has_uncertainties:
+        if not isinstance(self._uncertainty_column, str):
+            msg = &#34;misconfigured uncertainty column&#34;
+            raise RuntimeError(msg)
+        return self._uncertainty_column
     msg = &#34;uncertainties not set for Map object&#34;
     raise AttributeError(msg)</code></pre>
 </details>
@@ -857,25 +966,7 @@ unless <code>allow_duplicates</code> is set to True.</p>
 <span>def <span class="ident">to_structurefactor</span></span>(<span>self) ‑> reciprocalspaceship.dataseries.DataSeries</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Convert structure factor amplitudes and phases to complex structure
-factors</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>sf_key</code></strong> :&ensp;<code>str</code></dt>
-<dd>Column label for structure factor amplitudes</dd>
-<dt><strong><code>phase_key</code></strong> :&ensp;<code>str</code></dt>
-<dd>Column label for phases</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code>rs.DataSeries</code></dt>
-<dd>Complex structure factors</dd>
-</dl>
-<h2 id="see-also">See Also</h2>
-<dl>
-<dt><code>DataSet.from_structurefactor</code></dt>
-<dd>Convert complex structure factor to amplitude and phase</dd>
-</dl></div>
+<div class="desc"><p>Return a DataSeries of complex structure factor amplitudes</p></div>
 </dd>
 <dt id="meteor.rsmap.Map.write_mtz"><code class="name flex">
 <span>def <span class="ident">write_mtz</span></span>(<span>self, file_path: str | Path) ‑> None</span>
@@ -955,14 +1046,19 @@ MTZ datatypes</dd>
 <li><code><a title="meteor" href="index.html">meteor</a></code></li>
 </ul>
 </li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="meteor.rsmap.assert_is_map" href="#meteor.rsmap.assert_is_map">assert_is_map</a></code></li>
+</ul>
+</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
 <h4><code><a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></code></h4>
 <ul class="">
+<li><code><a title="meteor.rsmap.Map.amplitude_column_name" href="#meteor.rsmap.Map.amplitude_column_name">amplitude_column_name</a></code></li>
 <li><code><a title="meteor.rsmap.Map.amplitudes" href="#meteor.rsmap.Map.amplitudes">amplitudes</a></code></li>
 <li><code><a title="meteor.rsmap.Map.canonicalize_amplitudes" href="#meteor.rsmap.Map.canonicalize_amplitudes">canonicalize_amplitudes</a></code></li>
-<li><code><a title="meteor.rsmap.Map.complex_amplitudes" href="#meteor.rsmap.Map.complex_amplitudes">complex_amplitudes</a></code></li>
 <li><code><a title="meteor.rsmap.Map.compute_dHKL" href="#meteor.rsmap.Map.compute_dHKL">compute_dHKL</a></code></li>
 <li><code><a title="meteor.rsmap.Map.drop" href="#meteor.rsmap.Map.drop">drop</a></code></li>
 <li><code><a title="meteor.rsmap.Map.from_3d_numpy_map" href="#meteor.rsmap.Map.from_3d_numpy_map">from_3d_numpy_map</a></code></li>
@@ -972,6 +1068,7 @@ MTZ datatypes</dd>
 <li><code><a title="meteor.rsmap.Map.get_hkls" href="#meteor.rsmap.Map.get_hkls">get_hkls</a></code></li>
 <li><code><a title="meteor.rsmap.Map.has_uncertainties" href="#meteor.rsmap.Map.has_uncertainties">has_uncertainties</a></code></li>
 <li><code><a title="meteor.rsmap.Map.insert" href="#meteor.rsmap.Map.insert">insert</a></code></li>
+<li><code><a title="meteor.rsmap.Map.phase_column_name" href="#meteor.rsmap.Map.phase_column_name">phase_column_name</a></code></li>
 <li><code><a title="meteor.rsmap.Map.phases" href="#meteor.rsmap.Map.phases">phases</a></code></li>
 <li><code><a title="meteor.rsmap.Map.read_mtz_file" href="#meteor.rsmap.Map.read_mtz_file">read_mtz_file</a></code></li>
 <li><code><a title="meteor.rsmap.Map.resolution_limits" href="#meteor.rsmap.Map.resolution_limits">resolution_limits</a></code></li>
@@ -979,6 +1076,7 @@ MTZ datatypes</dd>
 <li><code><a title="meteor.rsmap.Map.to_ccp4_map" href="#meteor.rsmap.Map.to_ccp4_map">to_ccp4_map</a></code></li>
 <li><code><a title="meteor.rsmap.Map.to_structurefactor" href="#meteor.rsmap.Map.to_structurefactor">to_structurefactor</a></code></li>
 <li><code><a title="meteor.rsmap.Map.uncertainties" href="#meteor.rsmap.Map.uncertainties">uncertainties</a></code></li>
+<li><code><a title="meteor.rsmap.Map.uncertainties_column_name" href="#meteor.rsmap.Map.uncertainties_column_name">uncertainties_column_name</a></code></li>
 <li><code><a title="meteor.rsmap.Map.write_mtz" href="#meteor.rsmap.Map.write_mtz">write_mtz</a></code></li>
 </ul>
 </li>

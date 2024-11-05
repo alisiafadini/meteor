@@ -34,8 +34,35 @@ hljs.highlightAll();
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="meteor.validate.map_negentropy"><code class="name flex">
+<span>def <span class="ident">map_negentropy</span></span>(<span>map_to_assess: Map, *, tolerance: float = 0.1) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Computes the negentropy of a crystallographic map.</p>
+<p>Negentropy is defined as the difference between the entropy of a given
+distribution and the entropy of a Gaussian distribution with the same variance.
+It is a measure of non-Gaussianity, with higher values indicating greater deviation
+from Gaussianity.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>map_to_assess</code></strong> :&ensp;<code>Map</code></dt>
+<dd>The map (coefficients) we will compute the negentropy for.</dd>
+<dt><strong><code>tolerance</code></strong> :&ensp;<code>float</code></dt>
+<dd>Tolerance level determining if the negentropy is suspiciously negative. Defaults to 0.1.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>negentropy</code></strong> :&ensp;<code>float</code></dt>
+<dd>The negentropy of the distribution of the (implicitly computed) map voxels.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><strong><code>ValueError</code></strong> :&ensp;<code>If the computed <a title="meteor.validate.negentropy" href="#meteor.validate.negentropy">negentropy()</a> is less than the negative tolerance,</code></dt>
+<dd>indicating potential issues with the computation.</dd>
+</dl></div>
+</dd>
 <dt id="meteor.validate.negentropy"><code class="name flex">
-<span>def <span class="ident">negentropy</span></span>(<span>samples: np.ndarray, tolerance: float = 0.1) ‑> float</span>
+<span>def <span class="ident">negentropy</span></span>(<span>samples: np.ndarray, *, tolerance: float = 0.1) ‑> float</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Computes the negentropy of a given sample array.</p>
@@ -257,6 +284,7 @@ for the optimum.</dd>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="meteor.validate.map_negentropy" href="#meteor.validate.map_negentropy">map_negentropy</a></code></li>
 <li><code><a title="meteor.validate.negentropy" href="#meteor.validate.negentropy">negentropy</a></code></li>
 </ul>
 </li>

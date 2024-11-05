@@ -34,8 +34,14 @@ hljs.highlightAll();
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="meteor.utils.assert_isomorphous"><code class="name flex">
+<span>def <span class="ident">assert_isomorphous</span></span>(<span>*, derivative: rs.DataSet, native: rs.DataSet) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
 <dt id="meteor.utils.average_phase_diff_in_degrees"><code class="name flex">
-<span>def <span class="ident">average_phase_diff_in_degrees</span></span>(<span>array1: np.ndarray, array2: np.ndarray) ‑> float</span>
+<span>def <span class="ident">average_phase_diff_in_degrees</span></span>(<span>array1: np.ndarray | rs.DataSeries, array2: np.ndarray | rs.DataSeries) ‑> float</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -45,34 +51,6 @@ hljs.highlightAll();
 </code></dt>
 <dd>
 <div class="desc"></div>
-</dd>
-<dt id="meteor.utils.complex_array_to_rs_dataseries"><code class="name flex">
-<span>def <span class="ident">complex_array_to_rs_dataseries</span></span>(<span>complex_structure_factors: np.ndarray, *, index: Index) ‑> tuple[reciprocalspaceship.dataseries.DataSeries, reciprocalspaceship.dataseries.DataSeries]</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Convert an array of complex structure factors into two reciprocalspaceship DataSeries, one
-representing the structure factor amplitudes and one for the phases.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>complex_structure_factors</code></strong> :&ensp;<code>np.ndarray</code></dt>
-<dd>the complex-valued structure factors, as a numpy array</dd>
-<dt><strong><code>index</code></strong> :&ensp;<code>pandas.Index</code></dt>
-<dd>the indices (HKL) for each structure factor in <code>complex_structure_factors</code></dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><strong><code>amplitudes</code></strong> :&ensp;<code>DataSeries</code></dt>
-<dd>with StructureFactorAmplitudeDtype</dd>
-<dt><strong><code>phases</code></strong> :&ensp;<code>DataSeries</code></dt>
-<dd>with PhaseDtype</dd>
-</dl>
-<h2 id="raises">Raises</h2>
-<dl>
-<dt><code>ValueError</code></dt>
-<dd>if <code>complex_structure_factors and </code>index` do not have the same shape</dd>
-</dl>
-<h2 id="see-also">See Also</h2>
-<p><code>`reciprocalspaceship/utils/structurefactors.from_structurefactor(...)</code> An equivalent function<code>, </code>that does not require the index and does less index/data checking.`</p></div>
 </dd>
 <dt id="meteor.utils.cut_resolution"><code class="name flex">
 <span>def <span class="ident">cut_resolution</span></span>(<span>dataset: rs.DataSet, *, dmax_limit: float | None = None, dmin_limit: float | None = None) ‑> reciprocalspaceship.dataset.DataSet</span>
@@ -97,6 +75,25 @@ representing the structure factor amplitudes and one for the phases.</p>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="meteor.utils.NotIsomorphousError"><code class="flex name class">
+<span>class <span class="ident">NotIsomorphousError</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Unspecified run-time error.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class NotIsomorphousError(RuntimeError): ...</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>builtins.RuntimeError</li>
+<li>builtins.Exception</li>
+<li>builtins.BaseException</li>
+</ul>
+</dd>
 <dt id="meteor.utils.ShapeMismatchError"><code class="flex name class">
 <span>class <span class="ident">ShapeMismatchError</span></span>
 <span>(</span><span>*args, **kwargs)</span>
@@ -130,9 +127,9 @@ representing the structure factor amplitudes and one for the phases.</p>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="meteor.utils.assert_isomorphous" href="#meteor.utils.assert_isomorphous">assert_isomorphous</a></code></li>
 <li><code><a title="meteor.utils.average_phase_diff_in_degrees" href="#meteor.utils.average_phase_diff_in_degrees">average_phase_diff_in_degrees</a></code></li>
 <li><code><a title="meteor.utils.canonicalize_amplitudes" href="#meteor.utils.canonicalize_amplitudes">canonicalize_amplitudes</a></code></li>
-<li><code><a title="meteor.utils.complex_array_to_rs_dataseries" href="#meteor.utils.complex_array_to_rs_dataseries">complex_array_to_rs_dataseries</a></code></li>
 <li><code><a title="meteor.utils.cut_resolution" href="#meteor.utils.cut_resolution">cut_resolution</a></code></li>
 <li><code><a title="meteor.utils.filter_common_indices" href="#meteor.utils.filter_common_indices">filter_common_indices</a></code></li>
 <li><code><a title="meteor.utils.numpy_array_to_map" href="#meteor.utils.numpy_array_to_map">numpy_array_to_map</a></code></li>
@@ -140,6 +137,9 @@ representing the structure factor amplitudes and one for the phases.</p>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
+<li>
+<h4><code><a title="meteor.utils.NotIsomorphousError" href="#meteor.utils.NotIsomorphousError">NotIsomorphousError</a></code></h4>
+</li>
 <li>
 <h4><code><a title="meteor.utils.ShapeMismatchError" href="#meteor.utils.ShapeMismatchError">ShapeMismatchError</a></code></h4>
 </li>
