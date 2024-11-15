@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, overload
 
 import numpy as np
+import structlog
 from skimage.restoration import denoise_tv_chambolle
 
 from .rsmap import Map
@@ -16,9 +17,12 @@ from .settings import (
     BRACKET_FOR_GOLDEN_OPTIMIZATION,
     MAP_SAMPLING,
     TV_MAX_NUM_ITER,
+    TV_MAX_WEIGHT_EXPECTED,
     TV_STOP_TOLERANCE,
 )
 from .validate import ScalarMaximizer, negentropy
+
+log = structlog.get_logger()
 
 
 @dataclass
@@ -176,6 +180,13 @@ def tv_denoise_difference_map(
         maximizer.optimize_over_explicit_values(arguments_to_scan=weights_to_scan)
     else:
         maximizer.optimize_with_golden_algorithm(bracket=BRACKET_FOR_GOLDEN_OPTIMIZATION)
+
+    if maximizer.argument_optimum > TV_MAX_WEIGHT_EXPECTED:
+        log.warning(
+            "TV regularization weight much larger than expected, something probably went wrong",
+            weight=maximizer.argument_optimum,
+            limit=TV_MAX_WEIGHT_EXPECTED,
+        )
 
     # denoise using the optimized parameters and convert to an rs.DataSet
     final_realspace_map_as_array = _tv_denoise_array(
