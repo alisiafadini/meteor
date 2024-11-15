@@ -214,12 +214,16 @@ class Map(rs.DataSet):
         # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
         # this is a rather horrible thing to do and we should fix it
         # best is to push changes upstream
-        if self.index.names == ["H", "K", "L"]:
+        hkl_names = ["H", "K", "L"]
+        if self.index.names == hkl_names:
             hkls = self.index.to_frame().to_numpy(dtype=np.int32)
-        else:
+        elif all(col in self.columns for col in hkl_names):
             # we need to pull out each column as a separate DataSeries so that we don't try to
             # create a new Map object without F, PHI
-            hkls = np.vstack([self[col].to_numpy(dtype=np.int32) for col in ["H", "K", "L"]]).T
+            hkls = np.vstack([self[col].to_numpy(dtype=np.int32) for col in hkl_names]).T
+        else:
+            msg = f"cannot find `H`, `K`, and `L` columns in index or columns {self.columns}"
+            raise ValueError(msg)
 
         if hkls.shape[-1] != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
             msg = f"something went wrong, HKL array has a funny shape: {hkls.shape}"
