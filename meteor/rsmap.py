@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, Literal, overload
+from typing import Any, ClassVar, Literal, overload, Final
 
 import gemmi
 import numpy as np
@@ -20,6 +20,8 @@ from .utils import (
     canonicalize_amplitudes,
     numpy_array_to_map,
 )
+
+NUMBER_OF_DIMENSIONS_IN_UNIVERSE: Final[int] = 3
 
 
 class MissingUncertaintiesError(AttributeError): ...
@@ -105,6 +107,7 @@ class Map(rs.DataSet):
         self.phases = self._verify_phase_type(self.phases, fix=True)
         if self.has_uncertainties:
             self.uncertainties = self._verify_uncertainty_type(self.uncertainties, fix=True)
+
 
     @property
     def _constructor(self) -> Callable[[Any], Map]:
@@ -210,7 +213,20 @@ class Map(rs.DataSet):
 
     def get_hkls(self) -> np.ndarray:
         # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
-        return self.index.to_frame().to_numpy(dtype=np.int32)
+        # this is a rather horrible thing to do and we should fix it
+        # best is to push changes upstream
+        if self.index.names == ["H", "K", "L"]:
+            hkls = self.index.to_frame().to_numpy(dtype=np.int32)
+        else:
+            # we need to pull out each column as a separate DataSeries so that we don't try to
+            # create a new Map object without F, PHI
+            hkls = np.vstack([ self[col].to_numpy(dtype=np.int32) for col in ["H", "K", "L"] ]).T
+        
+        if not hkls.shape[-1] == NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
+            msg = f"something went wrong, HKL array has a funny shape: {hkls.shape}"
+            raise RuntimeError(msg)
+        
+        return hkls
 
     def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
         # rs adds a "dHKL" column to the DataFrame
@@ -436,8 +452,7 @@ class Map(rs.DataSet):
         --------
         For information about Gemmi data layout: https://gemmi.readthedocs.io/en/latest/grid.html
         """
-        number_of_dimensions_in_universe = 3
-        if len(map_grid.shape) != number_of_dimensions_in_universe:
+        if len(map_grid.shape) != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
             msg = "`map_grid` should be a 3D array representing a realspace map"
             raise ValueError(msg)
         ccp4 = numpy_array_to_map(
@@ -450,7 +465,7 @@ class Map(rs.DataSet):
             high_resolution_limit=high_resolution_limit,
         )
 
-    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
+    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:        
         map_coefficients_gemmi_format = self.to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
