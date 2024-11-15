@@ -22,7 +22,7 @@ dependencies = [
     "scipy >= 1.14.0",
     "gemmi >= 0.6.6",
     "scikit-image >= 0.24.0",
-    "reciprocalspaceship >= 1.0.2",
+    "reciprocalspaceship >= 1.0.3",
     "structlog >= 24.4.0",
 ]
 
