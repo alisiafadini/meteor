@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, Literal, overload, Final
+from typing import Any, ClassVar, Final, Literal, overload
 
 import gemmi
 import numpy as np
@@ -107,7 +107,6 @@ class Map(rs.DataSet):
         self.phases = self._verify_phase_type(self.phases, fix=True)
         if self.has_uncertainties:
             self.uncertainties = self._verify_uncertainty_type(self.uncertainties, fix=True)
-
 
     @property
     def _constructor(self) -> Callable[[Any], Map]:
@@ -220,12 +219,12 @@ class Map(rs.DataSet):
         else:
             # we need to pull out each column as a separate DataSeries so that we don't try to
             # create a new Map object without F, PHI
-            hkls = np.vstack([ self[col].to_numpy(dtype=np.int32) for col in ["H", "K", "L"] ]).T
-        
-        if not hkls.shape[-1] == NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
+            hkls = np.vstack([self[col].to_numpy(dtype=np.int32) for col in ["H", "K", "L"]]).T
+
+        if hkls.shape[-1] != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
             msg = f"something went wrong, HKL array has a funny shape: {hkls.shape}"
             raise RuntimeError(msg)
-        
+
         return hkls
 
     def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
@@ -465,7 +464,7 @@ class Map(rs.DataSet):
             high_resolution_limit=high_resolution_limit,
         )
 
-    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:        
+    def to_ccp4_map(self, *, map_sampling: int) -> gemmi.Ccp4Map:
         map_coefficients_gemmi_format = self.to_gemmi()
         ccp4_map = gemmi.Ccp4Map()
         ccp4_map.grid = map_coefficients_gemmi_format.transform_f_phi_to_map(
