@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ${{ vars.PYTHON_VERSIONS }}
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
     
     steps:
     - name: Cancel Previous Runs
