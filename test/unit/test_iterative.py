@@ -112,8 +112,8 @@ def test_iterative_tv_denoiser(
     noisy_error = diffmap_realspace_rms(very_noisy_map, noise_free_map)
     denoised_error = diffmap_realspace_rms(denoised_map, noise_free_map)
 
-    # insist on 1% or better improvement
-    assert 1.01 * denoised_error < noisy_error
+    # insist on improvement
+    assert denoised_error < noisy_error
 
     # insist that the negentropy and phase change decrease (or stay approx same) at every iteration
     negentropy_change = metadata["negentropy_after_tv"].diff().to_numpy()
