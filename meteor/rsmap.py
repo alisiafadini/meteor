@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, Literal, overload
+from typing import Any, ClassVar, Final, Literal, overload
 
 import gemmi
 import numpy as np
@@ -20,6 +20,8 @@ from .utils import (
     canonicalize_amplitudes,
     numpy_array_to_map,
 )
+
+NUMBER_OF_DIMENSIONS_IN_UNIVERSE: Final[int] = 3
 
 
 class MissingUncertaintiesError(AttributeError): ...
@@ -210,7 +212,24 @@ class Map(rs.DataSet):
 
     def get_hkls(self) -> np.ndarray:
         # overwrite rs implt'n, return w/o modifying self -> same behavior, under testing - @tjlane
-        return self.index.to_frame().to_numpy(dtype=np.int32)
+        # this is a rather horrible thing to do and we should fix it
+        # best is to push changes upstream
+        hkl_names = ["H", "K", "L"]
+        if self.index.names == hkl_names:
+            hkls = self.index.to_frame().to_numpy(dtype=np.int32)
+        elif all(col in self.columns for col in hkl_names):
+            # we need to pull out each column as a separate DataSeries so that we don't try to
+            # create a new Map object without F, PHI
+            hkls = np.vstack([self[col].to_numpy(dtype=np.int32) for col in hkl_names]).T
+        else:
+            msg = f"cannot find `H`, `K`, and `L` columns in index or columns {self.columns}"
+            raise ValueError(msg)
+
+        if hkls.shape[-1] != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
+            msg = f"something went wrong, HKL array has a funny shape: {hkls.shape}"
+            raise RuntimeError(msg)
+
+        return hkls
 
     def compute_dHKL(self) -> rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
         # rs adds a "dHKL" column to the DataFrame
@@ -436,8 +455,7 @@ class Map(rs.DataSet):
         --------
         For information about Gemmi data layout: https://gemmi.readthedocs.io/en/latest/grid.html
         """
-        number_of_dimensions_in_universe = 3
-        if len(map_grid.shape) != number_of_dimensions_in_universe:
+        if len(map_grid.shape) != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
             msg = "`map_grid` should be a 3D array representing a realspace map"
             raise ValueError(msg)
         ccp4 = numpy_array_to_map(

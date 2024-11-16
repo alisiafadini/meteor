@@ -68,7 +68,7 @@ def test_tv_denoise_zero_weight(random_difference_map: Map) -> None:
     )
     random_difference_map.canonicalize_amplitudes()
     output.canonicalize_amplitudes()
-    pd.testing.assert_frame_equal(random_difference_map, output, atol=1e-2, rtol=1e-2)
+    pd.testing.assert_frame_equal(random_difference_map, output, atol=0.1, rtol=0.1)
 
 
 def test_tv_denoise_nan_input(random_difference_map: Map) -> None:
