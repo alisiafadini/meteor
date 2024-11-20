@@ -137,7 +137,7 @@ class DiffmapArgParser(argparse.ArgumentParser):
             "--lowres",
             type=float,
             default=np.inf,
-            help="Cut at high resolution. Default: no resolution cut beyond the data.",
+            help="Cut at low resolution. Default: no resolution cut beyond the data.",
         )
 
         output_group = self.add_argument_group("output")
