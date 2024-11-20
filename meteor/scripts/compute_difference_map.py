@@ -92,7 +92,7 @@ def denoise_diffmap_according_to_mode(
 
         log.info(
             "Optimal TV weight found",
-            weight=metadata.optimal_tv_weight,
+            weight=f"{metadata.optimal_tv_weight:.2e}",
             initial_negentropy=f"{metadata.initial_negentropy:.2e}",
             final_negentropy=f"{metadata.optimal_negentropy:.2e}",
         )

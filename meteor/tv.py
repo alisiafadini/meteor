@@ -184,7 +184,7 @@ def tv_denoise_difference_map(
     if maximizer.argument_optimum > TV_MAX_WEIGHT_EXPECTED:
         log.warning(
             "TV regularization weight much larger than expected, something probably went wrong",
-            weight=maximizer.argument_optimum,
+            weight=f"{maximizer.argument_optimum:.2f}",
             limit=TV_MAX_WEIGHT_EXPECTED,
         )
 
