@@ -48,7 +48,7 @@ these scripts compute denoised difference maps using the constant-phase approxim
 2. be objective and reproducible (minimize user choice & bias)
 3. be easy to use
 
-Aim 1 is met using structure factor amplitude weighting (e.g. k-weighting, existing art) and [TV denoising](https://en.wikipedia.org/wiki/Total_variation_denoising) (new in the context of crystallography). Aims 2 and 3 are met through automatically setting parameters using negentropy maximization (as in [ICA](https://en.wikipedia.org/wiki/Independent_component_analysis)). For all the details, see our paper (coming soon to a preprint server near you).
+Aim 1 is met using structure factor amplitude weighting (e.g. k-weighting, existing art) and [TV denoising](https://en.wikipedia.org/wiki/Total_variation_denoising) (new in the context of crystallography). Aims 2 and 3 are met through automatically setting parameters using negentropy maximization (as in [ICA](https://en.wikipedia.org/wiki/Independent_component_analysis)). For all the details, [see our preprint](https://www.biorxiv.org/content/10.1101/2024.11.06.622276v1.full).
 
 
 ### isomorphous data, please
