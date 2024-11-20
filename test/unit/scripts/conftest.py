@@ -39,4 +39,8 @@ def base_cli_arguments(fixed_kparameter: float) -> list[str]:
         "fixed",
         "--kweight-parameter",
         str(fixed_kparameter),
+        "--highres",
+        "1.5",
+        "--lowres",
+        "6.0",
     ]

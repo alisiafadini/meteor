@@ -8,7 +8,6 @@ from typing import Literal, overload
 import gemmi
 import numpy as np
 import reciprocalspaceship as rs
-from reciprocalspaceship import DataSet
 from reciprocalspaceship.decorators import cellify, spacegroupify
 from reciprocalspaceship.utils import canonicalize_phases
 
@@ -22,6 +21,9 @@ class ShapeMismatchError(Exception): ...
 class NotIsomorphousError(RuntimeError): ...
 
 
+class ResolutionCutOverlapError(ValueError): ...
+
+
 def assert_isomorphous(*, derivative: rs.DataSet, native: rs.DataSet) -> None:
     if not native.is_isomorphous(derivative):
         msg = "`derivative` and `native` datasets are not similar enough; "
@@ -30,7 +32,7 @@ def assert_isomorphous(*, derivative: rs.DataSet, native: rs.DataSet) -> None:
         raise NotIsomorphousError(msg)
 
 
-def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]:
+def filter_common_indices(df1: rs.DataSet, df2: rs.DataSet) -> tuple[rs.DataSet, rs.DataSet]:
     common_indices = df1.index.intersection(df2.index)
     df1_common = df1.loc[common_indices].copy()
     df2_common = df2.loc[common_indices].copy()
@@ -43,14 +45,25 @@ def filter_common_indices(df1: DataSet, df2: DataSet) -> tuple[DataSet, DataSet]
 def cut_resolution(
     dataset: rs.DataSet,
     *,
-    dmax_limit: float | None = None,
-    dmin_limit: float | None = None,
+    low_resolution_limit: float | None = None,
+    high_resolution_limit: float | None = None,
 ) -> rs.DataSet:
+    if (
+        high_resolution_limit
+        and low_resolution_limit
+        and (high_resolution_limit >= low_resolution_limit)
+    ):
+        msg = f"requested highres >= lowres: {high_resolution_limit} >= {low_resolution_limit}"
+        raise ResolutionCutOverlapError(msg)
+
     d_hkl = dataset.compute_dHKL()
-    if dmax_limit:
-        dataset = dataset.loc[(d_hkl <= dmax_limit)]
-    if dmin_limit:
-        dataset = dataset.loc[(d_hkl >= dmin_limit)]
+    if isinstance(d_hkl, rs.DataSet):
+        d_hkl = d_hkl["dHKL"]
+
+    if low_resolution_limit:
+        dataset = dataset.loc[(d_hkl <= low_resolution_limit)]
+    if high_resolution_limit:
+        dataset = dataset.loc[(d_hkl >= high_resolution_limit)]
     return dataset
 
 
