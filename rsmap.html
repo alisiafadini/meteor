@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-<meta name="generator" content="pdoc3 0.11.1">
+<meta name="generator" content="pdoc3 0.11.3">
 <title>meteor.rsmap API documentation</title>
 <meta name="description" content="Map class definition and related functions">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
-<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin:1em 0}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
 <style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
 <style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
@@ -47,7 +47,7 @@ hljs.highlightAll();
 <dl>
 <dt id="meteor.rsmap.Map"><code class="flex name class">
 <span>class <span class="ident">Map</span></span>
-<span>(</span><span>data: dict | pd.DataFrame | rs.DataSet, *, amplitude_column: str = 'F', phase_column: str = 'PHI', uncertainty_column: str | None = 'SIGF', **kwargs: Any)</span>
+<span>(</span><span>data: dict | pd.DataFrame | rs.DataSet,<br>*,<br>amplitude_column: str = 'F',<br>phase_column: str = 'PHI',<br>uncertainty_column: str | None = 'SIGF',<br>**kwargs: Any)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>A high-level interface for a crystallographic map of any kind.</p>
@@ -244,7 +244,24 @@ these relatively simple operations.</p></div>
 
     def get_hkls(self) -&gt; np.ndarray:
         # overwrite rs implt&#39;n, return w/o modifying self -&gt; same behavior, under testing - @tjlane
-        return self.index.to_frame().to_numpy(dtype=np.int32)
+        # this is a rather horrible thing to do and we should fix it
+        # best is to push changes upstream
+        hkl_names = [&#34;H&#34;, &#34;K&#34;, &#34;L&#34;]
+        if self.index.names == hkl_names:
+            hkls = self.index.to_frame().to_numpy(dtype=np.int32)
+        elif all(col in self.columns for col in hkl_names):
+            # we need to pull out each column as a separate DataSeries so that we don&#39;t try to
+            # create a new Map object without F, PHI
+            hkls = np.vstack([self[col].to_numpy(dtype=np.int32) for col in hkl_names]).T
+        else:
+            msg = f&#34;cannot find `H`, `K`, and `L` columns in index or columns {self.columns}&#34;
+            raise ValueError(msg)
+
+        if hkls.shape[-1] != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
+            msg = f&#34;something went wrong, HKL array has a funny shape: {hkls.shape}&#34;
+            raise RuntimeError(msg)
+
+        return hkls
 
     def compute_dHKL(self) -&gt; rs.DataSeries:  # noqa: N802, caps from reciprocalspaceship
         # rs adds a &#34;dHKL&#34; column to the DataFrame
@@ -470,8 +487,7 @@ these relatively simple operations.</p></div>
         --------
         For information about Gemmi data layout: https://gemmi.readthedocs.io/en/latest/grid.html
         &#34;&#34;&#34;
-        number_of_dimensions_in_universe = 3
-        if len(map_grid.shape) != number_of_dimensions_in_universe:
+        if len(map_grid.shape) != NUMBER_OF_DIMENSIONS_IN_UNIVERSE:
             msg = &#34;`map_grid` should be a 3D array representing a realspace map&#34;
             raise ValueError(msg)
         ccp4 = numpy_array_to_map(
@@ -559,7 +575,7 @@ these relatively simple operations.</p></div>
 <h3>Static methods</h3>
 <dl>
 <dt id="meteor.rsmap.Map.from_3d_numpy_map"><code class="name flex">
-<span>def <span class="ident">from_3d_numpy_map</span></span>(<span>cls, map_grid: np.ndarray, *, spacegroup: Any, cell: CellType, high_resolution_limit: float) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">from_3d_numpy_map</span></span>(<span>cls,<br>map_grid: np.ndarray,<br>*,<br>spacegroup: Any,<br>cell: CellType,<br>high_resolution_limit: float) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a <code><a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></code> from a 3d grid of voxel values stored in a numpy array.</p>
@@ -584,13 +600,13 @@ sampling</dd>
 <p><code>For information about Gemmi data layout: &lt;https://gemmi.readthedocs.io/en/latest/grid.html&gt;</code></p></div>
 </dd>
 <dt id="meteor.rsmap.Map.from_ccp4_map"><code class="name flex">
-<span>def <span class="ident">from_ccp4_map</span></span>(<span>ccp4_map: gemmi.Ccp4Map, *, high_resolution_limit: float, amplitude_column: str = 'F', phase_column: str = 'PHI') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">from_ccp4_map</span></span>(<span>ccp4_map: gemmi.Ccp4Map,<br>*,<br>high_resolution_limit: float,<br>amplitude_column: str = 'F',<br>phase_column: str = 'PHI') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 <dt id="meteor.rsmap.Map.from_gemmi"><code class="name flex">
-<span>def <span class="ident">from_gemmi</span></span>(<span>gemmi_mtz: gemmi.Mtz, *, amplitude_column: str = 'F', phase_column: str = 'PHI', uncertainty_column: str | None = 'SIGF') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">from_gemmi</span></span>(<span>gemmi_mtz: gemmi.Mtz,<br>*,<br>amplitude_column: str = 'F',<br>phase_column: str = 'PHI',<br>uncertainty_column: str | None = 'SIGF') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Creates DataSet object from gemmi.Mtz object.</p>
@@ -614,13 +630,13 @@ label partial or centric reflections, respectively.</p>
 </dl></div>
 </dd>
 <dt id="meteor.rsmap.Map.from_structurefactor"><code class="name flex">
-<span>def <span class="ident">from_structurefactor</span></span>(<span>cls, complex_structurefactor: np.ndarray | rs.DataSeries, *, index: pd.Index | None = None, cell: CellType | None = None, spacegroup: SpacegroupType | None = None) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">from_structurefactor</span></span>(<span>cls,<br>complex_structurefactor: np.ndarray | rs.DataSeries,<br>*,<br>index: pd.Index | None = None,<br>cell: CellType | None = None,<br>spacegroup: SpacegroupType | None = None) ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 <dt id="meteor.rsmap.Map.read_mtz_file"><code class="name flex">
-<span>def <span class="ident">read_mtz_file</span></span>(<span>file_path: str | Path, *, amplitude_column: str = 'F', phase_column: str = 'PHI', uncertainty_column: str | None = 'SIGF') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
+<span>def <span class="ident">read_mtz_file</span></span>(<span>file_path: str | Path,<br>*,<br>amplitude_column: str = 'F',<br>phase_column: str = 'PHI',<br>uncertainty_column: str | None = 'SIGF') ‑> <a title="meteor.rsmap.Map" href="#meteor.rsmap.Map">Map</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -1092,7 +1108,7 @@ MTZ datatypes</dd>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.1</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.3</a>.</p>
 </footer>
 </body>
 </html>
