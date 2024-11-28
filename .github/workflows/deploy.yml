@@ -42,7 +42,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ fromJSON(vars.BUILD_PYTHON_VERSION) }}
+          python-version: ${{ vars.BUILD_PYTHON_VERSION }}
 
       - name: install
         run: |
