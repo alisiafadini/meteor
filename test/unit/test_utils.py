@@ -88,6 +88,18 @@ def test_cut_resolution(
     assert dmin >= expected_dmin_lower_bound
 
 
+def test_cut_resolution_overlapping_cut(random_difference_map: Map) -> None:
+    low_resolution_limit = 3.0
+    high_resolution_limit = low_resolution_limit + 1.0
+
+    with pytest.raises(utils.ResolutionCutOverlapError):
+        _ = utils.cut_resolution(
+            random_difference_map,
+            low_resolution_limit=low_resolution_limit,
+            high_resolution_limit=high_resolution_limit,
+        )
+
+
 @pytest.mark.parametrize("inplace", [False, True])
 def test_canonicalize_amplitudes(
     inplace: bool, random_difference_map: Map, test_map_columns: MapColumns
