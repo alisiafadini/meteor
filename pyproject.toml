@@ -34,6 +34,9 @@ tests = [
     "pytest-xdist",
     "nbmake",
 ]
+notebooks = [
+    "matplotlib",
+]
 
 [project.scripts]
 "meteor.diffmap" = "meteor.scripts.compute_difference_map:main"

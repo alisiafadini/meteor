@@ -35,5 +35,5 @@ jobs:
     
     - name: Ensure notebooks complete without errors with pytest and nbmake
       run: |
-        pip install '.[tests]'
+        pip install '.[all]'
         pytest --nbmake examples/*ipynb
