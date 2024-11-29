@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import reciprocalspaceship as rs
+from reciprocalspaceship.utils import compute_dHKL
 
 from meteor import utils
 from meteor.rsmap import Map
@@ -44,7 +45,7 @@ def test_filter_common_indices_empty_intersection() -> None:
 
 
 @pytest.mark.parametrize(
-    ("dmax_limit", "dmin_limit"),
+    ("low_resolution_limit", "high_resolution_limit"),
     [
         (None, None),
         (None, 2.0),
@@ -52,21 +53,51 @@ def test_filter_common_indices_empty_intersection() -> None:
         (8.0, 2.0),
     ],
 )
-def test_cut_resolution(random_difference_map: Map, dmax_limit: float, dmin_limit: float) -> None:
+@pytest.mark.parametrize("cast_to_dataset", [False, True])
+def test_cut_resolution(
+    random_difference_map: Map,
+    low_resolution_limit: float,
+    high_resolution_limit: float,
+    cast_to_dataset: bool,
+) -> None:
+    # cast_to_dataset ensures we also test rescuts for rs.DataSet
+
     dmax_before_cut, dmin_before_cut = random_difference_map.resolution_limits
-    expected_dmax_upper_bound: float = max(omit_nones_in_list([dmax_before_cut, dmax_limit]))
-    expected_dmin_lower_bound: float = min(omit_nones_in_list([dmin_before_cut, dmin_limit]))
+    expected_dmax_upper_bound: float = max(
+        omit_nones_in_list([dmax_before_cut, low_resolution_limit])
+    )
+    expected_dmin_lower_bound: float = min(
+        omit_nones_in_list([dmin_before_cut, high_resolution_limit])
+    )
+
+    if cast_to_dataset:
+        random_difference_map = rs.DataSet(random_difference_map)
 
     random_intensities = utils.cut_resolution(
         random_difference_map,
-        dmax_limit=dmax_limit,
-        dmin_limit=dmin_limit,
+        low_resolution_limit=low_resolution_limit,
+        high_resolution_limit=high_resolution_limit,
     )
     assert len(random_intensities) > 0
 
-    dmax, dmin = random_intensities.resolution_limits
+    d_hkl = compute_dHKL(random_difference_map.get_hkls(), random_difference_map.cell)
+    dmax = d_hkl.max()
+    dmin = d_hkl.min()
+
     assert dmax <= expected_dmax_upper_bound
     assert dmin >= expected_dmin_lower_bound
+
+
+def test_cut_resolution_overlapping_cut(random_difference_map: Map) -> None:
+    low_resolution_limit = 3.0
+    high_resolution_limit = low_resolution_limit + 1.0
+
+    with pytest.raises(utils.ResolutionCutOverlapError):
+        _ = utils.cut_resolution(
+            random_difference_map,
+            low_resolution_limit=low_resolution_limit,
+            high_resolution_limit=high_resolution_limit,
+        )
 
 
 @pytest.mark.parametrize("inplace", [False, True])

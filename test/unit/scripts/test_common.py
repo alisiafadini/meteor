@@ -19,11 +19,12 @@ from meteor.scripts.common import (
     write_combined_metadata,
 )
 from meteor.tv import TvDenoiseResult
+from meteor.utils import ResolutionCutOverlapError
 
 
 def mocked_read_mtz(dummy_filename: str) -> rs.DataSet:
     # if read_mtz gets a Path, it freaks out; requires str
-    assert isinstance(dummy_filename, str)
+    assert isinstance(dummy_filename, str), "read_mtz takes a string only"
 
     index = pd.MultiIndex.from_arrays(
         [[1, 1, 5, 6], [1, 2, 5, 6], [1, 3, 5, 6]], names=("H", "K", "L")
@@ -32,7 +33,8 @@ def mocked_read_mtz(dummy_filename: str) -> rs.DataSet:
         "F": np.array([2.0, 3.0, 1.0, np.nan]),
         "SIGF": np.array([0.5, 0.5, 1.0, np.nan]),
     }
-    return rs.DataSet(data, index=index).infer_mtz_dtypes()
+    cell = (10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+    return rs.DataSet(data, index=index, cell=cell, spacegroup=1).infer_mtz_dtypes()
 
 
 def test_diffmap_set_smoke(diffmap_set: DiffMapSet) -> None:
@@ -70,6 +72,8 @@ def test_diffmap_argparser_parse_args(
     assert args.metadataout == Path("fake-output-metadata.csv")
     assert args.kweight_mode == WeightMode.fixed
     assert args.kweight_parameter == fixed_kparameter
+    assert args.highres == 1.5
+    assert args.lowres == 6.0
 
 
 def test_diffmap_argparser_check_output_filepaths(
@@ -97,33 +101,60 @@ def test_diffmap_argparser_check_output_filepaths(
 
 
 @mock.patch("meteor.scripts.common.rs.read_mtz", mocked_read_mtz)
-def test_contruct_map() -> None:
+@pytest.mark.parametrize("highres", [0.1, 2.0, 100.0, None])
+@pytest.mark.parametrize("lowres", [0.1, 30.0, 100.0, None])
+@pytest.mark.parametrize("amplitude_column", ["infer", "F"])
+@pytest.mark.parametrize("uncertainty_column", ["infer", "SIGF"])
+def test_contruct_map(
+    highres: float | None, lowres: float | None, amplitude_column: str, uncertainty_column: str
+) -> None:
     # map phases have an extra index
     calculated_map_phases = rs.DataSeries([60.0, 181.0, -91.0, 0.0])
     index = pd.MultiIndex.from_arrays(
-        [[1, 1, 5, 6], [1, 2, 5, 6], [1, 3, 5, 7]], names=("H", "K", "L")
+        [[1, 1, 5, 6], [0, 2, 5, 6], [0, 3, 5, 7]], names=("H", "K", "L")
     )
     calculated_map_phases.index = index
 
-    constructed_map = DiffmapArgParser._construct_map(
-        name="fake-name",
-        mtz_file=Path("function-is-mocked.mtz"),
-        calculated_map_phases=calculated_map_phases,
-        amplitude_column="F",
-        uncertainty_column="SIGF",
-    )
-    assert len(constructed_map) == 3
-    assert constructed_map.has_uncertainties
+    # the rescuts overlap, guarenteed no data left
+    if highres and lowres and highres >= lowres:
+        with pytest.raises(ResolutionCutOverlapError):
+            _ = DiffmapArgParser._construct_map(
+                name="fake-name",
+                mtz_file=Path("function-is-mocked.mtz"),
+                calculated_map_phases=calculated_map_phases,
+                amplitude_column=amplitude_column,
+                uncertainty_column=uncertainty_column,
+                high_resolution_limit=highres,
+                low_resolution_limit=lowres,
+            )
 
-    constructed_map = DiffmapArgParser._construct_map(
-        name="fake-name",
-        mtz_file=Path("function-is-mocked.mtz"),
-        calculated_map_phases=calculated_map_phases,
-        amplitude_column="infer",
-        uncertainty_column="infer",
-    )
-    assert len(constructed_map) == 3
-    assert constructed_map.has_uncertainties
+    # rescuts remove all the data
+    elif (highres and (highres > 10.0)) or (lowres and (lowres < 10.0)):
+        with pytest.raises(RuntimeError, match="resolution cut removed all reflections"):
+            _ = DiffmapArgParser._construct_map(
+                name="fake-name",
+                mtz_file=Path("function-is-mocked.mtz"),
+                calculated_map_phases=calculated_map_phases,
+                amplitude_column=amplitude_column,
+                uncertainty_column=uncertainty_column,
+                high_resolution_limit=highres,
+                low_resolution_limit=lowres,
+            )
+
+    # we should have some reflections left
+    else:
+        constructed_map = DiffmapArgParser._construct_map(
+            name="fake-name",
+            mtz_file=Path("function-is-mocked.mtz"),
+            calculated_map_phases=calculated_map_phases,
+            amplitude_column=amplitude_column,
+            uncertainty_column=uncertainty_column,
+            high_resolution_limit=highres,
+            low_resolution_limit=lowres,
+        )
+        assert len(constructed_map) > 0
+        assert len(constructed_map) <= len(index)
+        assert constructed_map.has_uncertainties
 
 
 def test_load_difference_maps(random_difference_map: Map, base_cli_arguments: list[str]) -> None:

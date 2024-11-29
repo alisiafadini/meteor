@@ -26,6 +26,7 @@ from meteor.scale import scale_maps
 from meteor.settings import COMPUTED_MAP_RESOLUTION_LIMIT, KWEIGHT_PARAMETER_DEFAULT
 from meteor.sfcalc import structure_file_to_calculated_map
 from meteor.tv import TvDenoiseResult
+from meteor.utils import cut_resolution
 
 log = structlog.get_logger()
 
@@ -125,6 +126,20 @@ class DiffmapArgParser(argparse.ArgumentParser):
             help="specify the MTZ column for the uncertainties; will try to guess if not provided",
         )
 
+        input_data_group = self.add_argument_group("input data specifics")
+        input_data_group.add_argument(
+            "--highres",
+            type=float,
+            default=0.0,
+            help="Cut at high resolution. Default: no resolution cut beyond the data.",
+        )
+        input_data_group.add_argument(
+            "--lowres",
+            type=float,
+            default=np.inf,
+            help="Cut at low resolution. Default: no resolution cut beyond the data.",
+        )
+
         output_group = self.add_argument_group("output")
         output_group.add_argument(
             "-o",
@@ -169,13 +184,15 @@ class DiffmapArgParser(argparse.ArgumentParser):
                 raise OSError(msg)
 
     @staticmethod
-    def _construct_map(
+    def _construct_map(  # noqa: PLR0913
         *,
         name: str,
         mtz_file: Path,
         calculated_map_phases: rs.DataSeries,
         amplitude_column: str,
         uncertainty_column: str,
+        high_resolution_limit: float | None = None,
+        low_resolution_limit: float | None = None,
     ) -> Map:
         log.info(
             "Reading structure factors...",
@@ -208,6 +225,15 @@ class DiffmapArgParser(argparse.ArgumentParser):
         log.info("  uncertainties", sought=uncertainty_column, found=found_uncertainty_column)
 
         mtz.dropna(axis="index", how="any", subset=found_amplitude_column, inplace=True)
+        mtz = cut_resolution(
+            mtz,
+            low_resolution_limit=low_resolution_limit,
+            high_resolution_limit=high_resolution_limit,
+        )
+
+        if len(mtz) == 0:
+            msg = f"resolution cut removed all reflections for map: {name}"
+            raise RuntimeError(msg)
 
         return Map(
             mtz,
@@ -231,6 +257,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             calculated_map_phases=calculated_map.phases,
             amplitude_column=args.derivative_amplitude_column,
             uncertainty_column=args.derivative_uncertainty_column,
+            high_resolution_limit=args.highres,
+            low_resolution_limit=args.lowres,
         )
 
         native_map = DiffmapArgParser._construct_map(
@@ -239,6 +267,8 @@ class DiffmapArgParser(argparse.ArgumentParser):
             calculated_map_phases=calculated_map.phases,
             amplitude_column=args.native_amplitude_column,
             uncertainty_column=args.native_uncertainty_column,
+            high_resolution_limit=args.highres,
+            low_resolution_limit=args.lowres,
         )
 
         mapset = DiffMapSet(
