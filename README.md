@@ -16,11 +16,9 @@
 
 ## quickstart
 
-❗ `meteor` is currently **in beta**. We re-wrote everything recently, moving from a research code to something that can be robustly used as a tool. If you are willing to put up with a few sharp edges, it would be great if you give it a spin and then send us feedback: on how easy/not it was to use and what kinds of scientific results you obtain.
+❗ `meteor` is currently **in beta**. We re-wrote everything recently, moving from a research code to something that can be robustly used as a tool. If you are willing to put up with a few sharp edges, it would be great if you give it a spin and then send us feedback: on how easy/not it was to use and what kinds of scientific results you obtain. Raise an issue or email us if you notice anything or hit any problems. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with `meteor` until we exit `beta`. 
 
-Finally: a word of caution. Expect changes in the coming weeks as we stress test the code. You might want to consider this before publishing any results with `meteor` until we exit `beta`. 
-
-First, meteor needs a `python3.11` environment. We're working hard to extend this to as many versions as possible. To be sure things work, we recommend [installing conda](https://docs.anaconda.com/miniconda/) and creating a fresh environment,
+First, meteor needs a python `3.11` or `3.12` environment. To be sure things work, we recommend [installing conda](https://docs.anaconda.com/miniconda/) and creating a fresh environment,
 ```
 conda create --name meteor python==3.11 --yes
 conda activate meteor
